@@ -90,7 +90,7 @@ int MRubyContext::run_app(Downstream *downstream, int phase) {
     auto exc = mrb_obj_value(mrb_->exc);
     auto inspect = mrb_inspect(mrb_, exc);
 
-    LOG(ERROR) << "Exception caught while executing mruby code: "
+    Log{ERROR} << "Exception caught while executing mruby code: "
                << mrb_str_to_cstr(mrb_, inspect);
   }
 
@@ -124,7 +124,7 @@ mrb_value instantiate_app(mrb_state *mrb, RProc *proc) {
     auto exc = mrb_obj_value(mrb->exc);
     auto inspect = mrb_inspect(mrb, exc);
 
-    LOG(ERROR) << "Exception caught while executing mruby code: "
+    Log{ERROR} << "Exception caught while executing mruby code: "
                << mrb_str_to_cstr(mrb, inspect);
 
     return mrb_nil_value();
@@ -146,33 +146,33 @@ RProc *compile(mrb_state *mrb, std::string_view filename) {
 
   auto infile = fopen(filename.data(), "rb");
   if (infile == nullptr) {
-    LOG(ERROR) << "Could not open mruby file " << filename;
+    Log{ERROR} << "Could not open mruby file " << filename;
     return nullptr;
   }
   auto infile_d = defer([infile] { fclose(infile); });
 
   auto mrbc = mrb_ccontext_new(mrb);
   if (mrbc == nullptr) {
-    LOG(ERROR) << "mrb_context_new failed";
+    Log{ERROR} << "mrb_context_new failed";
     return nullptr;
   }
   auto mrbc_d = defer([mrb, mrbc] { mrb_ccontext_free(mrb, mrbc); });
 
   auto parser = mrb_parse_file(mrb, infile, nullptr);
   if (parser == nullptr) {
-    LOG(ERROR) << "mrb_parse_nstring failed";
+    Log{ERROR} << "mrb_parse_nstring failed";
     return nullptr;
   }
   auto parser_d = defer([parser] { mrb_parser_free(parser); });
 
   if (parser->nerr != 0) {
-    LOG(ERROR) << "mruby parser detected parse error";
+    Log{ERROR} << "mruby parser detected parse error";
     return nullptr;
   }
 
   auto proc = mrb_generate_code(mrb, parser);
   if (proc == nullptr) {
-    LOG(ERROR) << "mrb_generate_code failed";
+    Log{ERROR} << "mrb_generate_code failed";
     return nullptr;
   }
 
@@ -187,7 +187,7 @@ std::unique_ptr<MRubyContext> create_mruby_context(std::string_view filename) {
 
   auto mrb = mrb_open();
   if (mrb == nullptr) {
-    LOG(ERROR) << "mrb_open failed";
+    Log{ERROR} << "mrb_open failed";
     return nullptr;
   }
 
@@ -197,7 +197,7 @@ std::unique_ptr<MRubyContext> create_mruby_context(std::string_view filename) {
 
   if (!req_proc) {
     mrb_gc_arena_restore(mrb, ai);
-    LOG(ERROR) << "Could not compile mruby code " << filename;
+    Log{ERROR} << "Could not compile mruby code " << filename;
     mrb_close(mrb);
     return nullptr;
   }
@@ -207,7 +207,7 @@ std::unique_ptr<MRubyContext> create_mruby_context(std::string_view filename) {
   auto app = instantiate_app(mrb, req_proc);
   if (mrb_nil_p(app)) {
     mrb_gc_arena_restore(mrb, ai);
-    LOG(ERROR) << "Could not instantiate mruby app from " << filename;
+    Log{ERROR} << "Could not instantiate mruby app from " << filename;
     mrb_close(mrb);
     return nullptr;
   }

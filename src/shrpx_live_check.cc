@@ -93,7 +93,7 @@ void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto live_check = static_cast<LiveCheck *>(w->data);
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "SETTINGS timeout";
+    Log{INFO} << "SETTINGS timeout";
   }
 
   live_check->on_failure();
@@ -197,7 +197,7 @@ int LiveCheck::initiate_connection() {
   auto worker_blocker = worker_->get_connect_blocker();
   if (worker_blocker->blocked()) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Worker wide backend connection was blocked temporarily";
+      Log{INFO} << "Worker wide backend connection was blocked temporarily";
     }
     return -1;
   }
@@ -279,7 +279,7 @@ int LiveCheck::initiate_connection() {
 
   if (conn_.fd == -1) {
     auto error = errno;
-    LOG(WARN) << "socket() failed; addr=" << util::to_numeric_addr(raddr_)
+    Log{WARN} << "socket() failed; addr=" << util::to_numeric_addr(raddr_)
               << ", errno=" << error;
     return -1;
   }
@@ -287,7 +287,7 @@ int LiveCheck::initiate_connection() {
   rv = connect(conn_.fd, raddr_->as_sockaddr(), raddr_->size());
   if (rv != 0 && errno != EINPROGRESS) {
     auto error = errno;
-    LOG(WARN) << "connect() failed; addr=" << util::to_numeric_addr(raddr_)
+    Log{WARN} << "connect() failed; addr=" << util::to_numeric_addr(raddr_)
               << ", errno=" << error;
 
     close(conn_.fd);
@@ -330,7 +330,7 @@ int LiveCheck::connected() {
   auto sock_error = util::get_socket_error(conn_.fd);
   if (sock_error != 0) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Backend connect failed; addr="
+      Log{INFO} << "Backend connect failed; addr="
                 << util::to_numeric_addr(raddr_) << ": errno=" << sock_error;
     }
 
@@ -338,7 +338,7 @@ int LiveCheck::connected() {
   }
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Connection established";
+    Log{INFO} << "Connection established";
   }
 
   auto &downstreamconf = *get_config()->conn.downstream;
@@ -391,7 +391,7 @@ int LiveCheck::tls_handshake() {
   }
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "SSL/TLS handshake completed";
+    Log{INFO} << "SSL/TLS handshake completed";
   }
 
   if (!get_config()->tls.insecure &&
@@ -569,7 +569,7 @@ int LiveCheck::write_clear() {
 int LiveCheck::on_read(std::span<const uint8_t> data) {
   auto rv = nghttp2_session_mem_recv2(session_, data.data(), data.size());
   if (rv < 0) {
-    LOG(ERROR) << "nghttp2_session_mem_recv2() returned error: "
+    Log{ERROR} << "nghttp2_session_mem_recv2() returned error: "
                << nghttp2_strerror(static_cast<int>(rv));
     return -1;
   }
@@ -585,7 +585,7 @@ int LiveCheck::on_read(std::span<const uint8_t> data) {
   if (nghttp2_session_want_read(session_) == 0 &&
       nghttp2_session_want_write(session_) == 0 && wb_.rleft() == 0) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "No more read/write for this session";
+      Log{INFO} << "No more read/write for this session";
     }
 
     // If we have SETTINGS ACK already, we treat this success.
@@ -607,7 +607,7 @@ int LiveCheck::on_write() {
     auto datalen = nghttp2_session_mem_send2(session_, &data);
 
     if (datalen < 0) {
-      LOG(ERROR) << "nghttp2_session_mem_send2() returned error: "
+      Log{ERROR} << "nghttp2_session_mem_send2() returned error: "
                  << nghttp2_strerror(static_cast<int>(datalen));
       return -1;
     }
@@ -624,7 +624,7 @@ int LiveCheck::on_write() {
   if (nghttp2_session_want_read(session_) == 0 &&
       nghttp2_session_want_write(session_) == 0 && wb_.rleft() == 0) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "No more read/write for this session";
+      Log{INFO} << "No more read/write for this session";
     }
 
     if (settings_ack_received_) {
@@ -641,7 +641,7 @@ void LiveCheck::on_failure() {
   ++fail_count_;
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Liveness check for " << addr_->host << ":" << addr_->port
+    Log{INFO} << "Liveness check for " << addr_->host << ":" << addr_->port
               << " failed " << fail_count_ << " time(s) in a row";
   }
 
@@ -655,7 +655,7 @@ void LiveCheck::on_success() {
   fail_count_ = 0;
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Liveness check for " << addr_->host << ":" << addr_->port
+    Log{INFO} << "Liveness check for " << addr_->host << ":" << addr_->port
               << " succeeded " << success_count_ << " time(s) in a row";
   }
 
@@ -667,7 +667,7 @@ void LiveCheck::on_success() {
     return;
   }
 
-  LOG(NOTICE) << util::to_numeric_addr(&addr_->addr) << " is considered online";
+  Log{NOTICE} << util::to_numeric_addr(&addr_->addr) << " is considered online";
 
   addr_->connect_blocker->online();
 
@@ -758,7 +758,7 @@ int LiveCheck::connection_made() {
 
   if (must_terminate) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "TLSv1.2 was not negotiated. HTTP/2 must not be negotiated.";
+      Log{INFO} << "TLSv1.2 was not negotiated. HTTP/2 must not be negotiated.";
     }
 
     rv =

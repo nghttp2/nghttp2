@@ -198,14 +198,14 @@ int Connection::tls_handshake() {
       }
 
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "tls: read early data " << nread << " bytes";
+        Log{INFO} << "tls: read early data " << nread << " bytes";
       }
 
       tls.earlybuf.append(buf.data(), nread);
 
       if (rv == SSL_READ_EARLY_DATA_FINISH) {
         if (LOG_ENABLED(INFO)) {
-          LOG(INFO) << "tls: read all early data; total "
+          Log{INFO} << "tls: read all early data; total "
                     << tls.earlybuf.rleft() << " bytes";
         }
         tls.early_data_finish = true;
@@ -247,14 +247,14 @@ int Connection::tls_handshake() {
       }
 
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "tls: read early data " << nread << " bytes";
+        Log{INFO} << "tls: read early data " << nread << " bytes";
       }
 
       tls.earlybuf.append(buf.data(), nread);
 
       if (rv == 0) {
         if (LOG_ENABLED(INFO)) {
-          LOG(INFO) << "tls: read all early data; total "
+          Log{INFO} << "tls: read all early data; total "
                     << tls.earlybuf.rleft() << " bytes";
         }
         tls.early_data_finish = true;
@@ -288,14 +288,14 @@ int Connection::tls_handshake() {
       break;
     case SSL_ERROR_SSL: {
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "tls: handshake libssl error: "
+        Log{INFO} << "tls: handshake libssl error: "
                   << ERR_error_string(ERR_get_error(), nullptr);
       }
       return SHRPX_ERR_NETWORK;
     }
     default:
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "tls: handshake libssl error " << err;
+        Log{INFO} << "tls: handshake libssl error " << err;
       }
       return SHRPX_ERR_NETWORK;
     }
@@ -303,7 +303,7 @@ int Connection::tls_handshake() {
 
   if (rv != 1) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "tls: handshake is still in progress";
+      Log{INFO} << "tls: handshake is still in progress";
     }
     return SHRPX_ERR_INPROGRESS;
   }
@@ -322,13 +322,13 @@ int Connection::tls_handshake() {
         return SHRPX_ERR_EOF;
       case SSL_ERROR_SSL:
         if (LOG_ENABLED(INFO)) {
-          LOG(INFO) << "SSL_read: "
+          Log{INFO} << "SSL_read: "
                     << ERR_error_string(ERR_get_error(), nullptr);
         }
         return SHRPX_ERR_NETWORK;
       default:
         if (LOG_ENABLED(INFO)) {
-          LOG(INFO) << "SSL_read: SSL_get_error returned " << err;
+          Log{INFO} << "SSL_read: SSL_get_error returned " << err;
         }
         return SHRPX_ERR_NETWORK;
       }
@@ -364,20 +364,20 @@ int Connection::write_tls_pending_handshake() {
       switch (err) {
       case SSL_ERROR_WANT_READ:
         if (LOG_ENABLED(INFO)) {
-          LOG(INFO) << "Close connection due to TLS renegotiation";
+          Log{INFO} << "Close connection due to TLS renegotiation";
         }
         return SHRPX_ERR_NETWORK;
       case SSL_ERROR_WANT_WRITE:
         break;
       case SSL_ERROR_SSL:
         if (LOG_ENABLED(INFO)) {
-          LOG(INFO) << "SSL_write: "
+          Log{INFO} << "SSL_write: "
                     << ERR_error_string(ERR_get_error(), nullptr);
         }
         return SHRPX_ERR_NETWORK;
       default:
         if (LOG_ENABLED(INFO)) {
-          LOG(INFO) << "SSL_write: SSL_get_error returned " << err;
+          Log{INFO} << "SSL_write: SSL_get_error returned " << err;
         }
         return SHRPX_ERR_NETWORK;
       }
@@ -395,10 +395,10 @@ int Connection::write_tls_pending_handshake() {
   handle_tls_pending_read();
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "SSL/TLS handshake completed";
+    Log{INFO} << "SSL/TLS handshake completed";
     nghttp2::tls::TLSSessionInfo tls_info{};
     if (nghttp2::tls::get_tls_session_info(&tls_info, tls.ssl)) {
-      LOG(INFO) << "cipher=" << tls_info.cipher
+      Log{INFO} << "cipher=" << tls_info.cipher
                 << " protocol=" << tls_info.protocol
                 << " resumption=" << (tls_info.session_reused ? "yes" : "no")
                 << " session_id="
@@ -421,7 +421,7 @@ int Connection::check_http2_requirement() {
   }
   if (!nghttp2::tls::check_http2_tls_version(tls.ssl)) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "TLSv1.2 was not negotiated.  HTTP/2 must not be used.";
+      Log{INFO} << "TLSv1.2 was not negotiated.  HTTP/2 must not be used.";
     }
     return -1;
   }
@@ -436,7 +436,7 @@ int Connection::check_http2_requirement() {
   if (check_block_list &&
       nghttp2::tls::check_http2_cipher_block_list(tls.ssl)) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "The negotiated cipher suite is in HTTP/2 cipher suite "
+      Log{INFO} << "The negotiated cipher suite is in HTTP/2 cipher suite "
                    "block list.  HTTP/2 must not be used.";
     }
     return -1;
@@ -525,7 +525,7 @@ nghttp2_ssize Connection::write_tls(std::span<const uint8_t> data) {
     switch (err) {
     case SSL_ERROR_WANT_READ:
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Close connection due to TLS renegotiation";
+        Log{INFO} << "Close connection due to TLS renegotiation";
       }
       return SHRPX_ERR_NETWORK;
     case SSL_ERROR_WANT_WRITE:
@@ -536,13 +536,13 @@ nghttp2_ssize Connection::write_tls(std::span<const uint8_t> data) {
       return 0;
     case SSL_ERROR_SSL:
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "SSL_write: "
+        Log{INFO} << "SSL_write: "
                   << ERR_error_string(ERR_get_error(), nullptr);
       }
       return SHRPX_ERR_NETWORK;
     default:
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "SSL_write: SSL_get_error returned " << err;
+        Log{INFO} << "SSL_write: SSL_get_error returned " << err;
       }
       return SHRPX_ERR_NETWORK;
     }
@@ -601,25 +601,25 @@ nghttp2_ssize Connection::read_tls(std::span<uint8_t> data) {
         return 0;
       case SSL_ERROR_SSL:
         if (LOG_ENABLED(INFO)) {
-          LOG(INFO) << "SSL_read: "
+          Log{INFO} << "SSL_read: "
                     << ERR_error_string(ERR_get_error(), nullptr);
         }
         return SHRPX_ERR_NETWORK;
       default:
         if (LOG_ENABLED(INFO)) {
-          LOG(INFO) << "SSL_read: SSL_get_error returned " << err;
+          Log{INFO} << "SSL_read: SSL_get_error returned " << err;
         }
         return SHRPX_ERR_NETWORK;
       }
     }
 
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "tls: read early data " << nread << " bytes";
+      Log{INFO} << "tls: read early data " << nread << " bytes";
     }
 
     if (rv == SSL_READ_EARLY_DATA_FINISH) {
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "tls: read all early data";
+        Log{INFO} << "tls: read all early data";
       }
       tls.early_data_finish = true;
       // We may have stopped write watcher in write_tls.
@@ -645,25 +645,25 @@ nghttp2_ssize Connection::read_tls(std::span<uint8_t> data) {
         return 0;
       case SSL_ERROR_SSL:
         if (LOG_ENABLED(INFO)) {
-          LOG(INFO) << "SSL_read: "
+          Log{INFO} << "SSL_read: "
                     << ERR_error_string(ERR_get_error(), nullptr);
         }
         return SHRPX_ERR_NETWORK;
       default:
         if (LOG_ENABLED(INFO)) {
-          LOG(INFO) << "SSL_read: SSL_get_error returned " << err;
+          Log{INFO} << "SSL_read: SSL_get_error returned " << err;
         }
         return SHRPX_ERR_NETWORK;
       }
     }
 
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "tls: read early data " << nread << " bytes";
+      Log{INFO} << "tls: read early data " << nread << " bytes";
     }
 
     if (rv == 0) {
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "tls: read all early data";
+        Log{INFO} << "tls: read all early data";
       }
       tls.early_data_finish = true;
       // We may have stopped write watcher in write_tls.
@@ -687,19 +687,19 @@ nghttp2_ssize Connection::read_tls(std::span<uint8_t> data) {
       return 0;
     case SSL_ERROR_WANT_WRITE:
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Close connection due to TLS renegotiation";
+        Log{INFO} << "Close connection due to TLS renegotiation";
       }
       return SHRPX_ERR_NETWORK;
     case SSL_ERROR_ZERO_RETURN:
       return SHRPX_ERR_EOF;
     case SSL_ERROR_SSL:
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "SSL_read: " << ERR_error_string(ERR_get_error(), nullptr);
+        Log{INFO} << "SSL_read: " << ERR_error_string(ERR_get_error(), nullptr);
       }
       return SHRPX_ERR_NETWORK;
     default:
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "SSL_read: SSL_get_error returned " << err;
+        Log{INFO} << "SSL_read: SSL_get_error returned " << err;
       }
       return SHRPX_ERR_NETWORK;
     }
@@ -875,14 +875,14 @@ int Connection::get_tcp_hint(TCPHint *hint) const {
     writable_size = writable_size & ~(16_k - 1);
   } else {
     if (writable_size < 536) {
-      LOG(INFO) << "writable_size is too small: " << writable_size;
+      Log{INFO} << "writable_size is too small: " << writable_size;
     }
     // TODO is this required?
     writable_size = std::max(writable_size, static_cast<size_t>(536 * 2));
   }
 
   // if (LOG_ENABLED(INFO)) {
-  //   LOG(INFO) << "snd_cwnd=" << tcp_info.tcpi_snd_cwnd
+  //   Log{INFO} << "snd_cwnd=" << tcp_info.tcpi_snd_cwnd
   //             << ", unacked=" << tcp_info.tcpi_unacked
   //             << ", snd_mss=" << tcp_info.tcpi_snd_mss
   //             << ", rtt=" << tcp_info.tcpi_rtt << "us"

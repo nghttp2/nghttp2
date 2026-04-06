@@ -167,7 +167,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
     if (worker_->get_worker_stat()->num_connections >=
         upstreamconf.worker_connections) {
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Too many connections >="
+        Log{INFO} << "Too many connections >="
                   << upstreamconf.worker_connections;
       }
 
@@ -235,7 +235,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
                                hd.dcid, remote_addr.as_sockaddr(),
                                remote_addr.size(), qkm->secret) != 0) {
           if (LOG_ENABLED(INFO)) {
-            LOG(INFO) << "Failed to validate Retry token from remote="
+            Log{INFO} << "Failed to validate Retry token from remote="
                       << util::to_numeric_addr(&remote_addr);
           }
 
@@ -248,7 +248,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         }
 
         if (LOG_ENABLED(INFO)) {
-          LOG(INFO) << "Successfully validated Retry token from remote="
+          Log{INFO} << "Successfully validated Retry token from remote="
                     << util::to_numeric_addr(&remote_addr);
         }
 
@@ -267,7 +267,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
         if (hd.tokenlen != NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN + 1) {
           if (LOG_ENABLED(INFO)) {
-            LOG(INFO) << "Failed to validate token from remote="
+            Log{INFO} << "Failed to validate token from remote="
                       << util::to_numeric_addr(&remote_addr);
           }
 
@@ -288,7 +288,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         if (verify_token({hd.token, hd.tokenlen}, remote_addr.as_sockaddr(),
                          remote_addr.size(), qkm->secret) != 0) {
           if (LOG_ENABLED(INFO)) {
-            LOG(INFO) << "Failed to validate token from remote="
+            Log{INFO} << "Failed to validate token from remote="
                       << util::to_numeric_addr(&remote_addr);
           }
 
@@ -304,7 +304,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         }
 
         if (LOG_ENABLED(INFO)) {
-          LOG(INFO) << "Successfully validated token from remote="
+          Log{INFO} << "Successfully validated token from remote="
                     << util::to_numeric_addr(&remote_addr);
         }
 
@@ -376,7 +376,7 @@ ClientHandler *QUICConnectionHandler::handle_new_connection(
                    host.size(), service.data(), service.size(),
                    NI_NUMERICHOST | NI_NUMERICSERV);
   if (rv != 0) {
-    LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);
+    Log{ERROR} << "getnameinfo() failed: " << gai_strerror(rv);
 
     return nullptr;
   }
@@ -516,7 +516,7 @@ int QUICConnectionHandler::send_retry(
     ngtcp2_crypto_write_retry(buf.data(), buflen, version, &iscid, &retry_scid,
                               &idcid, token->data(), token->size());
   if (nwrite < 0) {
-    LOG(ERROR) << "ngtcp2_crypto_write_retry: "
+    Log{ERROR} << "ngtcp2_crypto_write_retry: "
                << ngtcp2_strerror(static_cast<int>(nwrite));
     return -1;
   }
@@ -542,7 +542,7 @@ int QUICConnectionHandler::send_retry(
     static_cast<ev_tstamp>(NGTCP2_DEFAULT_INITIAL_RTT * 3) / NGTCP2_SECONDS;
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Enter close-wait period " << d << "s with " << retrylen
+    Log{INFO} << "Enter close-wait period " << d << "s with " << retrylen
               << " bytes sentinel packet";
   }
 
@@ -572,7 +572,7 @@ int QUICConnectionHandler::send_version_negotiation(
     buf.data(), buf.size(), rand_byte, ini_scid.data(), ini_scid.size(),
     ini_dcid.data(), ini_dcid.size(), sv.data(), sv.size());
   if (nwrite < 0) {
-    LOG(ERROR) << "ngtcp2_pkt_write_version_negotiation: "
+    Log{ERROR} << "ngtcp2_pkt_write_version_negotiation: "
                << ngtcp2_strerror(static_cast<int>(nwrite));
     return -1;
   }
@@ -590,7 +590,7 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
                                                 const Address &local_addr) {
   if (stateless_reset_bucket_ == 0) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Stateless Reset bucket has been depleted";
+      Log{INFO} << "Stateless Reset bucket has been depleted";
     }
 
     return 0;
@@ -642,13 +642,13 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
   auto nwrite = ngtcp2_pkt_write_stateless_reset(
     buf.data(), buf.size(), token.data(), rand_bytes.data(), rand_byteslen);
   if (nwrite < 0) {
-    LOG(ERROR) << "ngtcp2_pkt_write_stateless_reset: "
+    Log{ERROR} << "ngtcp2_pkt_write_stateless_reset: "
                << ngtcp2_strerror(static_cast<int>(nwrite));
     return -1;
   }
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Send stateless_reset to remote="
+    Log{INFO} << "Send stateless_reset to remote="
               << util::to_numeric_addr(&remote_addr)
               << " dcid=" << util::format_hex(dcid);
   }
@@ -671,12 +671,12 @@ int QUICConnectionHandler::send_connection_close(
     buf.data(), max_pktlen, version, &ini_scid, &ini_dcid, error_code, nullptr,
     0);
   if (nwrite < 0) {
-    LOG(ERROR) << "ngtcp2_crypto_write_connection_close failed";
+    Log{ERROR} << "ngtcp2_crypto_write_connection_close failed";
     return -1;
   }
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Send Initial CONNECTION_CLOSE with error_code=" << log::hex
+    Log{INFO} << "Send Initial CONNECTION_CLOSE with error_code=" << log::hex
               << error_code << log::dec
               << " to remote=" << util::to_numeric_addr(&remote_addr)
               << " dcid="
@@ -725,7 +725,7 @@ static void close_wait_timeoutcb(struct ev_loop *loop, ev_timer *w,
   auto cw = static_cast<CloseWait *>(w->data);
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "close-wait period finished";
+    Log{INFO} << "close-wait period finished";
   }
 
   auto quic_conn_handler = cw->worker->get_quic_connection_handler();

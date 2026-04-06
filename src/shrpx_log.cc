@@ -788,7 +788,7 @@ int reopen_log_files(const LoggingConfig &loggingconf) {
     new_accesslog_fd = open_log_file(accessconf.file.data());
 
     if (new_accesslog_fd == -1) {
-      LOG(ERROR) << "Failed to open accesslog file " << accessconf.file;
+      Log{ERROR} << "Failed to open accesslog file " << accessconf.file;
       res = -1;
     }
   }
@@ -798,7 +798,7 @@ int reopen_log_files(const LoggingConfig &loggingconf) {
 
     if (new_errorlog_fd == -1) {
       if (lgconf->errorlog_fd != -1) {
-        LOG(ERROR) << "Failed to open errorlog file " << errorconf.file;
+        Log{ERROR} << "Failed to open errorlog file " << errorconf.file;
       } else {
         std::cerr << "Failed to open errorlog file " << errorconf.file
                   << std::endl;
@@ -835,7 +835,7 @@ void log_chld(pid_t pid, int rstatus, const char *msg) {
     signalstr += ')';
   }
 
-  LOG(NOTICE) << msg << ": [" << pid << "] exited "
+  Log{NOTICE} << msg << ": [" << pid << "] exited "
               << (WIFEXITED(rstatus) ? "normally" : "abnormally")
               << " with status " << log::hex << rstatus << log::dec
               << "; exit status "

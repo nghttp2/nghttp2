@@ -239,69 +239,6 @@ inline auto LOG_ENABLED(SeverityLevel severity) {
   return ENABLE_LOG && Log::log_enabled(severity);
 }
 
-inline auto
-LOG(SeverityLevel severity,
-    const std::source_location loc = std::source_location::current()) {
-  return Log{severity, loc};
-}
-
-// Listener log
-// TODO: This should be ConnectionHandler log.
-inline auto
-LLOG(SeverityLevel severity, const ConnectionHandler *obj,
-     const std::source_location loc = std::source_location::current()) {
-  return Log{severity, obj, loc};
-}
-
-// Worker log
-inline auto
-WLOG(SeverityLevel severity, const Worker *obj,
-     const std::source_location loc = std::source_location::current()) {
-  return Log{severity, obj, loc};
-}
-
-// ClientHandler log
-inline auto
-CLOG(SeverityLevel severity, const ClientHandler *obj,
-     const std::source_location loc = std::source_location::current()) {
-  return Log{severity, obj, loc};
-}
-
-// Upstream log
-inline auto
-ULOG(SeverityLevel severity, const Upstream *obj,
-     const std::source_location loc = std::source_location::current()) {
-  return Log{severity, obj, loc};
-}
-
-// Downstream log
-inline auto
-DLOG(SeverityLevel severity, const Downstream *obj,
-     const std::source_location loc = std::source_location::current()) {
-  return Log{severity, obj, loc};
-}
-
-// Downstream connection log
-inline auto
-DCLOG(SeverityLevel severity, const DownstreamConnection *obj,
-      const std::source_location loc = std::source_location::current()) {
-  return Log{severity, obj, loc};
-}
-
-// Downstream HTTP2 session log
-inline auto
-SSLOG(SeverityLevel severity, const Http2Session *obj,
-      const std::source_location loc = std::source_location::current()) {
-  return Log{severity, obj, loc};
-}
-
-// Memcached connection log
-inline auto
-MCLOG(SeverityLevel severity, const MemcachedConnection *obj,
-      const std::source_location loc = std::source_location::current()) {
-  return Log{severity, obj, loc};
-}
-
 namespace log {
 void hex(Log &log);
 void dec(Log &log);

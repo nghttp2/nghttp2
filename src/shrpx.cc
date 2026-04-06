@@ -272,7 +272,7 @@ void worker_process_grace_period_timercb(struct ev_loop *loop, ev_timer *w,
         return false;
       }
 
-      LOG(NOTICE) << "Deleting worker process pid=" << wp->worker_pid
+      Log{NOTICE} << "Deleting worker process pid=" << wp->worker_pid
                   << " because its grace shutdown period is over";
 
       return true;
@@ -386,7 +386,7 @@ int save_pid() {
   auto fd = mkstemp(temp_path);
   if (fd == -1) {
     auto error = errno;
-    LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
+    Log{ERROR} << "Could not save PID to file " << pid_file << ": "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
@@ -395,14 +395,14 @@ int save_pid() {
 
   if (write(fd, content.c_str(), content.size()) == -1) {
     auto error = errno;
-    LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
+    Log{ERROR} << "Could not save PID to file " << pid_file << ": "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
 
   if (fsync(fd) == -1) {
     auto error = errno;
-    LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
+    Log{ERROR} << "Could not save PID to file " << pid_file << ": "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
@@ -411,7 +411,7 @@ int save_pid() {
 
   if (rename(temp_path, pid_file.data()) == -1) {
     auto error = errno;
-    LOG(ERROR) << "Could not save PID to file " << pid_file << ": "
+    Log{ERROR} << "Could not save PID to file " << pid_file << ": "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
 
     unlink(temp_path);
@@ -422,7 +422,7 @@ int save_pid() {
   if (config->uid != 0) {
     if (chown(pid_file.data(), config->uid, config->gid) == -1) {
       auto error = errno;
-      LOG(WARN) << "Changing owner of pid file " << pid_file << " failed: "
+      Log{WARN} << "Changing owner of pid file " << pid_file << " failed: "
                 << xsi_strerror(error, errbuf.data(), errbuf.size());
     }
   }
@@ -449,14 +449,14 @@ void exec_binary() {
   sigset_t oldset;
   std::array<char, STRERROR_BUFSIZE> errbuf;
 
-  LOG(NOTICE) << "Executing new binary";
+  Log{NOTICE} << "Executing new binary";
 
   shrpx_sd_notifyf(0, "RELOADING=1");
 
   rv = shrpx_signal_block_all(&oldset);
   if (rv != 0) {
     auto error = errno;
-    LOG(ERROR) << "Blocking all signals failed: "
+    Log{ERROR} << "Blocking all signals failed: "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
 
     return;
@@ -467,7 +467,7 @@ void exec_binary() {
   if (pid != 0) {
     if (pid == -1) {
       auto error = errno;
-      LOG(ERROR) << "fork() failed errno=" << error;
+      Log{ERROR} << "fork() failed errno=" << error;
     } else {
       // update PID tracking information in systemd
       shrpx_sd_notifyf(0, "MAINPID=%d\n", pid);
@@ -477,7 +477,7 @@ void exec_binary() {
 
     if (rv != 0) {
       auto error = errno;
-      LOG(FATAL) << "Restoring signal mask failed: "
+      Log{FATAL} << "Restoring signal mask failed: "
                  << xsi_strerror(error, errbuf.data(), errbuf.size());
 
       exit(EXIT_FAILURE);
@@ -493,7 +493,7 @@ void exec_binary() {
   rv = shrpx_signal_unblock_all();
   if (rv != 0) {
     auto error = errno;
-    LOG(ERROR) << "Unblocking all signals failed: "
+    Log{ERROR} << "Unblocking all signals failed: "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
 
     nghttp2_Exit(EXIT_FAILURE);
@@ -503,7 +503,7 @@ void exec_binary() {
     util::get_exec_path(suconfig.argc, suconfig.argv, suconfig.cwd);
 
   if (!exec_path) {
-    LOG(ERROR) << "Could not resolve the executable path";
+    Log{ERROR} << "Could not resolve the executable path";
     nghttp2_Exit(EXIT_FAILURE);
   }
 
@@ -582,13 +582,13 @@ void exec_binary() {
   envp[envidx++] = nullptr;
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "cmdline";
+    Log{INFO} << "cmdline";
     for (size_t i = 0; argv[i]; ++i) {
-      LOG(INFO) << i << ": " << argv[i];
+      Log{INFO} << i << ": " << argv[i];
     }
-    LOG(INFO) << "environ";
+    Log{INFO} << "environ";
     for (size_t i = 0; envp[i]; ++i) {
-      LOG(INFO) << i << ": " << envp[i];
+      Log{INFO} << i << ": " << envp[i];
     }
   }
 
@@ -600,7 +600,7 @@ void exec_binary() {
 
   if (execve(argv[0], argv.get(), envp.get()) == -1) {
     auto error = errno;
-    LOG(ERROR) << "execve failed: errno=" << error;
+    Log{ERROR} << "execve failed: errno=" << error;
     nghttp2_Exit(EXIT_FAILURE);
   }
 }
@@ -615,13 +615,13 @@ void ipc_send(WorkerProcess *wp, uint8_t ipc_event) {
 
   if (nwrite < 0) {
     auto error = errno;
-    LOG(ERROR) << "Could not send IPC event to worker process: "
+    Log{ERROR} << "Could not send IPC event to worker process: "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
     return;
   }
 
   if (nwrite == 0) {
-    LOG(ERROR) << "Could not send IPC event due to pipe overflow";
+    Log{ERROR} << "Could not send IPC event due to pipe overflow";
     return;
   }
 }
@@ -629,7 +629,7 @@ void ipc_send(WorkerProcess *wp, uint8_t ipc_event) {
 
 namespace {
 void reopen_log(WorkerProcess *wp) {
-  LOG(NOTICE) << "Reopening log files: main process";
+  Log{NOTICE} << "Reopening log files: main process";
 
   auto config = get_config();
   auto &loggingconf = config->logging;
@@ -702,7 +702,7 @@ int create_unix_domain_server_socket(
   });
 
   if (found != std::ranges::end(iaddrs)) {
-    LOG(NOTICE) << "Listening on UNIX domain socket " << faddr.host
+    Log{NOTICE} << "Listening on UNIX domain socket " << faddr.host
                 << (faddr.tls ? ", tls" : "");
     (*found).used = true;
     faddr.fd = (*found).fd;
@@ -715,7 +715,7 @@ int create_unix_domain_server_socket(
   auto fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
   if (fd == -1) {
     auto error = errno;
-    LOG(FATAL) << "socket() syscall failed: "
+    Log{FATAL} << "socket() syscall failed: "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
@@ -723,7 +723,7 @@ int create_unix_domain_server_socket(
   auto fd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (fd == -1) {
     auto error = errno;
-    LOG(FATAL) << "socket() syscall failed: "
+    Log{FATAL} << "socket() syscall failed: "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
@@ -733,7 +733,7 @@ int create_unix_domain_server_socket(
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
                  static_cast<socklen_t>(sizeof(val))) == -1) {
     auto error = errno;
-    LOG(FATAL) << "Failed to set SO_REUSEADDR option to listener socket: "
+    Log{FATAL} << "Failed to set SO_REUSEADDR option to listener socket: "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
     close(fd);
     return -1;
@@ -743,7 +743,7 @@ int create_unix_domain_server_socket(
   auto &unaddr = addr.skaddr.emplace<sockaddr_un>();
   unaddr.sun_family = AF_UNIX;
   if (faddr.host.size() + 1 > sizeof(unaddr.sun_path)) {
-    LOG(FATAL) << "UNIX domain socket path " << faddr.host << " is too long > "
+    Log{FATAL} << "UNIX domain socket path " << faddr.host << " is too long > "
                << sizeof(unaddr.sun_path);
     close(fd);
     return -1;
@@ -758,7 +758,7 @@ int create_unix_domain_server_socket(
   if (bind(fd, reinterpret_cast<const sockaddr *>(&unaddr), sizeof(unaddr)) !=
       0) {
     auto error = errno;
-    LOG(FATAL) << "Failed to bind UNIX domain socket: "
+    Log{FATAL} << "Failed to bind UNIX domain socket: "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
     close(fd);
     return -1;
@@ -768,13 +768,13 @@ int create_unix_domain_server_socket(
 
   if (listen(fd, listenerconf.backlog) != 0) {
     auto error = errno;
-    LOG(FATAL) << "Failed to listen to UNIX domain socket: "
+    Log{FATAL} << "Failed to listen to UNIX domain socket: "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
     close(fd);
     return -1;
   }
 
-  LOG(NOTICE) << "Listening on UNIX domain socket " << faddr.host
+  Log{NOTICE} << "Listening on UNIX domain socket " << faddr.host
               << (faddr.tls ? ", tls" : "");
 
   faddr.fd = fd;
@@ -826,7 +826,7 @@ get_inherited_unix_domain_socket_from_env(Config *config) {
     }
 
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Read env " << name << "=" << env;
+      Log{INFO} << "Read env " << name << "=" << env;
     }
 
     auto end_type = strchr(env, ',');
@@ -847,20 +847,20 @@ get_inherited_unix_domain_socket_from_env(Config *config) {
     }
     auto fd = util::parse_uint(std::string_view{value, endfd});
     if (!fd) {
-      LOG(WARN) << "Could not parse file descriptor from "
+      Log{WARN} << "Could not parse file descriptor from "
                 << std::string_view{value, endfd};
       continue;
     }
 
     auto path = endfd + 1;
     if (strlen(path) == 0) {
-      LOG(WARN) << "Empty UNIX domain socket path (fd=" << *fd << ")";
+      Log{WARN} << "Empty UNIX domain socket path (fd=" << *fd << ")";
       close(static_cast<int>(*fd));
       continue;
     }
 
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Inherit UNIX domain socket fd=" << *fd << ", path=" << path;
+      Log{INFO} << "Inherit UNIX domain socket fd=" << *fd << ", path=" << path;
     }
 
     iaddrs.emplace_back(InheritedUNIXDomainAddr{
@@ -919,7 +919,7 @@ get_inherited_quic_lingering_worker_process_from_env() {
     }
 
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Read env " << name << "=" << env;
+      Log{INFO} << "Read env " << name << "=" << env;
     }
 
     auto envend = env + strlen(env);
@@ -931,13 +931,13 @@ get_inherited_quic_lingering_worker_process_from_env() {
 
     auto fd = util::parse_uint(std::string_view{env, end_fd});
     if (!fd) {
-      LOG(WARN) << "Could not parse file descriptor from "
+      Log{WARN} << "Could not parse file descriptor from "
                 << std::string_view{env, static_cast<size_t>(end_fd - env)};
       continue;
     }
 
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Inherit worker process QUIC IPC socket fd=" << *fd;
+      Log{INFO} << "Inherit worker process QUIC IPC socket fd=" << *fd;
     }
 
     util::make_socket_closeonexec(static_cast<int>(*fd));
@@ -951,12 +951,12 @@ get_inherited_quic_lingering_worker_process_from_env() {
       auto hex_wid = std::string_view{p, end};
       if (hex_wid.size() != SHRPX_QUIC_WORKER_IDLEN * 2 ||
           !util::is_hex_string(hex_wid)) {
-        LOG(WARN) << "Found invalid WorkerID=" << hex_wid;
+        Log{WARN} << "Found invalid WorkerID=" << hex_wid;
         break;
       }
 
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Inherit worker process WorkerID=" << hex_wid;
+        Log{INFO} << "Inherit worker process WorkerID=" << hex_wid;
       }
 
       worker_ids.emplace_back();
@@ -1009,7 +1009,7 @@ int create_unix_domain_listener_socket(
       // here.  https://lkml.org/lkml/2004/11/1/84
       if (chown(addr.host.data(), config->uid, config->gid) == -1) {
         auto error = errno;
-        LOG(WARN) << "Changing owner of UNIX domain socket " << addr.host
+        Log{WARN} << "Changing owner of UNIX domain socket " << addr.host
                   << " failed: "
                   << xsi_strerror(error, errbuf.data(), errbuf.size());
       }
@@ -1024,7 +1024,7 @@ namespace {
 int call_daemon() {
 #ifdef HAVE_LIBSYSTEMD
   if (sd_booted() && (getenv("NOTIFY_SOCKET") != nullptr)) {
-    LOG(NOTICE) << "Daemonising disabled under systemd";
+    Log{NOTICE} << "Daemonising disabled under systemd";
     chdir("/");
     return 0;
   }
@@ -1045,7 +1045,7 @@ int create_ipc_socket(std::span<int, 2> ipc_fd) {
   rv = pipe(ipc_fd.data());
   if (rv == -1) {
     auto error = errno;
-    LOG(WARN) << "Failed to create pipe to communicate worker process: "
+    Log{WARN} << "Failed to create pipe to communicate worker process: "
               << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
@@ -1067,7 +1067,7 @@ int create_worker_process_ready_ipc_socket(std::span<int, 2> ipc_fd) {
   rv = socketpair(AF_UNIX, SOCK_DGRAM, 0, ipc_fd.data());
   if (rv == -1) {
     auto error = errno;
-    LOG(WARN) << "Failed to create socket pair to communicate worker process "
+    Log{WARN} << "Failed to create socket pair to communicate worker process "
                  "readiness: "
               << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
@@ -1092,7 +1092,7 @@ int create_quic_ipc_socket(std::span<int, 2> quic_ipc_fd) {
   rv = socketpair(AF_UNIX, SOCK_DGRAM, 0, quic_ipc_fd.data());
   if (rv == -1) {
     auto error = errno;
-    LOG(WARN) << "Failed to create socket pair to communicate worker process: "
+    Log{WARN} << "Failed to create socket pair to communicate worker process: "
               << xsi_strerror(error, errbuf.data(), errbuf.size());
     return -1;
   }
@@ -1218,7 +1218,7 @@ void worker_process_ready_ipc_readcb(struct ev_loop *loop, ev_io *w,
     std::array<char, STRERROR_BUFSIZE> errbuf;
     auto error = errno;
 
-    LOG(ERROR) << "Failed to read data from worker process ready IPC channel: "
+    Log{ERROR} << "Failed to read data from worker process ready IPC channel: "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
 
     return;
@@ -1229,7 +1229,7 @@ void worker_process_ready_ipc_readcb(struct ev_loop *loop, ev_io *w,
   }
 
   if (nread != sizeof(pid_t)) {
-    LOG(ERROR) << "Read " << nread
+    Log{ERROR} << "Read " << nread
                << " bytes from worker process ready IPC channel";
 
     return;
@@ -1239,7 +1239,7 @@ void worker_process_ready_ipc_readcb(struct ev_loop *loop, ev_io *w,
 
   memcpy(&pid, buf.data(), sizeof(pid));
 
-  LOG(NOTICE) << "Worker process pid=" << pid << " is ready";
+  Log{NOTICE} << "Worker process pid=" << pid << " is ready";
 
   for (auto &wp : worker_processes) {
     // Send graceful shutdown signal to all worker processes prior to
@@ -1248,7 +1248,7 @@ void worker_process_ready_ipc_readcb(struct ev_loop *loop, ev_io *w,
       break;
     }
 
-    LOG(INFO) << "Sending graceful shutdown event to worker process pid="
+    Log{INFO} << "Sending graceful shutdown event to worker process pid="
               << wp->worker_pid;
 
     ipc_send(wp.get(), SHRPX_IPC_GRACEFUL_SHUTDOWN);
@@ -1256,7 +1256,7 @@ void worker_process_ready_ipc_readcb(struct ev_loop *loop, ev_io *w,
   }
 
   if (orig_pid != -1) {
-    LOG(NOTICE) << "Send QUIT signal to the original main process to tell "
+    Log{NOTICE} << "Send QUIT signal to the original main process to tell "
                    "that we are ready to serve requests.";
     kill(orig_pid, SIGQUIT);
 
@@ -1321,7 +1321,7 @@ pid_t fork_worker_process(int &main_ipc_fd
   rv = shrpx_signal_block_all(&oldset);
   if (rv != 0) {
     auto error = errno;
-    LOG(ERROR) << "Blocking all signals failed: "
+    Log{ERROR} << "Blocking all signals failed: "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
 
     close(ipc_fd[0]);
@@ -1382,7 +1382,7 @@ pid_t fork_worker_process(int &main_ipc_fd
     rv = shrpx_signal_unblock_all();
     if (rv != 0) {
       auto error = errno;
-      LOG(FATAL) << "Unblocking all signals failed: "
+      Log{FATAL} << "Unblocking all signals failed: "
                  << xsi_strerror(error, errbuf.data(), errbuf.size());
 
       if (config->single_process) {
@@ -1410,7 +1410,7 @@ pid_t fork_worker_process(int &main_ipc_fd
     };
     rv = worker_process_event_loop(&wpconf);
     if (rv != 0) {
-      LOG(FATAL) << "Worker process returned error";
+      Log{FATAL} << "Worker process returned error";
 
       if (config->single_process) {
         exit(EXIT_FAILURE);
@@ -1419,7 +1419,7 @@ pid_t fork_worker_process(int &main_ipc_fd
       }
     }
 
-    LOG(NOTICE) << "Worker process shutting down momentarily";
+    Log{NOTICE} << "Worker process shutting down momentarily";
 
     // call exit(...) instead of nghttp2_Exit to get leak sanitizer report
     if (config->single_process) {
@@ -1432,14 +1432,14 @@ pid_t fork_worker_process(int &main_ipc_fd
   // parent process
   if (pid == -1) {
     auto error = errno;
-    LOG(ERROR) << "Could not spawn worker process: "
+    Log{ERROR} << "Could not spawn worker process: "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
   }
 
   rv = shrpx_signal_set(&oldset);
   if (rv != 0) {
     auto error = errno;
-    LOG(FATAL) << "Restoring signal mask failed: "
+    Log{FATAL} << "Restoring signal mask failed: "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
 
     exit(EXIT_FAILURE);
@@ -1466,7 +1466,7 @@ pid_t fork_worker_process(int &main_ipc_fd
   wp_quic_ipc_fd = quic_ipc_fd[1];
 #endif // ENABLE_HTTP3
 
-  LOG(NOTICE) << "Worker process [" << pid << "] spawned";
+  Log{NOTICE} << "Worker process [" << pid << "] spawned";
 
   return pid;
 }
@@ -1483,7 +1483,7 @@ int event_loop() {
   if (config->daemon) {
     if (call_daemon() == -1) {
       auto error = errno;
-      LOG(FATAL) << "Failed to daemonize: "
+      Log{FATAL} << "Failed to daemonize: "
                  << xsi_strerror(error, errbuf.data(), errbuf.size());
       return -1;
     }
@@ -3273,11 +3273,11 @@ int process_options(
   std::array<char, STRERROR_BUFSIZE> errbuf;
   std::unordered_map<std::string_view, size_t> pattern_addr_indexer;
   if (conf_exists(config->conf_path.data())) {
-    LOG(NOTICE) << "Loading configuration from " << config->conf_path;
+    Log{NOTICE} << "Loading configuration from " << config->conf_path;
     std::unordered_set<std::string_view> include_set;
     if (load_config(config, config->conf_path.data(), include_set,
                     pattern_addr_indexer) == -1) {
-      LOG(FATAL) << "Failed to load configuration from " << config->conf_path;
+      Log{FATAL} << "Failed to load configuration from " << config->conf_path;
       return -1;
     }
     assert(include_set.empty());
@@ -3292,7 +3292,7 @@ int process_options(
     for (auto &p : cmdcfgs) {
       if (parse_config(config, p.first, p.second, include_set,
                        pattern_addr_indexer) == -1) {
-        LOG(FATAL) << "Failed to parse command-line argument.";
+        Log{FATAL} << "Failed to parse command-line argument.";
         return -1;
       }
     }
@@ -3310,7 +3310,7 @@ int process_options(
   }
 
   if (reopen_log_files(config->logging) != 0) {
-    LOG(FATAL) << "Failed to open log file";
+    Log{FATAL} << "Failed to open log file";
     return -1;
   }
 
@@ -3320,19 +3320,19 @@ int process_options(
     if (log_config()->accesslog_fd != -1 &&
         fchown(log_config()->accesslog_fd, config->uid, config->gid) == -1) {
       auto error = errno;
-      LOG(WARN) << "Changing owner of access log file failed: "
+      Log{WARN} << "Changing owner of access log file failed: "
                 << xsi_strerror(error, errbuf.data(), errbuf.size());
     }
     if (log_config()->errorlog_fd != -1 &&
         fchown(log_config()->errorlog_fd, config->uid, config->gid) == -1) {
       auto error = errno;
-      LOG(WARN) << "Changing owner of error log file failed: "
+      Log{WARN} << "Changing owner of error log file failed: "
                 << xsi_strerror(error, errbuf.data(), errbuf.size());
     }
   }
 
   if (config->single_thread) {
-    LOG(WARN) << "single-thread: Set workers to 1";
+    Log{WARN} << "single-thread: Set workers to 1";
     config->num_worker = 1;
   }
 
@@ -3345,7 +3345,7 @@ int process_options(
       auto f = open_file_for_write(path);
 
       if (f == nullptr) {
-        LOG(FATAL) << "Failed to open http2 upstream request header file: "
+        Log{FATAL} << "Failed to open http2 upstream request header file: "
                    << path;
         return -1;
       }
@@ -3355,7 +3355,7 @@ int process_options(
       if (config->uid != 0) {
         if (chown(path, config->uid, config->gid) == -1) {
           auto error = errno;
-          LOG(WARN) << "Changing owner of http2 upstream request header file "
+          Log{WARN} << "Changing owner of http2 upstream request header file "
                     << path << " failed: "
                     << xsi_strerror(error, errbuf.data(), errbuf.size());
         }
@@ -3367,7 +3367,7 @@ int process_options(
       auto f = open_file_for_write(path);
 
       if (f == nullptr) {
-        LOG(FATAL) << "Failed to open http2 upstream response header file: "
+        Log{FATAL} << "Failed to open http2 upstream response header file: "
                    << path;
         return -1;
       }
@@ -3377,7 +3377,7 @@ int process_options(
       if (config->uid != 0) {
         if (chown(path, config->uid, config->gid) == -1) {
           auto error = errno;
-          LOG(WARN) << "Changing owner of http2 upstream response header file"
+          Log{WARN} << "Changing owner of http2 upstream response header file"
                     << " " << path << " failed: "
                     << xsi_strerror(error, errbuf.data(), errbuf.size());
         }
@@ -3398,7 +3398,7 @@ int process_options(
   // TODO We depends on the ordering of protocol version macro in
   // OpenSSL.
   if (tlsconf.min_proto_version > tlsconf.max_proto_version) {
-    LOG(ERROR) << "tls-max-proto-version must be equal to or larger than "
+    Log{ERROR} << "tls-max-proto-version must be equal to or larger than "
                   "tls-min-proto-version";
     return -1;
   }
@@ -3429,7 +3429,7 @@ int process_options(
 
   if (tls::upstream_tls_enabled(config->conn) &&
       (tlsconf.private_key_file.empty() || tlsconf.cert_file.empty())) {
-    LOG(FATAL) << "TLS private key and certificate files are required.  "
+    Log{FATAL} << "TLS private key and certificate files are required.  "
                   "Specify them in command-line, or in configuration file "
                   "using private-key-file and certificate-file options.";
     return -1;
@@ -3448,10 +3448,10 @@ int process_options(
                                         std::ranges::begin(hostport_buf));
     if (resolve_hostname(&proxy.addr, proxy.host.data(), proxy.port,
                          AF_UNSPEC) == -1) {
-      LOG(FATAL) << "Resolving backend HTTP proxy address failed: " << hostport;
+      Log{FATAL} << "Resolving backend HTTP proxy address failed: " << hostport;
       return -1;
     }
-    LOG(NOTICE) << "Backend HTTP proxy address: " << hostport << " -> "
+    Log{NOTICE} << "Backend HTTP proxy address: " << hostport << " -> "
                 << util::to_numeric_addr(&proxy.addr);
   }
 
@@ -3463,14 +3463,14 @@ int process_options(
                             std::ranges::begin(hostport_buf));
       if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.data(),
                            memcachedconf.port, memcachedconf.family) == -1) {
-        LOG(FATAL) << "Resolving memcached address for TLS ticket key failed: "
+        Log{FATAL} << "Resolving memcached address for TLS ticket key failed: "
                    << hostport;
         return -1;
       }
-      LOG(NOTICE) << "Memcached address for TLS ticket key: " << hostport
+      Log{NOTICE} << "Memcached address for TLS ticket key: " << hostport
                   << " -> " << util::to_numeric_addr(&memcachedconf.addr);
       if (memcachedconf.tls) {
-        LOG(NOTICE) << "Connection to memcached for TLS ticket key will be "
+        Log{NOTICE} << "Connection to memcached for TLS ticket key will be "
                        "encrypted by TLS";
       }
     }
@@ -3481,7 +3481,7 @@ int process_options(
                          static_cast<rlim_t>(config->rlimit_nofile)};
     if (setrlimit(RLIMIT_NOFILE, &lim) != 0) {
       auto error = errno;
-      LOG(WARN) << "Setting rlimit-nofile failed: "
+      Log{WARN} << "Setting rlimit-nofile failed: "
                 << xsi_strerror(error, errbuf.data(), errbuf.size());
     }
   }
@@ -3492,7 +3492,7 @@ int process_options(
                          static_cast<rlim_t>(config->rlimit_memlock)};
     if (setrlimit(RLIMIT_MEMLOCK, &lim) != 0) {
       auto error = errno;
-      LOG(WARN) << "Setting rlimit-memlock failed: "
+      Log{WARN} << "Setting rlimit-memlock failed: "
                 << xsi_strerror(error, errbuf.data(), errbuf.size());
     }
   }
@@ -3566,7 +3566,7 @@ namespace {
 void reload_config() {
   int rv;
 
-  LOG(NOTICE) << "Reloading configuration";
+  Log{NOTICE} << "Reloading configuration";
 
   auto cur_config = mod_config();
   auto new_config = std::make_unique<Config>();
@@ -3583,7 +3583,7 @@ void reload_config() {
 
   rv = process_options(new_config.get(), suconfig.cmdcfgs);
   if (rv != 0) {
-    LOG(ERROR) << "Failed to process new configuration";
+    Log{ERROR} << "Failed to process new configuration";
     return;
   }
 
@@ -3634,7 +3634,7 @@ void reload_config() {
   );
 
   if (pid == -1) {
-    LOG(ERROR) << "Failed to process new configuration";
+    Log{ERROR} << "Failed to process new configuration";
 
     new_config = replace_config(std::move(old_config));
     close_not_inherited_fd(new_config.get(), iaddrs);
@@ -3689,7 +3689,7 @@ int main(int argc, char **argv) {
     suconfig.argv[i] = strdup(argv[i]);
     if (suconfig.argv[i] == nullptr) {
       auto error = errno;
-      LOG(FATAL) << "failed to copy argv: "
+      Log{FATAL} << "failed to copy argv: "
                  << xsi_strerror(error, errbuf.data(), errbuf.size());
       exit(EXIT_FAILURE);
     }
@@ -3698,7 +3698,7 @@ int main(int argc, char **argv) {
   suconfig.cwd = getcwd(nullptr, 0);
   if (suconfig.cwd == nullptr) {
     auto error = errno;
-    LOG(FATAL) << "failed to get current working directory: errno=" << error;
+    Log{FATAL} << "failed to get current working directory: errno=" << error;
     exit(EXIT_FAILURE);
   }
 
@@ -4922,14 +4922,14 @@ int main(int argc, char **argv) {
 #  if defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||                                \
     defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
   if (ngtcp2_crypto_quictls_init() != 0) {
-    LOG(FATAL) << "ngtcp2_crypto_quictls_init failed";
+    Log{FATAL} << "ngtcp2_crypto_quictls_init failed";
     exit(EXIT_FAILURE);
   }
 #  endif // defined(HAVE_LIBNGTCP2_CRYPTO_QUICTLS) ||
          // defined(HAVE_LIBNGTCP2_CRYPTO_LIBRESSL)
 #  ifdef HAVE_LIBNGTCP2_CRYPTO_OSSL
   if (ngtcp2_crypto_ossl_init() != 0) {
-    LOG(FATAL) << "ngtcp2_crypto_ossl_init failed";
+    Log{FATAL} << "ngtcp2_crypto_ossl_init failed";
     exit(EXIT_FAILURE);
   }
 #  endif // defined(HAVE_LIBNGTCP2_CRYPTO_OSSL)
@@ -4944,7 +4944,7 @@ int main(int argc, char **argv) {
     return -1;
   }
 
-  LOG(NOTICE) << "Shutdown momentarily";
+  Log{NOTICE} << "Shutdown momentarily";
 
   return 0;
 }

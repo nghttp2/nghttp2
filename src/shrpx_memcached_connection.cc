@@ -48,7 +48,7 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   }
 
   if (LOG_ENABLED(INFO)) {
-    MCLOG(INFO, mconn) << "Time out";
+    Log{INFO, mconn} << "Time out";
   }
 
   mconn->disconnect();
@@ -164,7 +164,7 @@ int MemcachedConnection::initiate_connection() {
 
   if (conn_.fd == -1) {
     auto error = errno;
-    MCLOG(WARN, this) << "socket() failed; errno=" << error;
+    Log{WARN, this} << "socket() failed; errno=" << error;
 
     return -1;
   }
@@ -173,7 +173,7 @@ int MemcachedConnection::initiate_connection() {
   rv = connect(conn_.fd, addr_->as_sockaddr(), addr_->size());
   if (rv != 0 && errno != EINPROGRESS) {
     auto error = errno;
-    MCLOG(WARN, this) << "connect() failed; errno=" << error;
+    Log{WARN, this} << "connect() failed; errno=" << error;
 
     close(conn_.fd);
     conn_.fd = -1;
@@ -196,7 +196,7 @@ int MemcachedConnection::initiate_connection() {
   }
 
   if (LOG_ENABLED(INFO)) {
-    MCLOG(INFO, this) << "Connecting to memcached server";
+    Log{INFO, this} << "Connecting to memcached server";
   }
 
   ev_io_set(&conn_.wev, conn_.fd, EV_WRITE);
@@ -213,9 +213,8 @@ int MemcachedConnection::initiate_connection() {
 int MemcachedConnection::connected() {
   auto sock_error = util::get_socket_error(conn_.fd);
   if (sock_error != 0) {
-    MCLOG(WARN, this) << "memcached connect failed; addr="
-                      << util::to_numeric_addr(addr_)
-                      << ": errno=" << sock_error;
+    Log{WARN, this} << "memcached connect failed; addr="
+                    << util::to_numeric_addr(addr_) << ": errno=" << sock_error;
 
     connect_blocker_.on_failure();
 
@@ -225,7 +224,7 @@ int MemcachedConnection::connected() {
   }
 
   if (LOG_ENABLED(INFO)) {
-    MCLOG(INFO, this) << "connected to memcached server";
+    Log{INFO, this} << "connected to memcached server";
   }
 
   conn_.rlimit.startw();
@@ -272,7 +271,7 @@ int MemcachedConnection::tls_handshake() {
   }
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "SSL/TLS handshake completed";
+    Log{INFO} << "SSL/TLS handshake completed";
   }
 
   auto &tlsconf = get_config()->tls;
@@ -435,7 +434,7 @@ int MemcachedConnection::parse_packet() {
       }
 
       if (recvq_.empty()) {
-        MCLOG(WARN, this)
+        Log{WARN, this}
           << "Response received, but there is no in-flight request.";
         return -1;
       }
@@ -443,8 +442,8 @@ int MemcachedConnection::parse_packet() {
       auto &req = recvq_.front();
 
       if (*in != MEMCACHED_RES_MAGIC) {
-        MCLOG(WARN, this) << "Response has bad magic: "
-                          << static_cast<uint32_t>(*in);
+        Log{WARN, this} << "Response has bad magic: "
+                        << static_cast<uint32_t>(*in);
         return -1;
       }
       ++in;
@@ -466,7 +465,7 @@ int MemcachedConnection::parse_packet() {
       in += 8;
 
       if (req->op != parse_state_.op) {
-        MCLOG(WARN, this)
+        Log{WARN, this}
           << "opcode in response does not match to the request: want "
           << static_cast<uint32_t>(req->op) << ", got "
           << static_cast<uint32_t>(parse_state_.op);
@@ -474,29 +473,29 @@ int MemcachedConnection::parse_packet() {
       }
 
       if (parse_state_.keylen != 0) {
-        MCLOG(WARN, this) << "zero length keylen expected: got "
-                          << parse_state_.keylen;
+        Log{WARN, this} << "zero length keylen expected: got "
+                        << parse_state_.keylen;
         return -1;
       }
 
       if (parse_state_.totalbody > 16_k) {
-        MCLOG(WARN, this) << "totalbody is too large: got "
-                          << parse_state_.totalbody;
+        Log{WARN, this} << "totalbody is too large: got "
+                        << parse_state_.totalbody;
         return -1;
       }
 
       if (parse_state_.op == MemcachedOp::GET &&
           parse_state_.status_code == MemcachedStatusCode::NO_ERROR &&
           parse_state_.extralen == 0) {
-        MCLOG(WARN, this) << "response for GET does not have extra";
+        Log{WARN, this} << "response for GET does not have extra";
         return -1;
       }
 
       if (parse_state_.totalbody <
           parse_state_.keylen + parse_state_.extralen) {
-        MCLOG(WARN, this) << "totalbody is too short: totalbody "
-                          << parse_state_.totalbody << ", want min "
-                          << parse_state_.keylen + parse_state_.extralen;
+        Log{WARN, this} << "totalbody is too short: totalbody "
+                        << parse_state_.totalbody << ", want min "
+                        << parse_state_.keylen + parse_state_.extralen;
         return -1;
       }
 
@@ -546,8 +545,8 @@ int MemcachedConnection::parse_packet() {
 
       if (LOG_ENABLED(INFO)) {
         if (parse_state_.status_code != MemcachedStatusCode::NO_ERROR) {
-          MCLOG(INFO, this) << "response returned error status: "
-                            << static_cast<uint16_t>(parse_state_.status_code);
+          Log{INFO, this} << "response returned error status: "
+                          << static_cast<uint16_t>(parse_state_.status_code);
         }
       }
 
@@ -742,8 +741,8 @@ void MemcachedConnection::reconnect_or_fail() {
 
   if (++try_count_ >= MAX_TRY_COUNT) {
     if (LOG_ENABLED(INFO)) {
-      MCLOG(INFO, this) << "Tried " << MAX_TRY_COUNT
-                        << " times, and all failed.  Aborting";
+      Log{INFO, this} << "Tried " << MAX_TRY_COUNT
+                      << " times, and all failed.  Aborting";
     }
     try_count_ = 0;
     disconnect();
@@ -754,8 +753,8 @@ void MemcachedConnection::reconnect_or_fail() {
   q.reserve(recvq_.size() + sendq_.size());
 
   if (LOG_ENABLED(INFO)) {
-    MCLOG(INFO, this) << "Retry connection, enqueue "
-                      << recvq_.size() + sendq_.size() << " request(s) again";
+    Log{INFO, this} << "Retry connection, enqueue "
+                    << recvq_.size() + sendq_.size() << " request(s) again";
   }
 
   q.insert(std::ranges::end(q),
