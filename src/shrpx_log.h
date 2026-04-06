@@ -235,7 +235,7 @@ private:
   static int severity_thres_;
 };
 
-inline auto LOG_ENABLED(SeverityLevel severity) {
+inline auto log_enabled(SeverityLevel severity) {
   return ENABLE_LOG && Log::log_enabled(severity);
 }
 

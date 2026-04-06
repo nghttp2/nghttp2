@@ -36,7 +36,7 @@ NullDownstreamConnection::NullDownstreamConnection(
 NullDownstreamConnection::~NullDownstreamConnection() {}
 
 int NullDownstreamConnection::attach_downstream(Downstream *downstream) {
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Attaching to DOWNSTREAM:" << downstream;
   }
 
@@ -46,7 +46,7 @@ int NullDownstreamConnection::attach_downstream(Downstream *downstream) {
 }
 
 void NullDownstreamConnection::detach_downstream(Downstream *downstream) {
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Detaching from DOWNSTREAM:" << downstream;
   }
   downstream_ = nullptr;

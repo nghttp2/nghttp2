@@ -47,7 +47,7 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
     return;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, mconn} << "Time out";
   }
 
@@ -195,7 +195,7 @@ int MemcachedConnection::initiate_connection() {
     conn_.prepare_client_handshake();
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Connecting to memcached server";
   }
 
@@ -223,7 +223,7 @@ int MemcachedConnection::connected() {
     return -1;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "connected to memcached server";
   }
 
@@ -270,7 +270,7 @@ int MemcachedConnection::tls_handshake() {
     return rv;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "SSL/TLS handshake completed";
   }
 
@@ -543,7 +543,7 @@ int MemcachedConnection::parse_packet() {
         return 0;
       }
 
-      if (LOG_ENABLED(INFO)) {
+      if (log_enabled(INFO)) {
         if (parse_state_.status_code != MemcachedStatusCode::NO_ERROR) {
           Log{INFO, this} << "response returned error status: "
                           << static_cast<uint16_t>(parse_state_.status_code);
@@ -740,7 +740,7 @@ void MemcachedConnection::reconnect_or_fail() {
   constexpr size_t MAX_TRY_COUNT = 3;
 
   if (++try_count_ >= MAX_TRY_COUNT) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, this} << "Tried " << MAX_TRY_COUNT
                       << " times, and all failed.  Aborting";
     }
@@ -752,7 +752,7 @@ void MemcachedConnection::reconnect_or_fail() {
   std::vector<std::unique_ptr<MemcachedRequest>> q;
   q.reserve(recvq_.size() + sendq_.size());
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Retry connection, enqueue "
                     << recvq_.size() + sendq_.size() << " request(s) again";
   }

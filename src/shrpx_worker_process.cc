@@ -218,7 +218,7 @@ int generate_ticket_key(TicketKey &ticket_key) {
          ticket_key.data.enc_key.size());
   assert(ticket_key.hmac_keylen <= ticket_key.data.hmac_key.size());
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "enc_keylen=" << EVP_CIPHER_key_length(ticket_key.cipher)
               << ", hmac_keylen=" << ticket_key.hmac_keylen;
   }
@@ -271,7 +271,7 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto &new_key = ticket_keys->keys[0];
 
   if (generate_ticket_key(new_key) != 0) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "failed to generate ticket key";
     }
     conn_handler->set_ticket_keys(nullptr);
@@ -279,7 +279,7 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     return;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "ticket keys generation done";
     assert(ticket_keys->keys.size() >= 1);
     Log{INFO} << 0 << " enc+dec: "
@@ -400,7 +400,7 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
     conn_handler->on_tls_ticket_key_get_success(ticket_keys, w);
   };
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "Memcached: tls ticket key get request sent";
   }
 
@@ -691,7 +691,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   ev_io_start(loop, &quic_ipcev);
 #endif // defined(ENABLE_HTTP3)
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "Entering event loop";
   }
 

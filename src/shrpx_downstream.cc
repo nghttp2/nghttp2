@@ -51,7 +51,7 @@ void header_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto downstream = static_cast<Downstream *>(w->data);
   auto upstream = downstream->get_upstream();
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, downstream} << "request header timeout stream_id="
                           << downstream->get_stream_id();
   }
@@ -70,7 +70,7 @@ void upstream_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 
   auto which = revents == EV_READ ? "read" : "write";
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, downstream} << "upstream timeout stream_id="
                           << downstream->get_stream_id() << " event=" << which;
   }
@@ -100,7 +100,7 @@ void downstream_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 
   auto which = revents == EV_READ ? "read" : "write";
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, downstream} << "downstream timeout stream_id="
                           << downstream->get_downstream_stream_id()
                           << " event=" << which;
@@ -194,7 +194,7 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
 }
 
 Downstream::~Downstream() {
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Deleting";
   }
 
@@ -241,7 +241,7 @@ Downstream::~Downstream() {
     nghttp2_rcbuf_decref(rcbuf);
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Deleted";
   }
 }
@@ -786,7 +786,7 @@ bool Downstream::validate_request_recv_body_length() const {
   }
 
   if (req_.fs.content_length != req_.recv_body_length) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, this} << "request invalid bodylen: content-length="
                       << req_.fs.content_length
                       << ", received=" << req_.recv_body_length;
@@ -803,7 +803,7 @@ bool Downstream::validate_response_recv_body_length() const {
   }
 
   if (resp_.fs.content_length != resp_.recv_body_length) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, this} << "response invalid bodylen: content-length="
                       << resp_.fs.content_length
                       << ", received=" << resp_.recv_body_length;

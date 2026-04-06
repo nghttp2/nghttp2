@@ -424,7 +424,7 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
 
   if (enc) {
     if (RAND_bytes(iv, EVP_MAX_IV_LENGTH) == 0) {
-      if (LOG_ENABLED(INFO)) {
+      if (log_enabled(INFO)) {
         Log{INFO, handler} << "session ticket key: RAND_bytes failed";
       }
       return -1;
@@ -432,7 +432,7 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
 
     auto &key = keys[0];
 
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, handler} << "encrypt session ticket key: "
                          << util::format_hex(key.data.name);
     }
@@ -451,7 +451,7 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
       OSSL_PARAM_construct_end(),
     });
     if (!EVP_MAC_CTX_set_params(hctx, params.data())) {
-      if (LOG_ENABLED(INFO)) {
+      if (log_enabled(INFO)) {
         Log{INFO, handler} << "EVP_MAC_CTX_set_params failed";
       }
       return -1;
@@ -474,7 +474,7 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
   }
 
   if (i == keys.size()) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, handler} << "session ticket key "
                          << util::format_hex(std::span{key_name, 16})
                          << " not found";
@@ -482,7 +482,7 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
     return 0;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, handler} << "decrypt session ticket key: "
                        << util::format_hex(std::span{key_name, 16});
   }
@@ -497,7 +497,7 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
     OSSL_PARAM_construct_end(),
   });
   if (!EVP_MAC_CTX_set_params(hctx, params.data())) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, handler} << "EVP_MAC_CTX_set_params failed";
     }
     return -1;
@@ -538,7 +538,7 @@ void info_callback(const SSL *ssl, int where, int ret) {
     auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
     if (conn && conn->tls.initial_handshake_done) {
       auto handler = static_cast<ClientHandler *>(conn->data);
-      if (LOG_ENABLED(INFO)) {
+      if (log_enabled(INFO)) {
         Log{INFO, handler} << "TLS renegotiation started";
       }
       handler->start_immediate_shutdown();
@@ -619,7 +619,7 @@ int sct_add_cb(SSL *ssl, unsigned int ext_type, unsigned int context,
     return 0;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "sct_add_cb is called, chainidx=" << chainidx << ", x=" << x
               << ", context=" << log::hex << context;
   }
@@ -741,7 +741,7 @@ int cert_compress(SSL *ssl, CBB *out, const uint8_t *in, size_t in_len) {
     return 0;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "Maximum compressed size is " << compressed_size
               << " bytes against input " << in_len << " bytes";
   }
@@ -760,7 +760,7 @@ int cert_compress(SSL *ssl, CBB *out, const uint8_t *in, size_t in_len) {
     return 0;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "BrotliEncoderCompress succeeded, produced " << compressed_size
               << " bytes, " << (in_len - compressed_size) * 100 / in_len
               << "% reduction";
@@ -2311,13 +2311,13 @@ std::vector<uint8_t> serialize_ssl_session(SSL_SESSION *session) {
 void try_cache_tls_session(TLSSessionCache *cache, SSL_SESSION *session,
                            const std::chrono::steady_clock::time_point &t) {
   if (cache->last_updated + 1min > t) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "Client session cache entry is still fresh.";
     }
     return;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "Update client cache entry "
               << "timestamp = " << t.time_since_epoch().count();
   }

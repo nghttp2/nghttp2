@@ -938,7 +938,7 @@ void Http3Upstream::send_packet(const ngtcp2_path &path,
 }
 
 int Http3Upstream::on_timeout(Downstream *downstream) {
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Stream timeout stream_id="
                     << downstream->get_stream_id();
   }
@@ -1024,7 +1024,7 @@ int Http3Upstream::downstream_read(DownstreamConnection *dconn) {
     }
     if (rv != 0) {
       if (rv != SHRPX_ERR_NETWORK) {
-        if (LOG_ENABLED(INFO)) {
+        if (log_enabled(INFO)) {
           Log{INFO, dconn} << "HTTP parser failure";
         }
       }
@@ -1059,7 +1059,7 @@ int Http3Upstream::downstream_write(DownstreamConnection *dconn) {
 int Http3Upstream::downstream_eof(DownstreamConnection *dconn) {
   auto downstream = dconn->get_downstream();
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, dconn} << "EOF. stream_id=" << downstream->get_stream_id();
   }
 
@@ -1071,7 +1071,7 @@ int Http3Upstream::downstream_eof(DownstreamConnection *dconn) {
   // downstream will be deleted in on_stream_close_callback.
   if (downstream->get_response_state() == DownstreamState::HEADER_COMPLETE) {
     // Server may indicate the end of the request by EOF
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, this} << "Downstream body was ended by EOF";
     }
     downstream->set_response_state(DownstreamState::MSG_COMPLETE);
@@ -1099,7 +1099,7 @@ int Http3Upstream::downstream_eof(DownstreamConnection *dconn) {
 int Http3Upstream::downstream_error(DownstreamConnection *dconn, int events) {
   auto downstream = dconn->get_downstream();
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     if (events & Downstream::EVENT_ERROR) {
       Log{INFO, dconn} << "Downstream network/general error";
     } else {
@@ -1207,7 +1207,7 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
 
   auto &balloc = downstream->get_block_allocator();
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     if (downstream->get_non_final_response()) {
       Log{INFO, downstream} << "HTTP non-final response header";
     } else {
@@ -1273,7 +1273,7 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
     http3::copy_headers_to_nva_nocopy(nva, resp.fs.headers(),
                                       http2::HDOP_STRIP_ALL);
 
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       log_response_headers(downstream, nva);
     }
 
@@ -1360,7 +1360,7 @@ int Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
     nva.push_back(http3::make_field(p.name, p.value));
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     log_response_headers(downstream, nva);
   }
 
@@ -1428,7 +1428,7 @@ int Http3Upstream::on_downstream_body(Downstream *downstream,
 }
 
 int Http3Upstream::on_downstream_body_complete(Downstream *downstream) {
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, downstream} << "HTTP response completed";
   }
 
@@ -1510,7 +1510,7 @@ void Http3Upstream::on_handler_delete() {
   auto d =
     static_cast<ev_tstamp>(ngtcp2_conn_get_pto(conn_) * 3) / NGTCP2_SECONDS;
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Enter close-wait period " << d << "s with "
                     << conn_closelen_ << " bytes sentinel packet";
   }
@@ -2022,7 +2022,7 @@ int http_acked_stream_data(nghttp3_conn *conn, int64_t stream_id,
 
 int Http3Upstream::http_acked_stream_data(Downstream *downstream,
                                           uint64_t datalen) {
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Stream " << downstream->get_stream_id() << " "
                     << datalen << " bytes acknowledged";
   }
@@ -2116,7 +2116,7 @@ int Http3Upstream::http_recv_request_header(Downstream *downstream,
       return 0;
     }
 
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, this} << "Too large or many header field size="
                       << req.fs.buffer_size() + namebuf.len + valuebuf.len
                       << ", num=" << req.fs.num_fields() + 1;
@@ -2189,7 +2189,7 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
 
   auto &nva = req.fs.headers();
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     std::stringstream ss;
     for (auto &nv : nva) {
       if (nv.name == "authorization"sv) {
@@ -2483,7 +2483,7 @@ int Http3Upstream::http_stream_close(Downstream *downstream,
                                      uint64_t app_error_code) {
   auto stream_id = downstream->get_stream_id();
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Stream stream_id=" << stream_id
                     << " is being closed with app_error_code="
                     << app_error_code;
@@ -2726,7 +2726,7 @@ int Http3Upstream::shutdown_stream(Downstream *downstream,
                                    uint64_t app_error_code) {
   auto stream_id = downstream->get_stream_id();
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Shutdown stream_id=" << stream_id
                     << " with app_error_code=" << app_error_code;
   }

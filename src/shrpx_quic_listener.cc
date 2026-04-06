@@ -121,7 +121,7 @@ void QUICListener::on_read() {
 
       ++pktcnt;
 
-      if (LOG_ENABLED(INFO)) {
+      if (log_enabled(INFO)) {
         Log{INFO} << "QUIC received packet: local="
                   << util::to_numeric_addr(&local_addr)
                   << " remote=" << util::to_numeric_addr(&remote_addr)

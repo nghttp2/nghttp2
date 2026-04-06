@@ -88,7 +88,7 @@ void HttpsUpstream::reset_current_header_length() {
 }
 
 void HttpsUpstream::on_start_request() {
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "HTTP request started";
   }
   reset_current_header_length();
@@ -126,7 +126,7 @@ int htp_uricb(llhttp_t *htp, const char *data, size_t len) {
 
   if (req.fs.buffer_size() + len >
       get_config()->http.request_header_field_buffer) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, upstream} << "Too large URI size="
                           << req.fs.buffer_size() + len;
     }
@@ -158,7 +158,7 @@ int htp_hdr_keycb(llhttp_t *htp, const char *data, size_t len) {
   auto &httpconf = get_config()->http;
 
   if (req.fs.buffer_size() + len > httpconf.request_header_field_buffer) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, upstream} << "Too large header block size="
                           << req.fs.buffer_size() + len;
     }
@@ -177,7 +177,7 @@ int htp_hdr_keycb(llhttp_t *htp, const char *data, size_t len) {
       req.fs.append_last_header_key(name);
     } else {
       if (req.fs.num_fields() >= httpconf.max_request_header_fields) {
-        if (LOG_ENABLED(INFO)) {
+        if (log_enabled(INFO)) {
           Log{INFO, upstream} << "Too many header field num="
                               << req.fs.num_fields() + 1;
         }
@@ -194,7 +194,7 @@ int htp_hdr_keycb(llhttp_t *htp, const char *data, size_t len) {
       req.fs.append_last_trailer_key(name);
     } else {
       if (req.fs.num_fields() >= httpconf.max_request_header_fields) {
-        if (LOG_ENABLED(INFO)) {
+        if (log_enabled(INFO)) {
           Log{INFO, upstream} << "Too many header field num="
                               << req.fs.num_fields() + 1;
         }
@@ -216,7 +216,7 @@ int htp_hdr_valcb(llhttp_t *htp, const char *data, size_t len) {
 
   if (req.fs.buffer_size() + len >
       get_config()->http.request_header_field_buffer) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, upstream} << "Too large header block size="
                           << req.fs.buffer_size() + len;
     }
@@ -317,7 +317,7 @@ namespace {
 int htp_hdrs_completecb(llhttp_t *htp) {
   int rv;
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, upstream} << "HTTP request headers completed";
   }
 
@@ -349,7 +349,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
 
   auto method = req.method;
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     std::stringstream ss;
     ss << http2::to_method_string(method) << " "
        << (method == HTTP_CONNECT ? req.authority : req.path) << " "
@@ -575,7 +575,7 @@ namespace {
 int htp_msg_completecb(llhttp_t *htp) {
   int rv;
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, upstream} << "HTTP request completed";
   }
   auto handler = upstream->get_client_handler();
@@ -605,7 +605,7 @@ int htp_msg_completecb(llhttp_t *htp) {
   if (handler->get_http2_upgrade_allowed() &&
       downstream->get_http2_upgrade_request() &&
       handler->perform_http2_upgrade(upstream) != 0) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, upstream} << "HTTP Upgrade to HTTP/2 failed";
     }
   }
@@ -639,7 +639,7 @@ int HttpsUpstream::on_read() {
     rlimit->startw();
 
     if (downstream->request_buf_full()) {
-      if (LOG_ENABLED(INFO)) {
+      if (log_enabled(INFO)) {
         Log{INFO, this} << "Downstream request buf is full";
       }
       pause_read(SHRPX_NO_BUFFER);
@@ -700,7 +700,7 @@ int HttpsUpstream::on_read() {
   }
 
   if (htperr != HPE_OK) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, this} << "HTTP parse failure: "
                       << "(" << llhttp_errno_name(htperr) << ") "
                       << llhttp_get_error_reason(&htp_);
@@ -742,7 +742,7 @@ int HttpsUpstream::on_read() {
 
   // downstream can be NULL here.
   if (downstream && downstream->request_buf_full()) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, this} << "Downstream request buffer is full";
     }
 
@@ -889,7 +889,7 @@ int HttpsUpstream::downstream_write(DownstreamConnection *dconn) {
 int HttpsUpstream::downstream_eof(DownstreamConnection *dconn) {
   auto downstream = dconn->get_downstream();
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, dconn} << "EOF";
   }
 
@@ -899,7 +899,7 @@ int HttpsUpstream::downstream_eof(DownstreamConnection *dconn) {
 
   if (downstream->get_response_state() == DownstreamState::HEADER_COMPLETE) {
     // Server may indicate the end of the request by EOF
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, dconn} << "The end of the response body was indicated by "
                        << "EOF";
     }
@@ -912,7 +912,7 @@ int HttpsUpstream::downstream_eof(DownstreamConnection *dconn) {
   if (downstream->get_response_state() == DownstreamState::INITIAL) {
     // we did not send any response headers, so we can reply error
     // message.
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, dconn} << "Return error reply";
     }
     error_reply(502);
@@ -931,7 +931,7 @@ end:
 
 int HttpsUpstream::downstream_error(DownstreamConnection *dconn, int events) {
   auto downstream = dconn->get_downstream();
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     if (events & Downstream::EVENT_ERROR) {
       Log{INFO, dconn} << "Network error/general error";
     } else {
@@ -1105,7 +1105,7 @@ std::unique_ptr<Downstream> HttpsUpstream::pop_downstream() {
 }
 
 int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     if (downstream->get_non_final_response()) {
       Log{INFO, downstream} << "HTTP non-final response header";
     } else {
@@ -1187,7 +1187,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
     buf->append("\r\n"sv);
 
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       log_response_headers(buf);
     }
 
@@ -1324,7 +1324,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   buf->append("\r\n"sv);
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     log_response_headers(buf);
   }
 
@@ -1369,7 +1369,7 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
       output->append("\r\n"sv);
     }
   }
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, downstream} << "HTTP response completed";
   }
 

@@ -581,7 +581,7 @@ void exec_binary() {
 
   envp[envidx++] = nullptr;
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "cmdline";
     for (size_t i = 0; argv[i]; ++i) {
       Log{INFO} << i << ": " << argv[i];
@@ -825,7 +825,7 @@ get_inherited_unix_domain_socket_from_env(Config *config) {
       break;
     }
 
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "Read env " << name << "=" << env;
     }
 
@@ -859,7 +859,7 @@ get_inherited_unix_domain_socket_from_env(Config *config) {
       continue;
     }
 
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "Inherit UNIX domain socket fd=" << *fd << ", path=" << path;
     }
 
@@ -918,7 +918,7 @@ get_inherited_quic_lingering_worker_process_from_env() {
       break;
     }
 
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "Read env " << name << "=" << env;
     }
 
@@ -936,7 +936,7 @@ get_inherited_quic_lingering_worker_process_from_env() {
       continue;
     }
 
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "Inherit worker process QUIC IPC socket fd=" << *fd;
     }
 
@@ -955,7 +955,7 @@ get_inherited_quic_lingering_worker_process_from_env() {
         break;
       }
 
-      if (LOG_ENABLED(INFO)) {
+      if (log_enabled(INFO)) {
         Log{INFO} << "Inherit worker process WorkerID=" << hex_wid;
       }
 

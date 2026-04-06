@@ -166,7 +166,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
     auto &upstreamconf = config->conn.upstream;
     if (worker_->get_worker_stat()->num_connections >=
         upstreamconf.worker_connections) {
-      if (LOG_ENABLED(INFO)) {
+      if (log_enabled(INFO)) {
         Log{INFO} << "Too many connections >="
                   << upstreamconf.worker_connections;
       }
@@ -234,7 +234,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         if (verify_retry_token(odcid, {hd.token, hd.tokenlen}, hd.version,
                                hd.dcid, remote_addr.as_sockaddr(),
                                remote_addr.size(), qkm->secret) != 0) {
-          if (LOG_ENABLED(INFO)) {
+          if (log_enabled(INFO)) {
             Log{INFO} << "Failed to validate Retry token from remote="
                       << util::to_numeric_addr(&remote_addr);
           }
@@ -247,7 +247,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           return 0;
         }
 
-        if (LOG_ENABLED(INFO)) {
+        if (log_enabled(INFO)) {
           Log{INFO} << "Successfully validated Retry token from remote="
                     << util::to_numeric_addr(&remote_addr);
         }
@@ -266,7 +266,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         }
 
         if (hd.tokenlen != NGTCP2_CRYPTO_MAX_REGULAR_TOKENLEN + 1) {
-          if (LOG_ENABLED(INFO)) {
+          if (log_enabled(INFO)) {
             Log{INFO} << "Failed to validate token from remote="
                       << util::to_numeric_addr(&remote_addr);
           }
@@ -287,7 +287,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
 
         if (verify_token({hd.token, hd.tokenlen}, remote_addr.as_sockaddr(),
                          remote_addr.size(), qkm->secret) != 0) {
-          if (LOG_ENABLED(INFO)) {
+          if (log_enabled(INFO)) {
             Log{INFO} << "Failed to validate token from remote="
                       << util::to_numeric_addr(&remote_addr);
           }
@@ -303,7 +303,7 @@ int QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           break;
         }
 
-        if (LOG_ENABLED(INFO)) {
+        if (log_enabled(INFO)) {
           Log{INFO} << "Successfully validated token from remote="
                     << util::to_numeric_addr(&remote_addr);
         }
@@ -541,7 +541,7 @@ int QUICConnectionHandler::send_retry(
   auto d =
     static_cast<ev_tstamp>(NGTCP2_DEFAULT_INITIAL_RTT * 3) / NGTCP2_SECONDS;
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "Enter close-wait period " << d << "s with " << retrylen
               << " bytes sentinel packet";
   }
@@ -589,7 +589,7 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
                                                 const Address &remote_addr,
                                                 const Address &local_addr) {
   if (stateless_reset_bucket_ == 0) {
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO} << "Stateless Reset bucket has been depleted";
     }
 
@@ -647,7 +647,7 @@ int QUICConnectionHandler::send_stateless_reset(const UpstreamAddr *faddr,
     return -1;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "Send stateless_reset to remote="
               << util::to_numeric_addr(&remote_addr)
               << " dcid=" << util::format_hex(dcid);
@@ -675,7 +675,7 @@ int QUICConnectionHandler::send_connection_close(
     return -1;
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "Send Initial CONNECTION_CLOSE with error_code=" << log::hex
               << error_code << log::dec
               << " to remote=" << util::to_numeric_addr(&remote_addr)
@@ -724,7 +724,7 @@ static void close_wait_timeoutcb(struct ev_loop *loop, ev_timer *w,
                                  int revents) {
   auto cw = static_cast<CloseWait *>(w->data);
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "close-wait period finished";
   }
 

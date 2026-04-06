@@ -31,7 +31,7 @@ namespace shrpx {
 namespace {
 void connect_blocker_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto connect_blocker = static_cast<ConnectBlocker *>(w->data);
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO} << "Unblock";
   }
 

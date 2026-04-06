@@ -54,7 +54,7 @@ Http2DownstreamConnection::Http2DownstreamConnection(Http2Session *http2session)
     sd_(nullptr) {}
 
 Http2DownstreamConnection::~Http2DownstreamConnection() {
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Deleting";
   }
   if (downstream_) {
@@ -88,13 +88,13 @@ Http2DownstreamConnection::~Http2DownstreamConnection() {
   }
   http2session_->remove_downstream_connection(this);
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Deleted";
   }
 }
 
 int Http2DownstreamConnection::attach_downstream(Downstream *downstream) {
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Attaching to DOWNSTREAM:" << downstream;
   }
   http2session_->add_downstream_connection(this);
@@ -114,7 +114,7 @@ int Http2DownstreamConnection::attach_downstream(Downstream *downstream) {
 }
 
 void Http2DownstreamConnection::detach_downstream(Downstream *downstream) {
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     Log{INFO, this} << "Detaching from DOWNSTREAM:" << downstream;
   }
 
@@ -152,7 +152,7 @@ int Http2DownstreamConnection::submit_rst_stream(Downstream *downstream,
       break;
     }
 
-    if (LOG_ENABLED(INFO)) {
+    if (log_enabled(INFO)) {
       Log{INFO, this} << "Submit RST_STREAM for DOWNSTREAM:" << downstream
                       << ", stream_id="
                       << downstream->get_downstream_stream_id()
@@ -463,7 +463,7 @@ int Http2DownstreamConnection::push_request_headers() {
     nva.push_back(http2::make_field(p.name, p.value));
   }
 
-  if (LOG_ENABLED(INFO)) {
+  if (log_enabled(INFO)) {
     std::stringstream ss;
     for (auto &nv : nva) {
       auto name = as_string_view(nv.name, nv.namelen);
