@@ -79,7 +79,7 @@ void connchk_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   case ConnectionCheck::STARTED:
     // ping timeout; disconnect
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, http2session) << "ping timeout";
+      Log{INFO, http2session} << "ping timeout";
     }
 
     delete http2session;
@@ -87,7 +87,7 @@ void connchk_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     return;
   default:
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, http2session) << "connection check required";
+      Log{INFO, http2session} << "connection check required";
     }
     http2session->set_connection_check_state(ConnectionCheck::REQUIRED);
   }
@@ -99,7 +99,7 @@ void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto http2session = static_cast<Http2Session *>(w->data);
 
   if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, http2session) << "SETTINGS timeout";
+    Log{INFO, http2session} << "SETTINGS timeout";
   }
 
   downstream_failure(http2session->get_addr(), http2session->get_raddr());
@@ -123,7 +123,7 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   }
 
   if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, http2session) << "Timeout";
+    Log{INFO, http2session} << "Timeout";
   }
 
   http2session->on_timeout();
@@ -168,7 +168,7 @@ void initiate_connection_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   ev_timer_stop(loop, w);
   if (http2session->initiate_connection() != 0) {
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, http2session) << "Could not initiate backend connection";
+      Log{INFO, http2session} << "Could not initiate backend connection";
     }
 
     delete http2session;
@@ -240,7 +240,7 @@ Http2Session::~Http2Session() {
 
 int Http2Session::disconnect(bool hard) {
   if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, this) << "Disconnecting";
+    Log{INFO, this} << "Disconnecting";
   }
   nghttp2_session_del(session_);
   session_ = nullptr;
@@ -362,7 +362,7 @@ int Http2Session::initiate_connection() {
       state_ == Http2SessionState::RESOLVING_NAME) {
     if (worker_blocker->blocked()) {
       if (LOG_ENABLED(INFO)) {
-        SSLOG(INFO, this)
+        Log{INFO, this}
           << "Worker wide backend connection was blocked temporarily";
       }
       return -1;
@@ -374,17 +374,17 @@ int Http2Session::initiate_connection() {
   const auto &proxy = get_config()->downstream_http_proxy;
   if (!proxy.host.empty() && state_ == Http2SessionState::DISCONNECTED) {
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "Connecting to the proxy " << proxy.host << ":"
-                        << proxy.port;
+      Log{INFO, this} << "Connecting to the proxy " << proxy.host << ":"
+                      << proxy.port;
     }
 
     conn_.fd = util::create_nonblock_socket(proxy.addr.family());
 
     if (conn_.fd == -1) {
       auto error = errno;
-      SSLOG(WARN, this) << "Backend proxy socket() failed; addr="
-                        << util::to_numeric_addr(&proxy.addr)
-                        << ", errno=" << error;
+      Log{WARN, this} << "Backend proxy socket() failed; addr="
+                      << util::to_numeric_addr(&proxy.addr)
+                      << ", errno=" << error;
 
       worker_blocker->on_failure();
       return -1;
@@ -393,9 +393,9 @@ int Http2Session::initiate_connection() {
     rv = connect(conn_.fd, proxy.addr.as_sockaddr(), proxy.addr.size());
     if (rv != 0 && errno != EINPROGRESS) {
       auto error = errno;
-      SSLOG(WARN, this) << "Backend proxy connect() failed; addr="
-                        << util::to_numeric_addr(&proxy.addr)
-                        << ", errno=" << error;
+      Log{WARN, this} << "Backend proxy connect() failed; addr="
+                      << util::to_numeric_addr(&proxy.addr)
+                      << ", errno=" << error;
 
       worker_blocker->on_failure();
 
@@ -433,7 +433,7 @@ int Http2Session::initiate_connection() {
       state_ == Http2SessionState::RESOLVING_NAME) {
     if (LOG_ENABLED(INFO)) {
       if (state_ != Http2SessionState::RESOLVING_NAME) {
-        SSLOG(INFO, this) << "Connecting to downstream server";
+        Log{INFO, this} << "Connecting to downstream server";
       }
     }
     if (addr_->tls) {
@@ -502,9 +502,9 @@ int Http2Session::initiate_connection() {
         conn_.fd = util::create_nonblock_socket(raddr_->family());
         if (conn_.fd == -1) {
           auto error = errno;
-          SSLOG(WARN, this)
-            << "socket() failed; addr=" << util::to_numeric_addr(raddr_)
-            << ", errno=" << error;
+          Log{WARN, this} << "socket() failed; addr="
+                          << util::to_numeric_addr(raddr_)
+                          << ", errno=" << error;
 
           worker_blocker->on_failure();
           return -1;
@@ -517,9 +517,9 @@ int Http2Session::initiate_connection() {
                      raddr_->as_sockaddr(), raddr_->size());
         if (rv != 0 && errno != EINPROGRESS) {
           auto error = errno;
-          SSLOG(WARN, this)
-            << "connect() failed; addr=" << util::to_numeric_addr(raddr_)
-            << ", errno=" << error;
+          Log{WARN, this} << "connect() failed; addr="
+                          << util::to_numeric_addr(raddr_)
+                          << ", errno=" << error;
 
           downstream_failure(addr_, raddr_);
           return -1;
@@ -567,9 +567,9 @@ int Http2Session::initiate_connection() {
 
         if (conn_.fd == -1) {
           auto error = errno;
-          SSLOG(WARN, this)
-            << "socket() failed; addr=" << util::to_numeric_addr(raddr_)
-            << ", errno=" << error;
+          Log{WARN, this} << "socket() failed; addr="
+                          << util::to_numeric_addr(raddr_)
+                          << ", errno=" << error;
 
           worker_blocker->on_failure();
           return -1;
@@ -580,9 +580,9 @@ int Http2Session::initiate_connection() {
         rv = connect(conn_.fd, raddr_->as_sockaddr(), raddr_->size());
         if (rv != 0 && errno != EINPROGRESS) {
           auto error = errno;
-          SSLOG(WARN, this)
-            << "connect() failed; addr=" << util::to_numeric_addr(raddr_)
-            << ", errno=" << error;
+          Log{WARN, this} << "connect() failed; addr="
+                          << util::to_numeric_addr(raddr_)
+                          << ", errno=" << error;
 
           downstream_failure(addr_, raddr_);
           return -1;
@@ -629,14 +629,14 @@ int htp_hdrs_completecb(llhttp_t *htp) {
   // We just check status code here
   if (htp->status_code / 100 == 2) {
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, http2session) << "Tunneling success";
+      Log{INFO, http2session} << "Tunneling success";
     }
     http2session->set_state(Http2SessionState::PROXY_CONNECTED);
 
     return HPE_PAUSED;
   }
 
-  SSLOG(WARN, http2session) << "Tunneling failed: " << htp->status_code;
+  Log{WARN, http2session} << "Tunneling failed: " << htp->status_code;
   http2session->set_state(Http2SessionState::PROXY_FAILED);
 
   return HPE_PAUSED;
@@ -672,7 +672,7 @@ int Http2Session::downstream_read_proxy(std::span<const uint8_t> data) {
 
 int Http2Session::downstream_connect_proxy() {
   if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, this) << "Connected to the proxy";
+    Log{INFO, this} << "Connected to the proxy";
   }
 
   std::string req = "CONNECT ";
@@ -692,7 +692,7 @@ int Http2Session::downstream_connect_proxy() {
   }
   req += "\r\n";
   if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, this) << "HTTP proxy request headers\n" << req;
+    Log{INFO, this} << "HTTP proxy request headers\n" << req;
   }
   wb_.append(req);
 
@@ -714,14 +714,14 @@ void Http2Session::remove_downstream_connection(
   dconn->detach_stream_data();
 
   if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, this) << "Remove downstream";
+    Log{INFO, this} << "Remove downstream";
   }
 
   if (freelist_zone_ == FreelistZone::NONE && !max_concurrency_reached()) {
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "Append to http2_extra_freelist, addr=" << addr_
-                        << ", freelist.size="
-                        << addr_->http2_extra_freelist.size();
+      Log{INFO, this} << "Append to http2_extra_freelist, addr=" << addr_
+                      << ", freelist.size="
+                      << addr_->http2_extra_freelist.size();
     }
 
     add_to_extra_freelist();
@@ -746,8 +746,8 @@ int Http2Session::submit_request(Http2DownstreamConnection *dconn,
   auto stream_id =
     nghttp2_submit_request2(session_, nullptr, nva, nvlen, data_prd, sd.get());
   if (stream_id < 0) {
-    SSLOG(FATAL, this) << "nghttp2_submit_request2() failed: "
-                       << nghttp2_strerror(stream_id);
+    Log{FATAL, this} << "nghttp2_submit_request2() failed: "
+                     << nghttp2_strerror(stream_id);
     return -1;
   }
 
@@ -761,14 +761,14 @@ int Http2Session::submit_request(Http2DownstreamConnection *dconn,
 int Http2Session::submit_rst_stream(int32_t stream_id, uint32_t error_code) {
   assert(state_ == Http2SessionState::CONNECTED);
   if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, this) << "RST_STREAM stream_id=" << stream_id
-                      << " with error_code=" << error_code;
+    Log{INFO, this} << "RST_STREAM stream_id=" << stream_id
+                    << " with error_code=" << error_code;
   }
   int rv = nghttp2_submit_rst_stream(session_, NGHTTP2_FLAG_NONE, stream_id,
                                      error_code);
   if (rv != 0) {
-    SSLOG(FATAL, this) << "nghttp2_submit_rst_stream() failed: "
-                       << nghttp2_strerror(rv);
+    Log{FATAL, this} << "nghttp2_submit_rst_stream() failed: "
+                     << nghttp2_strerror(rv);
     return -1;
   }
   return 0;
@@ -786,8 +786,8 @@ int Http2Session::resume_data(Http2DownstreamConnection *dconn) {
   case NGHTTP2_ERR_INVALID_ARGUMENT:
     return 0;
   default:
-    SSLOG(FATAL, this) << "nghttp2_resume_session() failed: "
-                       << nghttp2_strerror(rv);
+    Log{FATAL, this} << "nghttp2_resume_session() failed: "
+                     << nghttp2_strerror(rv);
     return -1;
   }
 }
@@ -810,9 +810,9 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
                              uint32_t error_code, void *user_data) {
   auto http2session = static_cast<Http2Session *>(user_data);
   if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, http2session)
-      << "Stream stream_id=" << stream_id << " is being closed with error code "
-      << error_code;
+    Log{INFO, http2session} << "Stream stream_id=" << stream_id
+                            << " is being closed with error code "
+                            << error_code;
   }
   auto sd = static_cast<StreamData *>(
     nghttp2_session_get_stream_user_data(session, stream_id));
@@ -907,7 +907,7 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
           httpconf.response_header_field_buffer ||
         resp.fs.num_fields() >= httpconf.max_response_header_fields) {
       if (LOG_ENABLED(INFO)) {
-        DLOG(INFO, downstream)
+        Log{INFO, downstream}
           << "Too large or many header field size="
           << resp.fs.buffer_size() + namebuf.len + valuebuf.len
           << ", num=" << resp.fs.num_fields() + 1;
@@ -962,7 +962,7 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
           httpconf.request_header_field_buffer ||
         promised_req.fs.num_fields() >= httpconf.max_request_header_fields) {
       if (LOG_ENABLED(INFO)) {
-        DLOG(INFO, downstream)
+        Log{INFO, downstream}
           << "Too large or many header field size="
           << promised_req.fs.buffer_size() + namebuf.len + valuebuf.len
           << ", num=" << promised_req.fs.num_fields() + 1;
@@ -1012,7 +1012,7 @@ int on_invalid_header_callback2(nghttp2_session *session,
     auto namebuf = nghttp2_rcbuf_get_buf(name);
     auto valuebuf = nghttp2_rcbuf_get_buf(value);
 
-    SSLOG(INFO, http2session)
+    Log{INFO, http2session}
       << "Invalid header field for stream_id=" << stream_id
       << " in frame type=" << static_cast<uint32_t>(frame->hd.type)
       << ": name=[" << as_string_view(namebuf.base, namebuf.len) << "], value=["
@@ -1108,14 +1108,14 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
     for (auto &nv : nva) {
       ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
     }
-    SSLOG(INFO, http2session)
+    Log{INFO, http2session}
       << "HTTP response headers. stream_id=" << frame->hd.stream_id << "\n"
       << ss.str();
   }
 
   if (downstream->get_non_final_response()) {
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, http2session) << "This is non-final response.";
+      Log{INFO, http2session} << "This is non-final response.";
     }
 
     downstream->set_expect_final_response(true);
@@ -1145,8 +1145,8 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
     }
     downstream->set_request_state(DownstreamState::HEADER_COMPLETE);
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, http2session)
-        << "HTTP upgrade success. stream_id=" << frame->hd.stream_id;
+      Log{INFO, http2session} << "HTTP upgrade success. stream_id="
+                              << frame->hd.stream_id;
     }
   } else {
     auto content_length = resp.fs.header(http2::HD_CONTENT_LENGTH);
@@ -1316,7 +1316,7 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
   case NGHTTP2_PING:
     if (frame->hd.flags & NGHTTP2_FLAG_ACK) {
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "PING ACK received";
+        Log{INFO} << "PING ACK received";
       }
       http2session->connection_alive();
     }
@@ -1325,7 +1325,7 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     auto promised_stream_id = frame->push_promise.promised_stream_id;
 
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, http2session)
+      Log{INFO, http2session}
         << "Received downstream PUSH_PROMISE stream_id=" << frame->hd.stream_id
         << ", promised_stream_id=" << promised_stream_id;
     }
@@ -1366,7 +1366,7 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       auto debug_data = util::ascii_dump(frame->goaway.opaque_data,
                                          frame->goaway.opaque_data_len);
 
-      SSLOG(INFO, http2session)
+      Log{INFO, http2session}
         << "GOAWAY received: last-stream-id=" << frame->goaway.last_stream_id
         << ", error_code=" << frame->goaway.error_code
         << ", debug_data=" << debug_data;
@@ -1494,10 +1494,10 @@ int on_frame_not_send_callback(nghttp2_session *session,
                                void *user_data) {
   auto http2session = static_cast<Http2Session *>(user_data);
   if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, http2session) << "Failed to send control frame type="
-                              << static_cast<uint32_t>(frame->hd.type)
-                              << ", lib_error_code=" << lib_error_code << ": "
-                              << nghttp2_strerror(lib_error_code);
+    Log{INFO, http2session} << "Failed to send control frame type="
+                            << static_cast<uint32_t>(frame->hd.type)
+                            << ", lib_error_code=" << lib_error_code << ": "
+                            << nghttp2_strerror(lib_error_code);
   }
   if (frame->hd.type != NGHTTP2_HEADERS ||
       lib_error_code == NGHTTP2_ERR_STREAM_CLOSED ||
@@ -1661,7 +1661,7 @@ int Http2Session::connection_made() {
 
     auto proto = as_string_view(next_proto, next_proto_len);
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "Negotiated next protocol: " << proto;
+      Log{INFO, this} << "Negotiated next protocol: " << proto;
     }
     if (!util::check_h2_is_selected(proto)) {
       downstream_failure(addr_, raddr_);
@@ -1738,15 +1738,15 @@ int Http2Session::on_write() { return on_write_(*this); }
 int Http2Session::downstream_read(std::span<const uint8_t> data) {
   auto rv = nghttp2_session_mem_recv2(session_, data.data(), data.size());
   if (rv < 0) {
-    SSLOG(ERROR, this) << "nghttp2_session_mem_recv2() returned error: "
-                       << nghttp2_strerror(static_cast<int>(rv));
+    Log{ERROR, this} << "nghttp2_session_mem_recv2() returned error: "
+                     << nghttp2_strerror(static_cast<int>(rv));
     return -1;
   }
 
   if (nghttp2_session_want_read(session_) == 0 &&
       nghttp2_session_want_write(session_) == 0 && wb_.rleft() == 0) {
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "No more read/write for this HTTP2 session";
+      Log{INFO, this} << "No more read/write for this HTTP2 session";
     }
     return -1;
   }
@@ -1760,8 +1760,8 @@ int Http2Session::downstream_write() {
     const uint8_t *data;
     auto datalen = nghttp2_session_mem_send2(session_, &data);
     if (datalen < 0) {
-      SSLOG(ERROR, this) << "nghttp2_session_mem_send2() returned error: "
-                         << nghttp2_strerror(static_cast<int>(datalen));
+      Log{ERROR, this} << "nghttp2_session_mem_send2() returned error: "
+                       << nghttp2_strerror(static_cast<int>(datalen));
       return -1;
     }
     if (datalen == 0) {
@@ -1777,7 +1777,7 @@ int Http2Session::downstream_write() {
   if (nghttp2_session_want_read(session_) == 0 &&
       nghttp2_session_want_write(session_) == 0 && wb_.rleft() == 0) {
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "No more read/write for this session";
+      Log{INFO, this} << "No more read/write for this session";
     }
     return -1;
   }
@@ -1790,7 +1790,7 @@ void Http2Session::signal_write() {
   case Http2SessionState::DISCONNECTED:
     if (!ev_is_active(&initiate_connection_timer_)) {
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Start connecting to backend server";
+        Log{INFO} << "Start connecting to backend server";
       }
       // Since the timer is set to 0., these will feed 2 events.  We
       // will stop the timer in the initiate_connection_timer_ to void
@@ -1836,8 +1836,8 @@ int Http2Session::consume(int32_t stream_id, size_t len) {
   rv = nghttp2_session_consume(session_, stream_id, len);
 
   if (rv != 0) {
-    SSLOG(WARN, this) << "nghttp2_session_consume() returned error: "
-                      << nghttp2_strerror(rv);
+    Log{WARN, this} << "nghttp2_session_consume() returned error: "
+                    << nghttp2_strerror(rv);
 
     return -1;
   }
@@ -1859,7 +1859,7 @@ void Http2Session::start_checking_connection() {
   }
   connection_check_state_ = ConnectionCheck::STARTED;
 
-  SSLOG(INFO, this) << "Start checking connection";
+  Log{INFO, this} << "Start checking connection";
   // If connection is down, we may get error when writing data.  Issue
   // ping frame to see whether connection is alive.
   nghttp2_submit_ping(session_, NGHTTP2_FLAG_NONE, nullptr);
@@ -1891,7 +1891,7 @@ void Http2Session::connection_alive() {
   }
 
   if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, this) << "Connection alive";
+    Log{INFO, this} << "Connection alive";
   }
 
   connection_check_state_ = ConnectionCheck::NONE;
@@ -1917,7 +1917,7 @@ void Http2Session::submit_pending_requests() {
 
     if (dconn->push_request_headers() != 0) {
       if (LOG_ENABLED(INFO)) {
-        SSLOG(INFO, this) << "backend request failed";
+        Log{INFO, this} << "backend request failed";
       }
 
       upstream->on_downstream_abort_request(downstream, 400);
@@ -1946,9 +1946,9 @@ int Http2Session::write_noop() { return 0; }
 int Http2Session::connected() {
   auto sock_error = util::get_socket_error(conn_.fd);
   if (sock_error != 0) {
-    SSLOG(WARN, this) << "Backend connect failed; addr="
-                      << util::to_numeric_addr(raddr_)
-                      << ": errno=" << sock_error;
+    Log{WARN, this} << "Backend connect failed; addr="
+                    << util::to_numeric_addr(raddr_)
+                    << ": errno=" << sock_error;
 
     downstream_failure(addr_, raddr_);
 
@@ -1956,7 +1956,7 @@ int Http2Session::connected() {
   }
 
   if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, this) << "Connection established";
+    Log{INFO, this} << "Connection established";
   }
 
   // Reset timeout for write.  Previously, we set timeout for connect.
@@ -2071,7 +2071,7 @@ int Http2Session::tls_handshake() {
   }
 
   if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, this) << "SSL/TLS handshake completed";
+    Log{INFO, this} << "SSL/TLS handshake completed";
   }
 
   if (!get_config()->tls.insecure &&
@@ -2238,7 +2238,7 @@ int Http2Session::handle_downstream_push_promise_complete(
   auto method_token = http2::lookup_method_token(method->value);
   if (method_token == -1) {
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "Unrecognized method: " << method->value;
+      Log{INFO, this} << "Unrecognized method: " << method->value;
     }
 
     return -1;
@@ -2303,9 +2303,8 @@ void Http2Session::add_to_extra_freelist() {
   }
 
   if (LOG_ENABLED(INFO)) {
-    SSLOG(INFO, this) << "Append to http2_extra_freelist, addr=" << addr_
-                      << ", freelist.size="
-                      << addr_->http2_extra_freelist.size();
+    Log{INFO, this} << "Append to http2_extra_freelist, addr=" << addr_
+                    << ", freelist.size=" << addr_->http2_extra_freelist.size();
   }
 
   freelist_zone_ = FreelistZone::EXTRA;
@@ -2318,9 +2317,9 @@ void Http2Session::remove_from_freelist() {
     return;
   case FreelistZone::EXTRA:
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "Remove from http2_extra_freelist, addr=" << addr_
-                        << ", freelist.size="
-                        << addr_->http2_extra_freelist.size();
+      Log{INFO, this} << "Remove from http2_extra_freelist, addr=" << addr_
+                      << ", freelist.size="
+                      << addr_->http2_extra_freelist.size();
     }
     addr_->http2_extra_freelist.remove(this);
     break;
@@ -2346,8 +2345,8 @@ void Http2Session::on_timeout() {
     break;
   }
   case Http2SessionState::CONNECTING:
-    SSLOG(WARN, this) << "Connect time out; addr="
-                      << util::to_numeric_addr(raddr_);
+    Log{WARN, this} << "Connect time out; addr="
+                    << util::to_numeric_addr(raddr_);
 
     downstream_failure(addr_, raddr_);
     break;

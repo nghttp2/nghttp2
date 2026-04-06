@@ -303,7 +303,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
     workers_.push_back(std::move(worker));
     worker_loops_.push_back(loop);
 
-    LLOG(NOTICE, this) << "Created worker thread #" << workers_.size() - 1;
+    Log{NOTICE, this} << "Created worker thread #" << workers_.size() - 1;
   }
 
   for (auto &worker : workers_) {
@@ -320,14 +320,14 @@ void ConnectionHandler::join_worker() {
   int n = 0;
 
   if (LOG_ENABLED(INFO)) {
-    LLOG(INFO, this) << "Waiting for worker thread to join: n="
-                     << workers_.size();
+    Log{INFO, this} << "Waiting for worker thread to join: n="
+                    << workers_.size();
   }
 
   for (auto &worker : workers_) {
     worker->wait();
     if (LOG_ENABLED(INFO)) {
-      LLOG(INFO, this) << "Thread #" << n << " joined";
+      Log{INFO, this} << "Thread #" << n << " joined";
     }
     ++n;
   }
@@ -340,7 +340,7 @@ void ConnectionHandler::graceful_shutdown_worker() {
   }
 
   if (LOG_ENABLED(INFO)) {
-    LLOG(INFO, this) << "Sending graceful shutdown signal to worker";
+    Log{INFO, this} << "Sending graceful shutdown signal to worker";
   }
 
   for (auto &worker : workers_) {
@@ -410,7 +410,7 @@ constexpr auto JITTER = 0.2;
 void ConnectionHandler::on_tls_ticket_key_network_error(ev_timer *w) {
   if (++tls_ticket_key_memcached_get_retry_count_ >=
       get_config()->tls.ticket.memcached.max_retry) {
-    LOG(WARN) << "Memcached: tls ticket get retry all failed "
+    Log{WARN} << "Memcached: tls ticket get retry all failed "
               << tls_ticket_key_memcached_get_retry_count_ << " times.";
 
     on_tls_ticket_key_not_found(w);
@@ -425,7 +425,7 @@ void ConnectionHandler::on_tls_ticket_key_network_error(ev_timer *w) {
 
   auto backoff = base_backoff + dist(gen_);
 
-  LOG(WARN)
+  Log{WARN}
     << "Memcached: tls ticket get failed due to network error, retrying in "
     << backoff << " seconds";
 
@@ -438,7 +438,7 @@ void ConnectionHandler::on_tls_ticket_key_not_found(ev_timer *w) {
 
   if (++tls_ticket_key_memcached_fail_count_ >=
       get_config()->tls.ticket.memcached.max_fail) {
-    LOG(WARN) << "Memcached: could not get tls ticket; disable tls ticket";
+    Log{WARN} << "Memcached: could not get tls ticket; disable tls ticket";
 
     tls_ticket_key_memcached_fail_count_ = 0;
 
@@ -446,13 +446,13 @@ void ConnectionHandler::on_tls_ticket_key_not_found(ev_timer *w) {
     set_ticket_keys_to_worker(nullptr);
   }
 
-  LOG(WARN) << "Memcached: tls ticket get failed, schedule next";
+  Log{WARN} << "Memcached: tls ticket get failed, schedule next";
   schedule_next_tls_ticket_key_memcached_get(w);
 }
 
 void ConnectionHandler::on_tls_ticket_key_get_success(
   const std::shared_ptr<TicketKeys> &ticket_keys, ev_timer *w) {
-  LOG(NOTICE) << "Memcached: tls ticket get success";
+  Log{NOTICE} << "Memcached: tls ticket get success";
 
   tls_ticket_key_memcached_get_retry_count_ = 0;
   tls_ticket_key_memcached_fail_count_ = 0;
@@ -460,19 +460,19 @@ void ConnectionHandler::on_tls_ticket_key_get_success(
   schedule_next_tls_ticket_key_memcached_get(w);
 
   if (!ticket_keys || ticket_keys->keys.empty()) {
-    LOG(WARN) << "Memcached: tls ticket keys are empty; tls ticket disabled";
+    Log{WARN} << "Memcached: tls ticket keys are empty; tls ticket disabled";
     set_ticket_keys(nullptr);
     set_ticket_keys_to_worker(nullptr);
     return;
   }
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "ticket keys get done";
-    LOG(INFO) << 0 << " enc+dec: "
+    Log{INFO} << "ticket keys get done";
+    Log{INFO} << 0 << " enc+dec: "
               << util::format_hex(ticket_keys->keys[0].data.name);
     for (size_t i = 1; i < ticket_keys->keys.size(); ++i) {
       auto &key = ticket_keys->keys[i];
-      LOG(INFO) << i << " dec: " << util::format_hex(key.data.name);
+      Log{INFO} << i << " dec: " << util::format_hex(key.data.name);
     }
   }
 
@@ -649,7 +649,7 @@ std::vector<BPFRef> &ConnectionHandler::get_quic_bpf_refs() {
 }
 
 void ConnectionHandler::unload_bpf_objects() {
-  LOG(NOTICE) << "Unloading BPF objects";
+  Log{NOTICE} << "Unloading BPF objects";
 
   for (auto &ref : quic_bpf_refs_) {
     if (ref.obj == nullptr) {
@@ -723,7 +723,7 @@ int ConnectionHandler::forward_quic_packet_to_lingering_worker_process(
     std::array<char, STRERROR_BUFSIZE> errbuf;
 
     auto error = errno;
-    LOG(ERROR) << "Failed to send QUIC IPC message: "
+    Log{ERROR} << "Failed to send QUIC IPC message: "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
 
     return -1;
@@ -745,7 +745,7 @@ int ConnectionHandler::quic_ipc_read() {
     std::array<char, STRERROR_BUFSIZE> errbuf;
 
     auto error = errno;
-    LOG(ERROR) << "Failed to read data from QUIC IPC channel: "
+    Log{ERROR} << "Failed to read data from QUIC IPC channel: "
                << xsi_strerror(error, errbuf.data(), errbuf.size());
 
     return -1;
@@ -769,7 +769,7 @@ int ConnectionHandler::quic_ipc_read() {
 
   auto p = buf.data();
   if (*p != static_cast<uint8_t>(QUICIPCType::DGRAM_FORWARD)) {
-    LOG(ERROR) << "Unknown QUICIPCType: " << static_cast<uint32_t>(*p);
+    Log{ERROR} << "Unknown QUICIPCType: " << static_cast<uint32_t>(*p);
 
     return -1;
   }
@@ -780,7 +780,7 @@ int ConnectionHandler::quic_ipc_read() {
 
   auto remote_addrlen = static_cast<socklen_t>(*p++) + 1;
   if (remote_addrlen > sizeof(sockaddr_storage)) {
-    LOG(ERROR) << "The length of remote address is too large: "
+    Log{ERROR} << "The length of remote address is too large: "
                << remote_addrlen;
 
     return -1;
@@ -789,7 +789,7 @@ int ConnectionHandler::quic_ipc_read() {
   len += remote_addrlen;
 
   if (static_cast<size_t>(nread) < len) {
-    LOG(ERROR) << "Insufficient QUIC IPC message length";
+    Log{ERROR} << "Insufficient QUIC IPC message length";
 
     return -1;
   }
@@ -802,7 +802,7 @@ int ConnectionHandler::quic_ipc_read() {
 
   auto local_addrlen = static_cast<socklen_t>(*p++) + 1;
   if (local_addrlen > sizeof(sockaddr_storage)) {
-    LOG(ERROR) << "The length of local address is too large: " << local_addrlen;
+    Log{ERROR} << "The length of local address is too large: " << local_addrlen;
 
     return -1;
   }
@@ -810,7 +810,7 @@ int ConnectionHandler::quic_ipc_read() {
   len += local_addrlen;
 
   if (static_cast<size_t>(nread) < len) {
-    LOG(ERROR) << "Insufficient QUIC IPC message length";
+    Log{ERROR} << "Insufficient QUIC IPC message length";
 
     return -1;
   }
@@ -833,20 +833,20 @@ int ConnectionHandler::quic_ipc_read() {
 
   auto rv = ngtcp2_pkt_decode_version_cid(&vc, p, datalen, SHRPX_QUIC_SCIDLEN);
   if (rv < 0) {
-    LOG(ERROR) << "ngtcp2_pkt_decode_version_cid: " << ngtcp2_strerror(rv);
+    Log{ERROR} << "ngtcp2_pkt_decode_version_cid: " << ngtcp2_strerror(rv);
 
     return -1;
   }
 
   if (vc.dcidlen != SHRPX_QUIC_SCIDLEN) {
-    LOG(ERROR) << "DCID length is invalid";
+    Log{ERROR} << "DCID length is invalid";
     return -1;
   }
 
   if (single_worker_) {
     auto faddr = single_worker_->find_quic_upstream_addr(pkt->local_addr);
     if (faddr == nullptr) {
-      LOG(ERROR) << "No suitable upstream address found";
+      Log{ERROR} << "No suitable upstream address found";
 
       return 0;
     }
@@ -874,7 +874,7 @@ int ConnectionHandler::quic_ipc_read() {
   auto worker = find_worker(decrypted_dcid.worker);
   if (worker == nullptr) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "No worker to match Worker ID";
+      Log{INFO} << "No worker to match Worker ID";
     }
 
     return 0;

@@ -38,7 +38,7 @@ HealthMonitorDownstreamConnection::~HealthMonitorDownstreamConnection() {}
 int HealthMonitorDownstreamConnection::attach_downstream(
   Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
-    DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
+    Log{INFO, this} << "Attaching to DOWNSTREAM:" << downstream;
   }
 
   downstream_ = downstream;
@@ -49,7 +49,7 @@ int HealthMonitorDownstreamConnection::attach_downstream(
 void HealthMonitorDownstreamConnection::detach_downstream(
   Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
-    DCLOG(INFO, this) << "Detaching from DOWNSTREAM:" << downstream;
+    Log{INFO, this} << "Detaching from DOWNSTREAM:" << downstream;
   }
   downstream_ = nullptr;
 }

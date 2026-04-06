@@ -97,7 +97,7 @@ int AcceptHandler::accept_connection() {
       return -1;
     case EMFILE:
     case ENFILE:
-      LOG(WARN) << "acceptor: running out file descriptor; disable acceptor "
+      Log{WARN} << "acceptor: running out file descriptor; disable acceptor "
                    "temporarily";
       worker_->sleep_listener(get_config()->conn.listener.timeout.sleep);
       return -1;

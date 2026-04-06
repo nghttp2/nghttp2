@@ -63,7 +63,7 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   }
 
   if (LOG_ENABLED(INFO)) {
-    DCLOG(INFO, dconn) << "Time out";
+    Log{INFO, dconn} << "Time out";
   }
 
   auto downstream = dconn->get_downstream();
@@ -135,8 +135,7 @@ void connect_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto addr = dconn->get_addr();
   auto raddr = dconn->get_raddr();
 
-  DCLOG(WARN, dconn) << "Connect time out; addr="
-                     << util::to_numeric_addr(raddr);
+  Log{WARN, dconn} << "Connect time out; addr=" << util::to_numeric_addr(raddr);
 
   downstream_failure(addr, raddr);
 
@@ -231,7 +230,7 @@ HttpDownstreamConnection::HttpDownstreamConnection(
 
 HttpDownstreamConnection::~HttpDownstreamConnection() {
   if (LOG_ENABLED(INFO)) {
-    DCLOG(INFO, this) << "Deleted";
+    Log{INFO, this} << "Deleted";
   }
 
   if (dns_query_) {
@@ -244,7 +243,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   int rv;
 
   if (LOG_ENABLED(INFO)) {
-    DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
+    Log{INFO, this} << "Attaching to DOWNSTREAM:" << downstream;
   }
 
   downstream_ = downstream;
@@ -284,7 +283,7 @@ int HttpDownstreamConnection::initiate_connection() {
   auto worker_blocker = worker_->get_connect_blocker();
   if (worker_blocker->blocked()) {
     if (LOG_ENABLED(INFO)) {
-      DCLOG(INFO, this)
+      Log{INFO, this}
         << "Worker wide backend connection was blocked temporarily";
     }
     return SHRPX_ERR_NETWORK;
@@ -303,8 +302,8 @@ int HttpDownstreamConnection::initiate_connection() {
 
     if (connect_blocker->blocked()) {
       if (LOG_ENABLED(INFO)) {
-        DCLOG(INFO, this) << "Backend server " << addr_->host << ":"
-                          << addr_->port << " was not available temporarily";
+        Log{INFO, this} << "Backend server " << addr_->host << ":"
+                        << addr_->port << " was not available temporarily";
       }
 
       return SHRPX_ERR_NETWORK;
@@ -371,8 +370,8 @@ int HttpDownstreamConnection::initiate_connection() {
 
     if (conn_.fd == -1) {
       auto error = errno;
-      DCLOG(WARN, this) << "socket() failed; addr="
-                        << util::to_numeric_addr(raddr) << ", errno=" << error;
+      Log{WARN, this} << "socket() failed; addr="
+                      << util::to_numeric_addr(raddr) << ", errno=" << error;
 
       worker_blocker->on_failure();
 
@@ -384,8 +383,8 @@ int HttpDownstreamConnection::initiate_connection() {
     rv = connect(conn_.fd, raddr->as_sockaddr(), raddr->size());
     if (rv != 0 && errno != EINPROGRESS) {
       auto error = errno;
-      DCLOG(WARN, this) << "connect() failed; addr="
-                        << util::to_numeric_addr(raddr) << ", errno=" << error;
+      Log{WARN, this} << "connect() failed; addr="
+                      << util::to_numeric_addr(raddr) << ", errno=" << error;
 
       downstream_failure(addr_, raddr);
 
@@ -393,7 +392,7 @@ int HttpDownstreamConnection::initiate_connection() {
     }
 
     if (LOG_ENABLED(INFO)) {
-      DCLOG(INFO, this) << "Connecting to downstream server";
+      Log{INFO, this} << "Connecting to downstream server";
     }
 
     raddr_ = raddr;
@@ -697,9 +696,9 @@ int HttpDownstreamConnection::push_request_headers() {
     if (log_config()->errorlog_tty) {
       nhdrs = http::colorize_headers(nhdrs);
     }
-    DCLOG(INFO, this) << "HTTP request headers. stream_id="
-                      << downstream_->get_stream_id() << "\n"
-                      << nhdrs;
+    Log{INFO, this} << "HTTP request headers. stream_id="
+                    << downstream_->get_stream_id() << "\n"
+                    << nhdrs;
   }
 
   // Don't call signal_write() if we anticipate request body.  We call
@@ -823,7 +822,7 @@ void idle_readcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
   if (LOG_ENABLED(INFO)) {
-    DCLOG(INFO, dconn) << "Idle connection EOF";
+    Log{INFO, dconn} << "Idle connection EOF";
   }
 
   remove_from_pool(dconn);
@@ -841,7 +840,7 @@ void idle_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   }
 
   if (LOG_ENABLED(INFO)) {
-    DCLOG(INFO, dconn) << "Idle connection timeout";
+    Log{INFO, dconn} << "Idle connection timeout";
   }
 
   remove_from_pool(dconn);
@@ -851,7 +850,7 @@ void idle_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 void HttpDownstreamConnection::detach_downstream(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
-    DCLOG(INFO, this) << "Detaching from DOWNSTREAM:" << downstream;
+    Log{INFO, this} << "Detaching from DOWNSTREAM:" << downstream;
   }
   downstream_ = nullptr;
 
@@ -1038,7 +1037,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     }
     downstream->set_request_state(DownstreamState::HEADER_COMPLETE);
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "HTTP upgrade success. stream_id="
+      Log{INFO} << "HTTP upgrade success. stream_id="
                 << downstream->get_stream_id();
     }
   }
@@ -1062,8 +1061,8 @@ int ensure_header_field_buffer(const Downstream *downstream,
 
   if (resp.fs.buffer_size() + len > httpconf.response_header_field_buffer) {
     if (LOG_ENABLED(INFO)) {
-      DLOG(INFO, downstream)
-        << "Too large header header field size=" << resp.fs.buffer_size() + len;
+      Log{INFO, downstream} << "Too large header header field size="
+                            << resp.fs.buffer_size() + len;
     }
     return -1;
   }
@@ -1079,8 +1078,8 @@ int ensure_max_header_fields(const Downstream *downstream,
 
   if (resp.fs.num_fields() >= httpconf.max_response_header_fields) {
     if (LOG_ENABLED(INFO)) {
-      DLOG(INFO, downstream)
-        << "Too many header field num=" << resp.fs.num_fields() + 1;
+      Log{INFO, downstream} << "Too many header field num="
+                            << resp.fs.num_fields() + 1;
     }
     return -1;
   }
@@ -1255,8 +1254,8 @@ int HttpDownstreamConnection::read_clear() {
         auto htperr = llhttp_finish(&response_htp_);
         if (htperr != HPE_OK) {
           if (LOG_ENABLED(INFO)) {
-            DCLOG(INFO, this) << "HTTP response ended prematurely: "
-                              << llhttp_errno_name(htperr);
+            Log{INFO, this} << "HTTP response ended prematurely: "
+                            << llhttp_errno_name(htperr);
           }
 
           return -1;
@@ -1343,7 +1342,7 @@ int HttpDownstreamConnection::tls_handshake() {
   }
 
   if (LOG_ENABLED(INFO)) {
-    DCLOG(INFO, this) << "SSL/TLS handshake completed";
+    Log{INFO, this} << "SSL/TLS handshake completed";
   }
 
   if (!get_config()->tls.insecure &&
@@ -1390,8 +1389,8 @@ int HttpDownstreamConnection::read_tls() {
         auto htperr = llhttp_finish(&response_htp_);
         if (htperr != HPE_OK) {
           if (LOG_ENABLED(INFO)) {
-            DCLOG(INFO, this) << "HTTP response ended prematurely: "
-                              << llhttp_errno_name(htperr);
+            Log{INFO, this} << "HTTP response ended prematurely: "
+                            << llhttp_errno_name(htperr);
           }
 
           return -1;
@@ -1499,9 +1498,9 @@ int HttpDownstreamConnection::process_input(std::span<const uint8_t> data) {
     }
 
     if (LOG_ENABLED(INFO)) {
-      DCLOG(INFO, this) << "HTTP parser failure: "
-                        << "(" << llhttp_errno_name(htperr) << ") "
-                        << llhttp_get_error_reason(&response_htp_);
+      Log{INFO, this} << "HTTP parser failure: "
+                      << "(" << llhttp_errno_name(htperr) << ") "
+                      << llhttp_get_error_reason(&response_htp_);
     }
 
     return -1;
@@ -1539,9 +1538,9 @@ int HttpDownstreamConnection::connected() {
   if (sock_error != 0) {
     conn_.wlimit.stopw();
 
-    DCLOG(WARN, this) << "Backend connect failed; addr="
-                      << util::to_numeric_addr(raddr_)
-                      << ": errno=" << sock_error;
+    Log{WARN, this} << "Backend connect failed; addr="
+                    << util::to_numeric_addr(raddr_)
+                    << ": errno=" << sock_error;
 
     downstream_failure(addr_, raddr_);
 
@@ -1549,7 +1548,7 @@ int HttpDownstreamConnection::connected() {
   }
 
   if (LOG_ENABLED(INFO)) {
-    DCLOG(INFO, this) << "Connected to downstream host";
+    Log{INFO, this} << "Connected to downstream host";
   }
 
   // Reset timeout for write.  Previously, we set timeout for connect.
