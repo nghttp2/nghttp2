@@ -145,7 +145,6 @@ int htp_body_cb(llhttp_t *htp, const char *data, size_t len) {
 }
 } // namespace
 
-namespace {
 constexpr llhttp_settings_t htp_hooks = {
   .on_message_begin = htp_msg_begincb,
   .on_status = htp_statuscb,
@@ -155,7 +154,6 @@ constexpr llhttp_settings_t htp_hooks = {
   .on_body = htp_body_cb,
   .on_message_complete = htp_msg_completecb,
 };
-} // namespace
 
 Http1Session::Http1Session(Client *client)
   : stream_req_counter_(1),

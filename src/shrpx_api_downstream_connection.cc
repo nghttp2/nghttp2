@@ -54,14 +54,12 @@ const auto configrevision_endpoint = APIEndpoint{
 };
 } // namespace
 
-namespace {
 // The method string.  This must be same order of APIMethod.
 constexpr std::string_view API_METHOD_STRING[] = {
   "GET"sv,
   "POST"sv,
   "PUT"sv,
 };
-} // namespace
 
 APIDownstreamConnection::APIDownstreamConnection(Worker *worker)
   : worker_(worker), api_(nullptr), fd_(-1), shutdown_read_(false) {}

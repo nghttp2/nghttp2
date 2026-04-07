@@ -1297,7 +1297,6 @@ int ClientHandler::on_proxy_protocol_finish() {
   return 0;
 }
 
-namespace {
 // PROXY-protocol v2 header signature
 constexpr uint8_t PROXY_PROTO_V2_SIG[] =
   "\x0D\x0A\x0D\x0A\x00\x0D\x0A\x51\x55\x49\x54\x0A";
@@ -1305,7 +1304,6 @@ constexpr uint8_t PROXY_PROTO_V2_SIG[] =
 // PROXY-protocol v2 header length
 constexpr size_t PROXY_PROTO_V2_HDLEN =
   str_size(PROXY_PROTO_V2_SIG) + /* ver_cmd(1) + fam(1) + len(2) = */ 4;
-} // namespace
 
 // http://www.haproxy.org/download/1.5/doc/proxy-protocol.txt
 int ClientHandler::proxy_protocol_read() {

@@ -1600,25 +1600,19 @@ bool conf_exists(const char *path) {
 }
 } // namespace
 
-namespace {
 constexpr auto DEFAULT_ALPN_LIST = "h2,http/1.1"sv;
-} // namespace
 
-namespace {
 constexpr auto DEFAULT_TLS_MIN_PROTO_VERSION = "TLSv1.2"sv;
 #ifdef TLS1_3_VERSION
 constexpr auto DEFAULT_TLS_MAX_PROTO_VERSION = "TLSv1.3"sv;
 #else  // !TLS1_3_VERSION
 constexpr auto DEFAULT_TLS_MAX_PROTO_VERSION = "TLSv1.2"sv;
 #endif // !TLS1_3_VERSION
-} // namespace
 
-namespace {
 constexpr auto DEFAULT_ACCESSLOG_FORMAT =
   R"($remote_addr - - [$time_local] )"
   R"("$request" $status $body_bytes_sent )"
   R"("$http_referer" "$http_user_agent")"sv;
-} // namespace
 
 namespace {
 void fill_default_config(Config *config) {

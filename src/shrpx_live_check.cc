@@ -30,9 +30,7 @@
 
 namespace shrpx {
 
-namespace {
 constexpr size_t MAX_BUFFER_SIZE = 4_k;
-} // namespace
 
 namespace {
 void readcb(struct ev_loop *loop, ev_io *w, int revents) {
@@ -166,11 +164,9 @@ void LiveCheck::disconnect() {
 
 // Use the similar backoff algorithm described in
 // https://github.com/grpc/grpc/blob/master/doc/connection-backoff.md
-namespace {
 constexpr size_t MAX_BACKOFF_EXP = 10;
 constexpr auto MULTIPLIER = 1.6;
 constexpr auto JITTER = 0.2;
-} // namespace
 
 void LiveCheck::schedule() {
   auto base_backoff =

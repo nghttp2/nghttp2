@@ -51,9 +51,7 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-namespace {
 constexpr size_t MAX_BUFFER_SIZE = 32_k;
-} // namespace
 
 namespace {
 int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
@@ -799,9 +797,7 @@ int on_frame_not_send_callback(nghttp2_session *session,
 }
 } // namespace
 
-namespace {
 constexpr auto PADDING = std::array<uint8_t, 256>{};
-} // namespace
 
 namespace {
 int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,

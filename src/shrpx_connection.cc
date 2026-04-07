@@ -445,9 +445,7 @@ int Connection::check_http2_requirement() {
   return 0;
 }
 
-namespace {
 constexpr size_t SHRPX_SMALL_WRITE_LIMIT = 1300;
-} // namespace
 
 size_t Connection::get_tls_write_limit() {
   if (tls_dyn_rec_warmup_threshold == 0) {

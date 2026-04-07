@@ -1461,10 +1461,8 @@ int parse_error_page(std::vector<ErrorPage> &error_pages, std::string_view opt,
 }
 } // namespace
 
-namespace {
 // Maximum size of SCT extension payload length.
 constexpr size_t MAX_SCT_EXT_LEN = 16_k;
-} // namespace
 
 struct SubcertParams {
   std::string_view sct_dir;

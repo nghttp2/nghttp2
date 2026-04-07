@@ -266,7 +266,6 @@ int htp_bodycb(llhttp_t *htp, const char *data, size_t len);
 int htp_msg_completecb(llhttp_t *htp);
 } // namespace
 
-namespace {
 constexpr llhttp_settings_t htp_hooks = {
   .on_message_begin = htp_msg_begincb,
   .on_header_field = htp_hdr_keycb,
@@ -275,7 +274,6 @@ constexpr llhttp_settings_t htp_hooks = {
   .on_body = htp_bodycb,
   .on_message_complete = htp_msg_completecb,
 };
-} // namespace
 
 int HttpDownstreamConnection::initiate_connection() {
   int rv;

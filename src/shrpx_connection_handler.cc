@@ -401,11 +401,9 @@ ConnectionHandler::get_tls_ticket_key_memcached_dispatcher() const {
 
 // Use the similar backoff algorithm described in
 // https://github.com/grpc/grpc/blob/master/doc/connection-backoff.md
-namespace {
 constexpr size_t MAX_BACKOFF_EXP = 10;
 constexpr auto MULTIPLIER = 3.2;
 constexpr auto JITTER = 0.2;
-} // namespace
 
 void ConnectionHandler::on_tls_ticket_key_network_error(ev_timer *w) {
   if (++tls_ticket_key_memcached_get_retry_count_ >=
