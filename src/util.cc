@@ -136,7 +136,6 @@ O cpydig4(uint32_t n, O result) {
 }
 } // namespace
 
-namespace {
 constexpr auto MONTH = std::to_array({
   "Jan"sv,
   "Feb"sv,
@@ -161,7 +160,6 @@ constexpr auto WEEKDAY = std::to_array({
   "Fri"sv,
   "Sat"sv,
 });
-} // namespace
 
 std::string format_http_date(const std::chrono::system_clock::time_point &tp) {
   // Sat, 27 Sep 2014 06:31:15 GMT

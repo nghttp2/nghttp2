@@ -66,11 +66,9 @@ void ConnectBlocker::on_success() {
 
 // Use the similar backoff algorithm described in
 // https://github.com/grpc/grpc/blob/master/doc/connection-backoff.md
-namespace {
 constexpr size_t MAX_BACKOFF_EXP = 10;
 constexpr auto MULTIPLIER = 1.6;
 constexpr auto JITTER = 0.2;
-} // namespace
 
 void ConnectBlocker::on_failure() {
   if (ev_is_active(&timer_)) {

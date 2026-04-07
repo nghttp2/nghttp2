@@ -83,11 +83,8 @@ using namespace std::string_literals;
 
 namespace nghttp2 {
 
-namespace {
-// TODO could be constexpr
 constexpr auto DEFAULT_HTML = "index.html"sv;
 constexpr auto NGHTTPD_SERVER = "nghttpd nghttp2/" NGHTTP2_VERSION ""sv;
-} // namespace
 
 namespace {
 void delete_handler(Http2Handler *handler) {
@@ -193,21 +190,15 @@ namespace {
 void fill_callback(nghttp2_session_callbacks *callbacks, const Config *config);
 } // namespace
 
-namespace {
 constexpr ev_tstamp RELEASE_FD_TIMEOUT = 2.;
-} // namespace
 
 namespace {
 void release_fd_cb(struct ev_loop *loop, ev_timer *w, int revents);
 } // namespace
 
-namespace {
 constexpr auto FILE_ENTRY_MAX_AGE = 10s;
-} // namespace
 
-namespace {
 constexpr size_t FILE_ENTRY_EVICT_THRES = 2048;
-} // namespace
 
 namespace {
 bool need_validation_file_entry(

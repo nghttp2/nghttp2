@@ -60,14 +60,10 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-namespace {
 constexpr ev_tstamp CONNCHK_TIMEOUT = 5.;
 constexpr ev_tstamp CONNCHK_PING_TIMEOUT = 1.;
-} // namespace
 
-namespace {
 constexpr size_t MAX_BUFFER_SIZE = 32_k;
-} // namespace
 
 namespace {
 void connchk_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
@@ -347,11 +343,9 @@ namespace {
 int htp_hdrs_completecb(llhttp_t *htp);
 } // namespace
 
-namespace {
 constexpr llhttp_settings_t htp_hooks = {
   .on_headers_complete = htp_hdrs_completecb,
 };
-} // namespace
 
 int Http2Session::initiate_connection() {
   int rv = 0;
@@ -1536,9 +1530,7 @@ int on_frame_not_send_callback(nghttp2_session *session,
 }
 } // namespace
 
-namespace {
 constexpr auto PADDING = std::array<uint8_t, 256>{};
-} // namespace
 
 namespace {
 int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,

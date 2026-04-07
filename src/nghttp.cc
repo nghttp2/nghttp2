@@ -382,12 +382,10 @@ int htp_msg_completecb(llhttp_t *htp) {
 }
 } // namespace
 
-namespace {
 constexpr llhttp_settings_t htp_hooks = {
   .on_message_begin = htp_msg_begincb,
   .on_message_complete = htp_msg_completecb,
 };
-} // namespace
 
 namespace {
 int submit_request(HttpClient *client, const Headers &headers, Request *req) {

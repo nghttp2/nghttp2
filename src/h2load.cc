@@ -173,9 +173,7 @@ bool Config::is_quic() const {
 }
 Config config;
 
-namespace {
 constexpr size_t MAX_SAMPLES = 1000000;
-} // namespace
 
 Stats::Stats(size_t req_todo, size_t nclients)
   : req_todo(req_todo),
@@ -2259,9 +2257,7 @@ std::string get_reqline(const char *uri, const urlparse_url &u) {
 }
 } // namespace
 
-namespace {
 constexpr auto UNIX_PATH_PREFIX = "unix:"sv;
-} // namespace
 
 namespace {
 bool parse_base_uri(std::string_view base_uri) {
@@ -2752,9 +2748,7 @@ benchmarking tool for HTTP/2 server)"
 }
 } // namespace
 
-namespace {
 constexpr auto DEFAULT_ALPN_LIST = "h2,http/1.1"sv;
-} // namespace
 
 namespace {
 void print_help(std::ostream &out) {

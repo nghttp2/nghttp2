@@ -57,12 +57,9 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-namespace {
 constexpr std::string_view SEVERITY_STR[] = {"INFO"sv, "NOTICE"sv, "WARN"sv,
                                              "ERROR"sv, "FATAL"sv};
-} // namespace
 
-namespace {
 constexpr std::string_view SEVERITY_COLOR[] = {
   "\033[1;32m"sv, // INFO
   "\033[1;36m"sv, // NOTICE
@@ -70,7 +67,6 @@ constexpr std::string_view SEVERITY_COLOR[] = {
   "\033[1;31m"sv, // ERROR
   "\033[1;35m"sv, // FATAL
 };
-} // namespace
 
 namespace {
 LogBuffer *get_logbuf() {
@@ -349,7 +345,6 @@ std::span<char> copy(T n, std::span<char> dest) {
 }
 } // namespace
 
-namespace {
 // 1 means that character must be escaped as "\xNN", where NN is ascii
 // code of the character in hex notation.
 constexpr uint8_t ESCAPE_TBL[] = {
@@ -406,7 +401,6 @@ constexpr uint8_t ESCAPE_TBL[] = {
   1 /* 0xfa */, 1 /* 0xfb */, 1 /* 0xfc */, 1 /* 0xfd */, 1 /* 0xfe */,
   1 /* 0xff */,
 };
-} // namespace
 
 namespace {
 std::span<char> copy_escape(std::string_view src, std::span<char> dest) {
