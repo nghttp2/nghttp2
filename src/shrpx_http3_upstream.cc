@@ -580,7 +580,7 @@ int Http3Upstream::init(const UpstreamAddr *faddr, const Address &remote_addr,
   auto worker = handler_->get_worker();
   auto conn_handler = worker->get_connection_handler();
 
-  auto callbacks = ngtcp2_callbacks{
+  static constexpr auto callbacks = ngtcp2_callbacks{
     .recv_client_initial = ngtcp2_crypto_recv_client_initial_cb,
     .recv_crypto_data = ngtcp2_crypto_recv_crypto_data_cb,
     .handshake_completed = shrpx::handshake_completed,
@@ -2587,7 +2587,7 @@ int Http3Upstream::setup_httpconn() {
     return -1;
   }
 
-  nghttp3_callbacks callbacks{
+  static constexpr auto callbacks = nghttp3_callbacks{
     .acked_stream_data = shrpx::http_acked_stream_data,
     .stream_close = shrpx::http_stream_close,
     .recv_data = shrpx::http_recv_data,
