@@ -351,7 +351,7 @@ int Http3Session::init_conn() {
     return -1;
   }
 
-  nghttp3_callbacks callbacks{
+  static constexpr auto callbacks = nghttp3_callbacks{
     .stream_close = h2load::stream_close,
     .recv_data = h2load::recv_data,
     .deferred_consume = h2load::deferred_consume,

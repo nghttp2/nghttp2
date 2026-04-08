@@ -380,7 +380,7 @@ int Client::quic_init(const sockaddr *local_addr, socklen_t local_addrlen,
     }
   }
 
-  auto callbacks = ngtcp2_callbacks{
+  static constexpr auto callbacks = ngtcp2_callbacks{
     .client_initial = ngtcp2_crypto_client_initial_cb,
     .recv_crypto_data = ngtcp2_crypto_recv_crypto_data_cb,
     .handshake_completed = h2load::handshake_completed,
