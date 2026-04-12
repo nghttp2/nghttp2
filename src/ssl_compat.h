@@ -81,6 +81,7 @@ using nghttp2_ssl_verify_host_length_type = size_t;
 #  ifdef NGHTTP2_GENUINE_OPENSSL
 #    define OPENSSL_3_0_0_API (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 #    define OPENSSL_3_5_0_API (OPENSSL_VERSION_NUMBER >= 0x30500000L)
+#    define OPENSSL_4_0_0_API (OPENSSL_VERSION_NUMBER >= 0x40000000L)
 #    if OPENSSL_VERSION_NUMBER >= 0x30000000L
 using nghttp2_ssl_op_type = uint64_t;
 #    else  // OPENSSL_VERSION_NUMBER < 0x30000000L
@@ -95,6 +96,7 @@ using nghttp2_ssl_verify_host_length_type = size_t;
 #  else    // !defined(NGHTTP2_GENUINE_OPENSSL)
 #    define OPENSSL_3_0_0_API 0
 #    define OPENSSL_3_5_0_API 0
+#    define OPENSSL_4_0_0_API 0
 #  endif // !defined(NGHTTP2_GENUINE_OPENSSL)
 
 inline constexpr auto NGHTTP2_CERT_TYPE_ECDSA = EVP_PKEY_EC;

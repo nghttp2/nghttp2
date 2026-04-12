@@ -2674,6 +2674,18 @@ SSL/TLS:
               Default: )"
       << util::utos_unit(config->tls.max_early_data) << R"(
   --tls-ktls  Enable ktls.
+  --ech-config-file=<PATH>
+              Read Encrypted  Client Hello (ECH)  server configuration
+              from <PATH>.  See --ech-retry-config-file for details.
+  --ech-retry-config-file=<PATH>
+              This option and  --ech-config-file option read Encrypted
+              Client Hello (ECH) server configuration from <PATH>.  If
+              --ech-retry-config-file is used,  the configurations are
+              included in  the retry configurations.  The  file format
+              must  be PEM  ECH  file described  in  RFC 9934.   These
+              options can  be used repeatedly to  read multiple files.
+              --ech-retry-config-file must be used  at least once when
+              enabling ECH.
 
 HTTP/2:
   -c, --frontend-http2-max-concurrent-streams=<N>
@@ -3967,6 +3979,8 @@ int main(int argc, char **argv) {
       {SHRPX_OPT_FRONTEND_HTTP3_IDLE_TIMEOUT.data(), required_argument, &flag,
        196},
       {SHRPX_OPT_GROUPS.data(), required_argument, &flag, 197},
+      {SHRPX_OPT_ECH_CONFIG_FILE.data(), required_argument, &flag, 198},
+      {SHRPX_OPT_ECH_RETRY_CONFIG_FILE.data(), required_argument, &flag, 199},
       {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4895,6 +4909,16 @@ int main(int argc, char **argv) {
       case 197:
         // --groups
         cmdcfgs.emplace_back(SHRPX_OPT_GROUPS, std::string_view{optarg});
+        break;
+      case 198:
+        // --ech-config-file
+        cmdcfgs.emplace_back(SHRPX_OPT_ECH_CONFIG_FILE,
+                             std::string_view{optarg});
+        break;
+      case 199:
+        // --ech-retry-config-file
+        cmdcfgs.emplace_back(SHRPX_OPT_ECH_RETRY_CONFIG_FILE,
+                             std::string_view{optarg});
         break;
       default:
         break;

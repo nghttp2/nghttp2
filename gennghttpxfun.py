@@ -205,6 +205,8 @@ OPTIONS = [
     "frontend-http2-idle-timeout",
     "frontend-http3-idle-timeout",
     "groups",
+    "ech-config-file",
+    "ech-retry-config-file",
 ]
 
 LOGVARS = [
