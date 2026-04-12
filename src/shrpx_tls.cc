@@ -1736,11 +1736,11 @@ int verify_numeric_hostname(X509 *cert, std::string_view hostname,
         continue;
       }
 
-      auto ip_addr = altname->d.iPAddress->data;
+      auto ip_addr = ASN1_STRING_get0_data(altname->d.iPAddress);
       if (!ip_addr) {
         continue;
       }
-      auto ip_addrlen = static_cast<size_t>(altname->d.iPAddress->length);
+      auto ip_addrlen = static_cast<size_t>(ASN1_STRING_length(altname->d.iPAddress));
 
       ip_found = true;
       if (saddrlen == ip_addrlen && memcmp(saddr, ip_addr, ip_addrlen) == 0) {
@@ -2357,7 +2357,7 @@ ssize_t get_x509_fingerprint(uint8_t *dst, size_t dstlen, const X509 *x,
 }
 
 namespace {
-std::string_view get_x509_name(BlockAllocator &balloc, X509_NAME *nm) {
+std::string_view get_x509_name(BlockAllocator &balloc, const X509_NAME *nm) {
   auto b = BIO_new(BIO_s_mem());
   if (!b) {
     return ""sv;
