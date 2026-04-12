@@ -2357,7 +2357,7 @@ ssize_t get_x509_fingerprint(uint8_t *dst, size_t dstlen, const X509 *x,
 }
 
 namespace {
-std::string_view get_x509_name(BlockAllocator &balloc, const X509_NAME *nm) {
+std::string_view get_x509_name(BlockAllocator &balloc, auto *nm) {
   auto b = BIO_new(BIO_s_mem());
   if (!b) {
     return ""sv;
