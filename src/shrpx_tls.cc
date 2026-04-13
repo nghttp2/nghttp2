@@ -1740,7 +1740,8 @@ int verify_numeric_hostname(X509 *cert, std::string_view hostname,
       if (!ip_addr) {
         continue;
       }
-      auto ip_addrlen = static_cast<size_t>(ASN1_STRING_length(altname->d.iPAddress));
+      auto ip_addrlen =
+        static_cast<size_t>(ASN1_STRING_length(altname->d.iPAddress));
 
       ip_found = true;
       if (saddrlen == ip_addrlen && memcmp(saddr, ip_addr, ip_addrlen) == 0) {
