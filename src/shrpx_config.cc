@@ -646,6 +646,11 @@ LogFragmentType log_var_lookup_token(std::string_view name) {
     break;
   case 16:
     switch (name[15]) {
+    case 'd':
+      if (util::strieq("tls_ech_accepte"sv, name.substr(0, 15))) {
+        return LogFragmentType::TLS_ECH_ACCEPTED;
+      }
+      break;
     case 'n':
       if (util::strieq("protocol_versio"sv, name.substr(0, 15))) {
         return LogFragmentType::PROTOCOL_VERSION;

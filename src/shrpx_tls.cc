@@ -2658,6 +2658,26 @@ read_pem(BlockAllocator &balloc, std::string_view path, std::string_view type) {
 }
 #endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 
+bool is_ech_accepted(SSL *ssl) {
+#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
+  return SSL_ech_accepted(ssl);
+#elif OPENSSL_4_0_0_API
+  // SSL_ech_get1_status returns 0 (failure) if we pass nullptrs even
+  // when we do not need inner_sni and outer_sni.
+  char *inner_sni = nullptr;
+  char *outer_sni = nullptr;
+
+  auto rv = SSL_ech_get1_status(ssl, &inner_sni, &outer_sni);
+
+  OPENSSL_free(inner_sni);
+  OPENSSL_free(outer_sni);
+
+  return SSL_ECH_STATUS_SUCCESS == rv;
+#else  // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && !OPENSSL_4_0_0_API
+  return false;
+#endif // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && !OPENSSL_4_0_0_API
+}
+
 } // namespace tls
 
 } // namespace shrpx

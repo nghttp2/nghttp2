@@ -324,6 +324,9 @@ std::optional<std::span<const uint8_t>>
 read_pem(BlockAllocator &balloc, std::string_view path, std::string_view type);
 #endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 
+// Return true if ECH was accepted in |ssl|.
+bool is_ech_accepted(SSL *ssl);
+
 } // namespace tls
 
 } // namespace shrpx

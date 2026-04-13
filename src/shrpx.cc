@@ -2846,6 +2846,8 @@ Logging:
               * $tls_session_reused:  "r"   if  SSL/TLS   session  was
                 reused.  Otherwise, "."
               * $tls_sni: SNI server name for SSL/TLS connection.
+              * $tls_ech_accepted: "e" if ECH  was accepted in SSL/TLS
+                session.  Otherwise, "."
               * $backend_host:  backend  host   used  to  fulfill  the
                 request.  "-" if backend host is not available.
               * $backend_port:  backend  port   used  to  fulfill  the

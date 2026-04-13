@@ -241,6 +241,7 @@ LOGVARS = [
     "path",
     "path_without_query",
     "protocol_version",
+    "tls_ech_accepted",
 ]
 
 if __name__ == '__main__':
