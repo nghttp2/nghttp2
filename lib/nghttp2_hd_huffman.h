@@ -71,4 +71,12 @@ typedef struct {
 extern const nghttp2_huff_sym huff_sym_table[];
 extern const nghttp2_huff_decode huff_decode_table[][16];
 
+/*
+ * nghttp2_huff_estimate_decode_length returns the estimated decoded
+ * length of the huffman encoded string of length |len|.
+ */
+static inline size_t nghttp2_huff_estimate_decode_length(size_t len) {
+  return len * 8 / 5;
+}
+
 #endif /* !defined(NGHTTP2_HD_HUFFMAN_H) */
