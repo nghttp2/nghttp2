@@ -11,7 +11,7 @@ concurrency:
 env:
   LIBBPF_VERSION: v1.7.0
   OPENSSL1_VERSION: 1_1_1w+quic
-  OPENSSL3_VERSION: 3.6.1
+  OPENSSL4_VERSION: 4.0.0
   BORINGSSL_VERSION: 664a985707470a62f436cca862ccec9524c561ca
   AWSLC_VERSION: v1.71.0
   NGHTTP3_VERSION: v1.15.0
@@ -42,12 +42,12 @@ jobs:
       with:
         path: openssl1/build
         key: ${{ matrix.os }}-openssl-${{ env.OPENSSL1_VERSION }}
-    - name: Restore OpenSSL v3.x cache
-      id: cache-openssl3
+    - name: Restore OpenSSL v4.x cache
+      id: cache-openssl4
       uses: actions/cache@v5
       with:
-        path: openssl3/build
-        key: ${{ matrix.os }}-openssl-${{ env.OPENSSL3_VERSION }}
+        path: openssl4/build
+        key: ${{ matrix.os }}-openssl-${{ env.OPENSSL4_VERSION }}
     - name: Restore BoringSSL cache
       id: cache-boringssl
       uses: actions/cache@v5
@@ -84,23 +84,23 @@ jobs:
       with:
         path: ngtcp2-openssl1/build
         key: ${{ matrix.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL1_VERSION }}
-    - name: Restore ngtcp2 + quictls/openssl v3.x cache
-      id: cache-ngtcp2-openssl3
+    - name: Restore ngtcp2 + quictls/openssl v4.x cache
+      id: cache-ngtcp2-openssl4
       uses: actions/cache@v5
       with:
-        path: ngtcp2-openssl3/build
-        key: ${{ matrix.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL3_VERSION }}
+        path: ngtcp2-openssl4/build
+        key: ${{ matrix.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL4_VERSION }}
     - id: settings
       if: |
         (steps.cache-libbpf.outputs.cache-hit != 'true' && runner.os == 'Linux') ||
         steps.cache-openssl1.outputs.cache-hit != 'true' ||
-        steps.cache-openssl3.outputs.cache-hit != 'true' ||
+        steps.cache-openssl4.outputs.cache-hit != 'true' ||
         steps.cache-boringssl.outputs.cache-hit != 'true' ||
         steps.cache-awslc.outputs.cache-hit != 'true' ||
         steps.cache-wolfssl.outputs.cache-hit != 'true' ||
         steps.cache-nghttp3.outputs.cache-hit != 'true' ||
         steps.cache-ngtcp2-openssl1.outputs.cache-hit != 'true' ||
-        steps.cache-ngtcp2-openssl3.outputs.cache-hit != 'true'
+        steps.cache-ngtcp2-openssl4.outputs.cache-hit != 'true'
       run: |
         echo 'needs-build=true' >> $GITHUB_OUTPUT
     - name: Linux setup
@@ -137,11 +137,11 @@ jobs:
         ./config --prefix=$PWD/build
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
         make install_sw
-    - name: Build openssl/openssl v3.x
-      if: steps.cache-openssl3.outputs.cache-hit != 'true'
+    - name: Build openssl/openssl v4.x
+      if: steps.cache-openssl4.outputs.cache-hit != 'true'
       run: |
-        git clone --recursive --shallow-submodules --depth 1 -b openssl-${{ env.OPENSSL3_VERSION }} https://github.com/openssl/openssl openssl3
-        cd openssl3
+        git clone --recursive --shallow-submodules --depth 1 -b openssl-${{ env.OPENSSL4_VERSION }} https://github.com/openssl/openssl openssl4
+        cd openssl4
         ./config enable-ktls --prefix=$PWD/build
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
         make install_sw
@@ -200,14 +200,14 @@ jobs:
           --with-wolfssl
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
         make install
-    - name: Build ngtcp2 + quictls/openssl v3.x + aws-lc
-      if: steps.cache-ngtcp2-openssl3.outputs.cache-hit != 'true'
+    - name: Build ngtcp2 + quictls/openssl v4.x + aws-lc
+      if: steps.cache-ngtcp2-openssl4.outputs.cache-hit != 'true'
       run: |
-        git clone --recursive --shallow-submodules --depth 1 -b ${{ env.NGTCP2_VERSION }} https://github.com/ngtcp2/ngtcp2 ngtcp2-openssl3
-        cd ngtcp2-openssl3
+        git clone --recursive --shallow-submodules --depth 1 -b ${{ env.NGTCP2_VERSION }} https://github.com/ngtcp2/ngtcp2 ngtcp2-openssl4
+        cd ngtcp2-openssl4
         autoreconf -i
         ./configure --prefix=$PWD/build --enable-lib-only \
-          PKG_CONFIG_PATH="../openssl3/build/lib64/pkgconfig:../openssl3/build/lib/pkgconfig" \
+          PKG_CONFIG_PATH="../openssl4/build/lib64/pkgconfig:../openssl4/build/lib/pkgconfig" \
           BORINGSSL_CFLAGS="-I$PWD/../aws-lc/include/" \
           BORINGSSL_LIBS="-L$PWD/../aws-lc/build/ssl -lssl -L$PWD/../aws-lc/build/crypto -lcrypto" \
           --disable-dependency-tracking \
@@ -225,10 +225,10 @@ jobs:
         compiler: [gcc, clang]
         buildtool: [autotools, cmake]
         http3: [http3, no-http3]
-        openssl: [openssl1, openssl3, boringssl, awslc, wolfssl]
+        openssl: [openssl1, openssl4, boringssl, awslc, wolfssl]
         exclude:
         - http3: no-http3
-          openssl: openssl3
+          openssl: openssl4
         - os: macos-26
           compiler: gcc
         - os: macos-15
@@ -375,13 +375,21 @@ jobs:
         path: openssl1/build
         key: ${{ matrix.os }}-openssl-${{ env.OPENSSL1_VERSION }}
         fail-on-cache-miss: true
-    - name: Restore openssl/openssl v3.x cache
+    - name: Restore openssl/openssl v4.x cache
       uses: actions/cache/restore@v5
-      if: matrix.openssl == 'openssl3'
+      if: matrix.openssl == 'openssl4'
       with:
-        path: openssl3/build
-        key: ${{ matrix.os }}-openssl-${{ env.OPENSSL3_VERSION }}
+        path: openssl4/build
+        key: ${{ matrix.os }}-openssl-${{ env.OPENSSL4_VERSION }}
         fail-on-cache-miss: true
+    - name: Set OpenSSL v4.x variables
+      if: matrix.openssl == 'openssl4'
+      run: |
+        EXTRA_AUTOTOOLS_OPTS="$EXTRA_AUTOTOOLS_OPTS --without-neverbleed"
+        EXTRA_CMAKE_OPTS="$EXTRA_CMAKE_OPTS -DWITH_NEVERBLEED=0"
+
+        echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
+        echo 'EXTRA_CMAKE_OPTS='"$EXTRA_CMAKE_OPTS" >> $GITHUB_ENV
     - name: Restore BoringSSL cache
       uses: actions/cache/restore@v5
       if: matrix.openssl == 'boringssl'
@@ -459,26 +467,26 @@ jobs:
         path: ngtcp2-openssl1/build
         key: ${{ matrix.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL1_VERSION }}
         fail-on-cache-miss: true
-    - name: Restore ngtcp2 + quictls/openssl v3.x cache + aws-lc
+    - name: Restore ngtcp2 + quictls/openssl v4.x cache + aws-lc
       uses: actions/cache/restore@v5
-      if: matrix.http3 == 'http3' && (matrix.openssl == 'openssl3' || matrix.openssl == 'awslc')
+      if: matrix.http3 == 'http3' && (matrix.openssl == 'openssl4' || matrix.openssl == 'awslc')
       with:
-        path: ngtcp2-openssl3/build
-        key: ${{ matrix.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL3_VERSION }}
+        path: ngtcp2-openssl4/build
+        key: ${{ matrix.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL4_VERSION }}
         fail-on-cache-miss: true
     - name: Setup extra environment variables
       if: matrix.http3 == 'no-http3'
       run: |
-        PKG_CONFIG_PATH="$PWD/openssl1/build/lib/pkgconfig:$PWD/openssl3/build/lib64/pkgconfig:$PWD/openssl3/build/lib/pkgconfig:$PWD/wolfssl/build/lib/pkgconfig:$PKG_CONFIG_PATH"
-        LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl1/build/lib -Wl,-rpath,$PWD/openssl3/build/lib64 -Wl,-rpath,$PWD/openssl3/build/lib"
+        PKG_CONFIG_PATH="$PWD/openssl1/build/lib/pkgconfig:$PWD/openssl4/build/lib64/pkgconfig:$PWD/openssl4/build/lib/pkgconfig:$PWD/wolfssl/build/lib/pkgconfig:$PKG_CONFIG_PATH"
+        LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl1/build/lib -Wl,-rpath,$PWD/openssl4/build/lib64 -Wl,-rpath,$PWD/openssl4/build/lib"
 
         echo 'PKG_CONFIG_PATH='"$PKG_CONFIG_PATH" >> $GITHUB_ENV
         echo 'LDFLAGS='"$LDFLAGS" >> $GITHUB_ENV
     - name: Setup extra environment variables for HTTP/3
       if: matrix.http3 == 'http3'
       run: |
-        PKG_CONFIG_PATH="$PWD/openssl1/build/lib/pkgconfig:$PWD/openssl3/build/lib64/pkgconfig:$PWD/openssl3/build/lib/pkgconfig:$PWD/wolfssl/build/lib/pkgconfig:$PWD/nghttp3/build/lib/pkgconfig:$PWD/ngtcp2-openssl1/build/lib/pkgconfig:$PWD/ngtcp2-openssl3/build/lib/pkgconfig:$PWD/libbpf/build/lib64/pkgconfig:$PKG_CONFIG_PATH"
-        LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl1/build/lib -Wl,-rpath,$PWD/openssl3/build/lib64 -Wl,-rpath,$PWD/openssl3/build/lib -Wl,-rpath,$PWD/libbpf/build/lib64"
+        PKG_CONFIG_PATH="$PWD/openssl1/build/lib/pkgconfig:$PWD/openssl4/build/lib64/pkgconfig:$PWD/openssl4/build/lib/pkgconfig:$PWD/wolfssl/build/lib/pkgconfig:$PWD/nghttp3/build/lib/pkgconfig:$PWD/ngtcp2-openssl1/build/lib/pkgconfig:$PWD/ngtcp2-openssl4/build/lib/pkgconfig:$PWD/libbpf/build/lib64/pkgconfig:$PKG_CONFIG_PATH"
+        LDFLAGS="$LDFLAGS -Wl,-rpath,$PWD/openssl1/build/lib -Wl,-rpath,$PWD/openssl4/build/lib64 -Wl,-rpath,$PWD/openssl4/build/lib -Wl,-rpath,$PWD/libbpf/build/lib64"
         EXTRA_AUTOTOOLS_OPTS="$EXTRA_AUTOTOOLS_OPTS --enable-http3"
         EXTRA_CMAKE_OPTS="$EXTRA_CMAKE_OPTS -DENABLE_HTTP3=1"
 
