@@ -2059,8 +2059,9 @@ nghttp2_ssize nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
 
         inflater->state = NGHTTP2_HD_STATE_NEWNAME_READ_NAMEHUFF;
 
-        rv =
-          nghttp2_rcbuf_new(&inflater->namercbuf, inflater->left * 2 + 1, mem);
+        rv = nghttp2_rcbuf_new(
+          &inflater->namercbuf,
+          nghttp2_huff_estimate_decode_length(inflater->left) + 1, mem);
       } else {
         inflater->state = NGHTTP2_HD_STATE_NEWNAME_READ_NAME;
         rv = nghttp2_rcbuf_new(&inflater->namercbuf, inflater->left + 1, mem);
@@ -2144,8 +2145,9 @@ nghttp2_ssize nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
 
         inflater->state = NGHTTP2_HD_STATE_READ_VALUEHUFF;
 
-        rv =
-          nghttp2_rcbuf_new(&inflater->valuercbuf, inflater->left * 2 + 1, mem);
+        rv = nghttp2_rcbuf_new(
+          &inflater->valuercbuf,
+          nghttp2_huff_estimate_decode_length(inflater->left) + 1, mem);
       } else {
         inflater->state = NGHTTP2_HD_STATE_READ_VALUE;
 
