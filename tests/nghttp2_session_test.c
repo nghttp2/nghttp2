@@ -1039,7 +1039,7 @@ void test_nghttp2_session_recv_invalid_frame(void) {
   assert_int(0, ==, nghttp2_session_recv(session));
   assert_int(0, ==, nghttp2_session_send(session));
   assert_int(1, ==, user_data.frame_send_cb_called);
-  assert_uint8(NGHTTP2_GOAWAY, ==, user_data.sent_frame_type);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, user_data.sent_frame_type);
 
   nghttp2_bufs_free(&bufs);
   nghttp2_frame_headers_free(&frame.headers, mem);
@@ -1322,10 +1322,9 @@ void test_nghttp2_session_recv_data_no_auto_flow_control(void) {
     nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN + hd.length);
   assert_ptrdiff((nghttp2_ssize)(NGHTTP2_FRAME_HDLEN + hd.length), ==, rv);
 
-  /* Session is going down because HTTP messaging rule was not
-     honored. */
-  assert_uint8(NGHTTP2_GOAWAY, ==,
-               nghttp2_session_get_next_ob_item(session)->frame.hd.type);
+  /* Whole payload must be consumed now because HTTP messaging rule
+     was not honored. */
+  assert_int32((int32_t)hd.length, ==, session->consumed_size);
 
   nghttp2_session_del(session);
 
@@ -10719,7 +10718,8 @@ static void check_nghttp2_http_recv_headers_fail(check_http_opts opts,
 
   item = nghttp2_session_get_next_ob_item(session);
 
-  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_ptrdiff(1, ==, ud.invalid_frame_recv_cb_called);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
@@ -11144,7 +11144,7 @@ void test_nghttp2_http_content_length_mismatch(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
 
   item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
@@ -11170,7 +11170,7 @@ void test_nghttp2_http_content_length_mismatch(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
 
   item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
@@ -11196,7 +11196,7 @@ void test_nghttp2_http_content_length_mismatch(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
 
   item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
@@ -11227,7 +11227,7 @@ void test_nghttp2_http_content_length_mismatch(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
 
   item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
 
   assert_not_null(nghttp2_session_get_stream(session, 1));
   assert_int(0, ==, nghttp2_session_send(session));
@@ -11258,7 +11258,7 @@ void test_nghttp2_http_content_length_mismatch(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
 
   item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
 
   assert_not_null(nghttp2_session_get_stream(session, 1));
   assert_int(0, ==, nghttp2_session_send(session));
@@ -11289,7 +11289,7 @@ void test_nghttp2_http_content_length_mismatch(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
 
   item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
 
   assert_not_null(nghttp2_session_get_stream(session, 1));
   assert_int(0, ==, nghttp2_session_send(session));
@@ -11340,7 +11340,7 @@ void test_nghttp2_http_non_final_response(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
 
   item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
@@ -11368,7 +11368,7 @@ void test_nghttp2_http_non_final_response(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
 
   item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
@@ -11424,7 +11424,7 @@ void test_nghttp2_http_non_final_response(void) {
 
   item = nghttp2_session_get_next_ob_item(session);
 
-  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
@@ -11545,7 +11545,7 @@ void test_nghttp2_http_trailer_headers(void) {
 
   item = nghttp2_session_get_next_ob_item(session);
 
-  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
@@ -11579,7 +11579,7 @@ void test_nghttp2_http_trailer_headers(void) {
 
   item = nghttp2_session_get_next_ob_item(session);
 
-  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
 
   assert_int(0, ==, nghttp2_session_send(session));
 
@@ -11930,7 +11930,7 @@ void test_nghttp2_http_push_promise(void) {
 
   item = nghttp2_session_get_next_ob_item(session);
 
-  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
 
   nghttp2_bufs_reset(&bufs);
 

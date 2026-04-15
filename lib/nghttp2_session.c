@@ -3517,6 +3517,7 @@ static int session_inflate_handle_invalid_connection(nghttp2_session *session,
 static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
                                 size_t *readlen_ptr, uint8_t *in, size_t inlen,
                                 int final, int call_header_cb) {
+  nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_ssize proclen;
   int rv;
   int inflate_flags;
@@ -3647,8 +3648,23 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
               return rv;
             }
 
-            return nghttp2_session_terminate_session(session,
-                                                     NGHTTP2_PROTOCOL_ERROR);
+            rv =
+              session_handle_invalid_stream2(session, subject_stream->stream_id,
+                                             frame, NGHTTP2_ERR_HTTP_HEADER);
+            if (nghttp2_is_fatal(rv)) {
+              return rv;
+            }
+
+            rv = session_update_glitch_ratelim(session);
+            if (rv != 0) {
+              return rv;
+            }
+
+            if (iframe->state == NGHTTP2_IB_IGN_ALL) {
+              return 0;
+            }
+
+            return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
           }
         }
         if (rv == 0) {
@@ -3717,6 +3733,7 @@ static int session_end_stream_headers_received(nghttp2_session *session,
 static int session_after_header_block_received(nghttp2_session *session) {
   int rv = 0;
   nghttp2_frame *frame = &session->iframe.frame;
+  nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_stream *stream;
 
   /* We don't call on_frame_recv_callback if stream has been closed
@@ -3761,7 +3778,37 @@ static int session_after_header_block_received(nghttp2_session *session) {
       }
     }
     if (rv != 0) {
-      return nghttp2_session_terminate_session(session, NGHTTP2_PROTOCOL_ERROR);
+      int32_t stream_id;
+
+      if (frame->hd.type == NGHTTP2_PUSH_PROMISE) {
+        stream_id = frame->push_promise.promised_stream_id;
+      } else {
+        stream_id = frame->hd.stream_id;
+      }
+
+      rv = session_handle_invalid_stream2(session, stream_id, frame,
+                                          NGHTTP2_ERR_HTTP_MESSAGING);
+      if (nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+
+      rv = session_update_glitch_ratelim(session);
+      if (rv != 0) {
+        return rv;
+      }
+
+      if (iframe->state == NGHTTP2_IB_IGN_ALL) {
+        return 0;
+      }
+
+      if (frame->hd.type == NGHTTP2_HEADERS &&
+          (frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
+        nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+        /* Don't call nghttp2_session_close_stream_if_shut_rdwr
+           because RST_STREAM has been submitted. */
+      }
+
+      return 0;
     }
   }
 
@@ -4947,6 +4994,7 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
                                      nghttp2_frame *frame) {
   int rv = 0;
   nghttp2_stream *stream;
+  nghttp2_inbound_frame *iframe = &session->iframe;
 
   /* We don't call on_frame_recv_callback if stream has been closed
      already or being closed. */
@@ -4961,7 +5009,27 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
   if (session_enforce_http_messaging(session) &&
       (frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
     if (nghttp2_http_on_remote_end_stream(stream) != 0) {
-      return nghttp2_session_terminate_session(session, NGHTTP2_PROTOCOL_ERROR);
+      rv = session_handle_invalid_stream2(session, stream->stream_id, frame,
+                                          NGHTTP2_ERR_HTTP_MESSAGING);
+      if (nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+
+      rv = session_update_glitch_ratelim(session);
+      if (rv != 0) {
+        return rv;
+      }
+
+      if (iframe->state == NGHTTP2_IB_IGN_ALL) {
+        return 0;
+      }
+
+      nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+
+      /* Don't call nghttp2_session_close_stream_if_shut_rdwr because
+         RST_STREAM has been submitted. */
+
+      return 0;
     }
   }
 
@@ -6781,13 +6849,40 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
         if (data_readlen > 0) {
           if (session_enforce_http_messaging(session)) {
             if (nghttp2_http_on_data_chunk(stream, (size_t)data_readlen) != 0) {
-              rv = nghttp2_session_terminate_session(session,
-                                                     NGHTTP2_PROTOCOL_ERROR);
+              if (session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) {
+                /* Consume all data for connection immediately here */
+                rv = session_update_connection_consumed_size(
+                  session, (size_t)data_readlen);
+
+                if (nghttp2_is_fatal(rv)) {
+                  return rv;
+                }
+
+                if (iframe->state == NGHTTP2_IB_IGN_DATA) {
+                  return (nghttp2_ssize)inlen;
+                }
+              }
+
+              rv = session_handle_invalid_stream2(
+                session, iframe->frame.hd.stream_id, &iframe->frame,
+                NGHTTP2_ERR_PROTO);
               if (nghttp2_is_fatal(rv)) {
                 return rv;
               }
 
-              return (nghttp2_ssize)inlen;
+              rv = session_update_glitch_ratelim(session);
+              if (rv != 0) {
+                return rv;
+              }
+
+              if (iframe->state == NGHTTP2_IB_IGN_ALL) {
+                return (nghttp2_ssize)inlen;
+              }
+
+              busy = 1;
+              iframe->state = NGHTTP2_IB_IGN_DATA;
+
+              break;
             }
           }
           if (session->callbacks.on_data_chunk_recv_callback) {
