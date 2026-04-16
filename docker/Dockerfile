@@ -33,7 +33,7 @@ make install-strip
 cd ..
 rm -rf nghttp3
 
-git clone --recursive --shallow-submodules --depth 1 -b v1.22.0 \
+git clone --recursive --shallow-submodules --depth 1 -b v1.22.1 \
     https://github.com/ngtcp2/ngtcp2
 cd ngtcp2
 autoreconf -i
