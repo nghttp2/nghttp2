@@ -63,6 +63,7 @@
 #endif   // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 #ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
 #  include <openssl/hmac.h>
+#  include <openssl/hpke.h>
 #endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 
 #include <nghttp2/nghttp2.h>
@@ -863,6 +864,98 @@ int get_cert_type(SSL_CTX *ssl_ctx) {
 }
 } // namespace
 
+#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
+namespace {
+void add_ech_keys(SSL_ECH_KEYS *keys, const ECHKeyConfig &ech_key_config) {
+  const EVP_HPKE_KEM *hpke_kem;
+
+  const auto &conf_pkey = ech_key_config.private_key;
+
+  switch (conf_pkey.type) {
+  case HPKEPrivateKeyType::HPKE_DHKEM_X25519_HKDF_SHA256:
+    hpke_kem = EVP_hpke_x25519_hkdf_sha256();
+    break;
+  default:
+    Log{FATAL} << "Unsupported private key type";
+    DIE();
+  };
+
+  auto pkey = EVP_HPKE_KEY_new();
+
+  if (EVP_HPKE_KEY_init(pkey, hpke_kem, conf_pkey.data.data(),
+                        conf_pkey.data.size()) != 1) {
+    Log{FATAL} << "EVP_HPKE_KEY_init failed: "
+               << ERR_error_string(ERR_get_error(), nullptr);
+    DIE();
+  }
+
+  auto pkey_d = defer([pkey] { EVP_HPKE_KEY_free(pkey); });
+
+  for (auto data : ech_key_config.config_list) {
+    if (SSL_ECH_KEYS_add(keys, ech_key_config.retry, data.data(), data.size(),
+                         pkey) != 1) {
+      Log{FATAL} << "SSL_ECH_KEYS_add fail: "
+                 << ERR_error_string(ERR_get_error(), nullptr);
+      DIE();
+    }
+  }
+}
+} // namespace
+
+namespace {
+void setup_ech(SSL_CTX *ssl_ctx, const TLSConfig &tlsconf) {
+  if (tlsconf.ech_key_config_list.empty()) {
+    return;
+  }
+
+  auto keys = SSL_ECH_KEYS_new();
+  auto keys_d = defer([keys] { SSL_ECH_KEYS_free(keys); });
+
+  size_t n = 0;
+
+  for (const auto &ech_key_config : tlsconf.ech_key_config_list) {
+    add_ech_keys(keys, ech_key_config);
+    n += ech_key_config.config_list.size();
+  }
+
+  if (SSL_CTX_set1_ech_keys(ssl_ctx, keys) != 1) {
+    Log{FATAL} << "SSL_CTX_set1_ech_keys failed: "
+               << ERR_error_string(ERR_get_error(), nullptr);
+    DIE();
+  }
+
+  if (log_enabled(INFO)) {
+    Log{INFO} << n << " ECH configuration(s) added";
+  }
+}
+} // namespace
+#elif OPENSSL_4_0_0_API
+namespace {
+void setup_ech(SSL_CTX *ssl_ctx, const TLSConfig &tlsconf) {
+  if (!tlsconf.ech_store) {
+    return;
+  }
+
+  if (SSL_CTX_set1_echstore(ssl_ctx, tlsconf.ech_store) != 1) {
+    Log{FATAL} << "SSL_CTX_set1_echstore failed: "
+               << ERR_error_string(ERR_get_error(), nullptr);
+    DIE();
+  }
+
+  int n;
+
+  if (log_enabled(INFO) &&
+      OSSL_ECHSTORE_num_entries(tlsconf.ech_store, &n) == 1) {
+    Log{INFO} << n << " ECH configuration(s) added";
+  }
+}
+} // namespace
+#else  // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && !OPENSSL_4_0_0_API
+namespace {
+void setup_ech(SSL_CTX *ssl_ctx, const TLSConfig &tlsconf) {}
+} // namespace
+#endif // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && !OPENSSL_4_0_0_API
+
 SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
                             const std::vector<uint8_t> &sct_data
 #ifdef HAVE_NEVERBLEED
@@ -1140,6 +1233,8 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file,
   }
 #endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
        // defined(HAVE_LIBBROTLI)
+
+  setup_ech(ssl_ctx, tlsconf);
 
   return ssl_ctx;
 }
@@ -1424,6 +1519,8 @@ SSL_CTX *create_quic_ssl_context(const char *private_key_file,
   }
 #  endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL) &&
          // defined(HAVE_LIBBROTLI)
+
+  setup_ech(ssl_ctx, tlsconf);
 
   return ssl_ctx;
 }
@@ -2466,6 +2563,119 @@ int get_x509_not_after(time_t &t, X509 *x) {
   }
 
   return time_t_from_asn1_time(t, at);
+}
+
+#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
+std::optional<HPKEPrivateKey> read_hpke_private_key_pem(BlockAllocator &balloc,
+                                                        std::string_view path) {
+  auto f = BIO_new_file(path.data(), "r");
+  if (!f) {
+    Log{ERROR} << "Could not open HPKE private key file " << path << ": "
+               << ERR_error_string(ERR_get_error(), nullptr);
+
+    return {};
+  }
+
+  auto f_d = defer([f] { BIO_free(f); });
+
+  EVP_PKEY *pkey;
+
+  if (PEM_read_bio_PrivateKey(f, &pkey, nullptr, nullptr) == nullptr) {
+    Log{ERROR} << "Could not read HPKE private key file " << path << ": "
+               << ERR_error_string(ERR_get_error(), nullptr);
+
+    return {};
+  }
+
+  auto pkey_d = defer([pkey] { EVP_PKEY_free(pkey); });
+
+  HPKEPrivateKey res;
+
+  auto pkey_id = EVP_PKEY_id(pkey);
+
+  switch (pkey_id) {
+  case EVP_PKEY_X25519:
+    res.type = HPKE_DHKEM_X25519_HKDF_SHA256;
+
+    break;
+  default:
+    Log{ERROR} << "Unsupported HPKE private key type " << log::hex << pkey_id;
+
+    return {};
+  }
+
+  size_t len;
+
+  EVP_PKEY_get_raw_private_key(pkey, nullptr, &len);
+
+  auto buf = make_byte_ref(balloc, len);
+
+  EVP_PKEY_get_raw_private_key(pkey, buf.data(), &len);
+  res.data = buf;
+
+  return res;
+}
+
+std::optional<std::span<const uint8_t>>
+read_pem(BlockAllocator &balloc, std::string_view path, std::string_view type) {
+  auto f = BIO_new_file(path.data(), "r");
+  if (!f) {
+    Log{ERROR} << "Could not open PEM file " << path << " of type " << type
+               << ": " << ERR_error_string(ERR_get_error(), nullptr);
+
+    return {};
+  }
+
+  auto f_d = defer([f] { BIO_free(f); });
+
+  for (;;) {
+    char *pem_type, *header;
+    unsigned char *data;
+    long datalen;
+
+    if (PEM_read_bio(f, &pem_type, &header, &data, &datalen) != 1) {
+      Log{ERROR} << "Could not read PEM file " << path << " of type " << type
+                 << ": " << ERR_error_string(ERR_get_error(), nullptr);
+
+      return {};
+    }
+
+    auto pem_d = defer([pem_type, header, data] {
+      OPENSSL_free(pem_type);
+      OPENSSL_free(header);
+      OPENSSL_free(data);
+    });
+
+    if (type != pem_type) {
+      continue;
+    }
+
+    auto buf = make_byte_ref(balloc, static_cast<size_t>(datalen));
+    std::ranges::copy_n(data, datalen, std::ranges::begin(buf));
+
+    return buf;
+  }
+}
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
+
+bool is_ech_accepted(SSL *ssl) {
+#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
+  return SSL_ech_accepted(ssl);
+#elif OPENSSL_4_0_0_API
+  // SSL_ech_get1_status returns 0 (failure) if we pass nullptrs even
+  // when we do not need inner_sni and outer_sni.
+  char *inner_sni = nullptr;
+  char *outer_sni = nullptr;
+
+  auto rv = SSL_ech_get1_status(ssl, &inner_sni, &outer_sni);
+
+  OPENSSL_free(inner_sni);
+  OPENSSL_free(outer_sni);
+
+  return SSL_ECH_STATUS_SUCCESS == rv;
+#else  // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && !OPENSSL_4_0_0_API
+  return false;
+#endif // !defined(NGHTTP2_OPENSSL_IS_BORINGSSL) && !OPENSSL_4_0_0_API
 }
 
 } // namespace tls

@@ -383,6 +383,9 @@ inline constexpr auto SHRPX_OPT_FRONTEND_HTTP2_IDLE_TIMEOUT =
 inline constexpr auto SHRPX_OPT_FRONTEND_HTTP3_IDLE_TIMEOUT =
   "frontend-http3-idle-timeout"sv;
 inline constexpr auto SHRPX_OPT_GROUPS = "groups"sv;
+inline constexpr auto SHRPX_OPT_ECH_CONFIG_FILE = "ech-config-file"sv;
+inline constexpr auto SHRPX_OPT_ECH_RETRY_CONFIG_FILE =
+  "ech-retry-config-file"sv;
 
 inline constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -648,6 +651,20 @@ struct HttpProxy {
   uint16_t port;
 };
 
+enum HPKEPrivateKeyType : uint16_t {
+  HPKE_DHKEM_X25519_HKDF_SHA256 = 0x0020,
+};
+
+struct HPKEPrivateKey {
+  std::span<const uint8_t> data;
+  HPKEPrivateKeyType type;
+};
+struct ECHKeyConfig {
+  HPKEPrivateKey private_key;
+  std::vector<std::span<const uint8_t>> config_list;
+  bool retry;
+};
+
 struct TLSConfig {
   // RFC 5077 Session ticket related configurations
   struct {
@@ -721,6 +738,12 @@ struct TLSConfig {
   // list of supported SSL/TLS protocol strings.
   std::vector<std::string_view> tls_proto_list;
   std::vector<uint8_t> sct_data;
+// ECH
+#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
+  std::vector<ECHKeyConfig> ech_key_config_list;
+#elif OPENSSL_4_0_0_API
+  OSSL_ECHSTORE *ech_store;
+#endif // OPENSSL_4_0_0_API
   // Bit mask to disable SSL/TLS protocol versions.  This will be
   // passed to SSL_CTX_set_options().
   nghttp2_ssl_op_type tls_proto_mask;
@@ -1197,6 +1220,8 @@ enum {
   SHRPX_OPTID_DNS_LOOKUP_TIMEOUT,
   SHRPX_OPTID_DNS_MAX_TRY,
   SHRPX_OPTID_ECDH_CURVES,
+  SHRPX_OPTID_ECH_CONFIG_FILE,
+  SHRPX_OPTID_ECH_RETRY_CONFIG_FILE,
   SHRPX_OPTID_ERROR_PAGE,
   SHRPX_OPTID_ERRORLOG_FILE,
   SHRPX_OPTID_ERRORLOG_SYSLOG,

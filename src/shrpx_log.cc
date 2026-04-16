@@ -744,6 +744,13 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       }
       p = copy(downstream_addr->port, p);
       break;
+    case LogFragmentType::TLS_ECH_ACCEPTED:
+      if (!lgsp.ssl) {
+        p = copy('-', p);
+        break;
+      }
+      p = copy(tls::is_ech_accepted(lgsp.ssl) ? 'e' : '.', p);
+      break;
     case LogFragmentType::NONE:
       break;
     default:

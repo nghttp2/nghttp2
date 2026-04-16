@@ -312,6 +312,21 @@ int get_x509_not_before(time_t &t, X509 *x);
 // succeeds, or -1.
 int get_x509_not_after(time_t &t, X509 *x);
 
+#ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
+// Read HPKE private key from PEM file denoted by |path|.  It only
+// reads the first private key.
+std::optional<HPKEPrivateKey> read_hpke_private_key_pem(BlockAllocator &balloc,
+                                                        std::string_view path);
+
+// Read the specific |type| of content from PEM file denoted by
+// |path|.  It only reads the first block of the specified type.
+std::optional<std::span<const uint8_t>>
+read_pem(BlockAllocator &balloc, std::string_view path, std::string_view type);
+#endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
+
+// Return true if ECH was accepted in |ssl|.
+bool is_ech_accepted(SSL *ssl);
+
 } // namespace tls
 
 } // namespace shrpx

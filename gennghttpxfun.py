@@ -205,6 +205,8 @@ OPTIONS = [
     "frontend-http2-idle-timeout",
     "frontend-http3-idle-timeout",
     "groups",
+    "ech-config-file",
+    "ech-retry-config-file",
 ]
 
 LOGVARS = [
@@ -239,6 +241,7 @@ LOGVARS = [
     "path",
     "path_without_query",
     "protocol_version",
+    "tls_ech_accepted",
 ]
 
 if __name__ == '__main__':
