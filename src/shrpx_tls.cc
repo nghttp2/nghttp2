@@ -924,9 +924,7 @@ void setup_ech(SSL_CTX *ssl_ctx, const TLSConfig &tlsconf) {
     DIE();
   }
 
-  if (log_enabled(INFO)) {
-    Log{INFO} << n << " ECH configuration(s) added";
-  }
+  Log{NOTICE} << n << " ECH configuration(s) added";
 }
 } // namespace
 #elif OPENSSL_4_0_0_API
@@ -944,9 +942,8 @@ void setup_ech(SSL_CTX *ssl_ctx, const TLSConfig &tlsconf) {
 
   int n;
 
-  if (log_enabled(INFO) &&
-      OSSL_ECHSTORE_num_entries(tlsconf.ech_store, &n) == 1) {
-    Log{INFO} << n << " ECH configuration(s) added";
+  if (OSSL_ECHSTORE_num_entries(tlsconf.ech_store, &n) == 1) {
+    Log{NOTICE} << n << " ECH configuration(s) added";
   }
 }
 } // namespace
