@@ -12,7 +12,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     zlib1g-dev libev-dev libjemalloc-dev ruby-dev libc-ares-dev bison \
     libelf-dev libbrotli-dev
 
-git clone --recursive --shallow-submodules --depth 1 -b v1.71.0 \
+git clone --recursive --shallow-submodules --depth 1 -b v1.72.0 \
     https://github.com/aws/aws-lc
 cd aws-lc
 export CC=clang-19 CXX=clang++-19
