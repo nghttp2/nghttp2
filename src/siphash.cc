@@ -38,6 +38,7 @@
  */
 #include <cstdint>
 #include <cstring>
+#include <array>
 
 #include "siphash.h"
 
