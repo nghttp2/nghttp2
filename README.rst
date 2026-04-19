@@ -340,7 +340,7 @@ Build aws-lc:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.71.0 https://github.com/aws/aws-lc
+   $ git clone --depth 1 -b v1.72.0 https://github.com/aws/aws-lc
    $ cd aws-lc
    $ cmake -B build -DDISABLE_GO=ON --install-prefix=$PWD/opt
    $ make -j$(nproc) -C build
