@@ -983,6 +983,22 @@ SSL/TLS
 
     Enable ktls.
 
+.. option:: --ech-config-file=<PATH>
+
+    Read Encrypted  Client Hello (ECH)  server configuration
+    from <PATH>.  See :option:`--ech-retry-config-file` for details.
+
+.. option:: --ech-retry-config-file=<PATH>
+
+    This option and  :option:`--ech-config-file` option read Encrypted
+    Client Hello (ECH) server configuration from <PATH>.  If
+    :option:`--ech-retry-config-file` is used,  the configurations are
+    included in  the retry configurations.  The  file format
+    must  be PEM  ECH  file described  in  RFC 9934.   These
+    options can  be used repeatedly to  read multiple files.
+    :option:`--ech-retry-config-file` must be used  at least once when
+    enabling ECH.
+
 
 HTTP/2
 ~~~~~~
@@ -1188,6 +1204,8 @@ Logging
     * $tls_session_reused:  "r"   if  SSL/TLS   session  was
       reused.  Otherwise, "."
     * $tls_sni: SNI server name for SSL/TLS connection.
+    * $tls_ech_accepted: "e" if ECH  was accepted in SSL/TLS
+      session.  Otherwise, "."
     * $backend_host:  backend  host   used  to  fulfill  the
       request.  "-" if backend host is not available.
     * $backend_port:  backend  port   used  to  fulfill  the

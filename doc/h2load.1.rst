@@ -229,6 +229,11 @@ OPTIONS
     :option:`--no-tls-proto`\=http/1.1,    which   effectively    force
     http/1.1 for both http and https URI.
 
+.. option:: --h3
+
+    Short hand for  :option:`--alpn-list`\=h3, which effectively forces
+    HTTP/3.
+
 .. option:: --header-table-size=<SIZE>
 
     Specify decoder header table size.
@@ -295,6 +300,24 @@ OPTIONS
     Send  <DNSNAME> in  TLS  SNI, overriding  the host  name
     specified in URI.
 
+.. option:: --histogram
+
+    Plot histogram for performance statistics.
+
+.. option:: --tls-session-file=<PATH>
+
+    Read  TLS session  from <PATH>,  and set  it to  all TLS
+    connections to  perform the  session resumption.   It is
+    also used  to store  the new TLS  session.  At  most one
+    session is written to the given file.
+
+.. option:: --output-file=<PATH>
+
+    Write the measurement results  to <PATH> in JSON format.
+    This  basically includes  all  numbers  reported to  the
+    normal   output.     In   addition,    for   performance
+    measurements, all raw samples are included.
+
 .. option:: -v, --verbose
 
     Output debug information.
@@ -322,107 +345,96 @@ is omitted, a second is used as unit.
 OUTPUT
 ------
 
+REQUEST METRICS
+~~~~~~~~~~~~~~~
+
 requests
   total
-    The number of requests h2load was instructed to make.
+    The total number of requests h2load was instructed to make.
   started
-    The number of requests h2load has started.
+    The number of requests initiated by the tool.
   done
-    The number of requests completed.
+    The number of requests that reached completion.
   succeeded
-    The number of requests completed successfully.  Only HTTP status
-    code 2xx or 3xx are considered as success.
+    Requests resulting in an HTTP 2xx or 3xx status code.
   failed
-    The number of requests failed, including HTTP level failures
-    (non-successful HTTP status code).
+    The total number of failed requests.  This includes both
+    ``errored`` requests and requests that completed with a
+    non-2xx/3xx status code.
   errored
-    The number of requests failed, except for HTTP level failures.
-    This is the subset of the number reported in ``failed`` and most
-    likely the network level failures or stream was reset by
-    RST_STREAM.
+    A subset of ``failed`` where the requests failed due to
+    network-level issues (e.g., TCP resets, ``RST_STREAM``) rather
+    than HTTP status codes.
   timeout
-    The number of requests whose connection timed out before they were
-    completed.   This  is  the  subset   of  the  number  reported  in
-    ``errored``.
+    A subset of ``errored`` where the connection timed out before
+    completion.
 
 status codes
-  The number of status code h2load received.
+  The specific count of received HTTP status codes categorized by
+  class (2xx, 3xx, 4xx, 5xx).
+
+TRAFFIC METRICS
+~~~~~~~~~~~~~~~
 
 traffic
   total
-    The number of bytes received from the server "on the wire".  If
-    requests were made via TLS, this value is the number of decrypted
-    bytes.
+    Total application data bytes received "on the wire" (decrypted if
+    using TLS).
   headers
-    The  number  of response  header  bytes  from the  server  without
-    decompression.  The  ``space savings`` shows efficiency  of header
-    compression.  Let ``decompressed(headers)`` to the number of bytes
-    used for header fields after decompression.  The ``space savings``
-    is calculated  by (1 - ``headers``  / ``decompressed(headers)``) *
-    100.  For HTTP/1.1, this is usually  0.00%, since it does not have
-    header compression.  For HTTP/2, it shows some insightful numbers.
+    Total bytes used for response headers (pre-decompression).
+
+    space savings
+      Header compression efficiency, calculated as:
+
+      (1 - headers / decompressed_headers) * 100
+
+      where ``headers`` is the compressed size and
+      ``decompressed_headers`` is the size after decompression.
   data
-    The number of response body bytes received from the server.
+    Total bytes received in response bodies.
 
-time for request
-  min
-    The minimum time taken for request and response.
-  max
-    The maximum time taken for request and response.
-  mean
-    The mean time taken for request and response.
-  sd
-    The standard deviation of the time taken for request and response.
-  +/- sd
-    The fraction of the number of requests within standard deviation
-    range (mean +/- sd) against total number of successful requests.
+PERFORMANCE STATISTICS
+~~~~~~~~~~~~~~~~~~~~~~
 
-time for connect
-  min
-    The minimum time taken to connect to a server including TLS
-    handshake.
-  max
-    The maximum time taken to connect to a server including TLS
-    handshake.
-  mean
-    The mean time taken to connect to a server including TLS
-    handshake.
-  sd
-    The standard deviation of the time taken to connect to a server.
-  +/- sd
-    The  fraction  of  the   number  of  connections  within  standard
-    deviation range (mean  +/- sd) against total  number of successful
-    connections.
+Metric Definitions
+  request
+    The duration from sending the first byte of a request to receiving
+    the last byte of the response.
+  connect
+    The time taken to establish a connection, including TLS
+    handshakes.
+  TTFB
+    The duration until the first byte of application data is received
+    from the server (decrypted if using TLS).
+  req/s
+    The requests per second measured individually across all clients.
+  min RTT
+    The minimum RTT (QUIC).
+  smoothed RTT
+    The smoothed RTT (QUIC).
+  packets sent
+    The number of packets sent (QUIC).
+  packets recv
+    The number of packets received (QUIC).
+  packets lost
+    The number of packets declared lost (QUIC).
+  GRO packets
+    The number of packets received in a single recvmsg call (QUIC).
 
-time for 1st byte (of (decrypted in case of TLS) application data)
-  min
-    The minimum time taken to get 1st byte from a server.
-  max
-    The maximum time taken to get 1st byte from a server.
+Distribution Fields
+  min / max
+    The absolute minimum and maximum values recorded.
+  median
+    The 50th percentile value.
+  p95 / p99
+    The 95th and 99th percentiles, indicating tail performance.
   mean
-    The mean time taken to get 1st byte from a server.
+    The arithmetic average of all samples.
   sd
-    The standard deviation of the time taken to get 1st byte from a
-    server.
+    The standard deviation (measure of data dispersion).
   +/- sd
-    The fraction of the number of connections within standard
-    deviation range (mean +/- sd) against total number of successful
-    connections.
-
-req/s
-  min
-    The minimum request per second among all clients.
-  max
-    The maximum request per second among all clients.
-  mean
-    The mean request per second among all clients.
-  sd
-    The standard deviation of request per second among all clients.
-    server.
-  +/- sd
-    The fraction of the number of connections within standard
-    deviation range (mean +/- sd) against total number of successful
-    connections.
+    The percentage of successful samples falling within one standard
+    deviation of the mean (mean +/- sd).
 
 FLOW CONTROL
 ------------

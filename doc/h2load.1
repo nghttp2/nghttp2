@@ -1,4 +1,5 @@
-.\" Man page generated from reStructuredText.
+.\" Man page generated from reStructuredText
+.\" by the Docutils 0.22.4 manpage writer.
 .
 .
 .nr rst2man-indent-level 0
@@ -27,7 +28,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "H2LOAD" "1" "Oct 25, 2025" "1.68.0" "nghttp2"
+.TH "H2LOAD" "1" "Apr 19, 2026" "1.69.0" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .SH SYNOPSIS
@@ -52,18 +53,18 @@ scheme, host or port values.
 .TP
 .B \-n, \-\-requests=<N>
 Number of  requests across all  clients.  If it  is used
-with \fI\%\-\-timing\-script\-file\fP option,  this option specifies
+with \fB\-\-timing\-script\-file\fP option,  this option specifies
 the number of requests  each client performs rather than
 the number of requests  across all clients.  This option
 is ignored if timing\-based  benchmarking is enabled (see
-\fI\%\-\-duration\fP option).
+\fB\-\-duration\fP option).
 .sp
 Default: \fB1\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-c, \-\-clients=<N>
-Number  of concurrent  clients.   With  \fI\%\-r\fP option,  this
+Number  of concurrent  clients.   With  \fB\-r\fP option,  this
 specifies the maximum number of connections to be made.
 .sp
 Default: \fB1\fP
@@ -155,7 +156,7 @@ Default: \fBh2c\fP
 .TP
 .B \-d, \-\-data=<PATH>
 Post FILE to  server.  The request method  is changed to
-POST.   For  http/1.1 connection,  if  \fI\%\-d\fP  is used,  the
+POST.   For  http/1.1 connection,  if  \fB\-d\fP  is used,  the
 maximum number of in\-flight pipelined requests is set to
 1.
 .UNINDENT
@@ -166,13 +167,13 @@ Specifies  the  fixed  rate  at  which  connections  are
 created.   The   rate  must   be  a   positive  integer,
 representing the  number of  connections to be  made per
 rate period.   The maximum  number of connections  to be
-made  is  given  in  \fI\%\-c\fP   option.   This  rate  will  be
+made  is  given  in  \fB\-c\fP   option.   This  rate  will  be
 distributed among  threads as  evenly as  possible.  For
-example,  with   \fI\%\-t\fP2  and   \fI\%\-r\fP4,  each  thread   gets  2
+example,  with   \fB\-t\fP2  and   \fB\-r\fP4,  each  thread   gets  2
 connections per period.  When the rate is 0, the program
 will run  as it  normally does, creating  connections at
 whatever variable rate it  wants.  The default value for
-this option is 0.  \fI\%\-r\fP and \fI\%\-D\fP are mutually exclusive.
+this option is 0.  \fB\-r\fP and \fB\-D\fP are mutually exclusive.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -187,7 +188,7 @@ option is 1s.
 .TP
 .B \-D, \-\-duration=<DURATION>
 Specifies the main duration for the measurements in case
-of timing\-based  benchmarking.  \fI\%\-D\fP  and \fI\%\-r\fP  are mutually
+of timing\-based  benchmarking.  \fB\-D\fP  and \fB\-r\fP  are mutually
 exclusive.
 .UNINDENT
 .INDENT 0.0
@@ -195,7 +196,7 @@ exclusive.
 .B \-\-warm\-up\-time=<DURATION>
 Specifies the  time  period  before  starting the actual
 measurements, in  case  of  timing\-based benchmarking.
-Needs to provided along with \fI\%\-D\fP option.
+Needs to provided along with \fB\-D\fP option.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -229,15 +230,15 @@ milliseconds  with microsecond  resolution.  The  second
 field represents the URI.  This option will disable URIs
 getting from  command\-line.  If \(aq\-\(aq is  given as <PATH>,
 script lines will be read  from stdin.  Script lines are
-used in order for each client.   If \fI\%\-n\fP is given, it must
+used in order for each client.   If \fB\-n\fP is given, it must
 be less  than or  equal to the  number of  script lines,
 larger values are clamped to the number of script lines.
-If \fI\%\-n\fP is not given,  the number of requests will default
+If \fB\-n\fP is not given,  the number of requests will default
 to the  number of  script lines.   The scheme,  host and
 port defined in  the first URI are  used solely.  Values
 contained  in  other  URIs,  if  present,  are  ignored.
 Definition of a  base URI overrides all  scheme, host or
-port   values.   \fI\%\-\-timing\-script\-file\fP   and  \fI\%\-\-rps\fP   are
+port   values.   \fB\-\-timing\-script\-file\fP   and  \fB\-\-rps\fP   are
 mutually exclusive.
 .UNINDENT
 .INDENT 0.0
@@ -267,9 +268,15 @@ Default: \fBh2,http/1.1\fP
 .INDENT 0.0
 .TP
 .B \-\-h1
-Short        hand        for        \fI\%\-\-alpn\-list\fP=http/1.1
-\fI\%\-\-no\-tls\-proto\fP=http/1.1,    which   effectively    force
+Short        hand        for        \fB\-\-alpn\-list\fP=http/1.1
+\fB\-\-no\-tls\-proto\fP=http/1.1,    which   effectively    force
 http/1.1 for both http and https URI.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-h3
+Short hand for  \fB\-\-alpn\-list\fP=h3, which effectively forces
+HTTP/3.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -317,8 +324,8 @@ in <URI>.
 .INDENT 0.0
 .TP
 .B \-\-rps=<N>
-Specify request  per second for each  client.  \fI\%\-\-rps\fP and
-\fI\%\-\-timing\-script\-file\fP are mutually exclusive.
+Specify request  per second for each  client.  \fB\-\-rps\fP and
+\fB\-\-timing\-script\-file\fP are mutually exclusive.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -350,6 +357,27 @@ specified in URI.
 .UNINDENT
 .INDENT 0.0
 .TP
+.B \-\-histogram
+Plot histogram for performance statistics.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-session\-file=<PATH>
+Read  TLS session  from <PATH>,  and set  it to  all TLS
+connections to  perform the  session resumption.   It is
+also used  to store  the new TLS  session.  At  most one
+session is written to the given file.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-output\-file=<PATH>
+Write the measurement results  to <PATH> in JSON format.
+This  basically includes  all  numbers  reported to  the
+normal   output.     In   addition,    for   performance
+measurements, all raw samples are included.
+.UNINDENT
+.INDENT 0.0
+.TP
 .B \-v, \-\-verbose
 Output debug information.
 .UNINDENT
@@ -372,165 +400,145 @@ is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms
 (hours, minutes, seconds and milliseconds, respectively).  If a unit
 is omitted, a second is used as unit.
 .SH OUTPUT
+.SS REQUEST METRICS
 .INDENT 0.0
 .TP
 .B requests
 .INDENT 7.0
 .TP
 .B total
-The number of requests h2load was instructed to make.
+The total number of requests h2load was instructed to make.
 .TP
 .B started
-The number of requests h2load has started.
+The number of requests initiated by the tool.
 .TP
 .B done
-The number of requests completed.
+The number of requests that reached completion.
 .TP
 .B succeeded
-The number of requests completed successfully.  Only HTTP status
-code 2xx or 3xx are considered as success.
+Requests resulting in an HTTP 2xx or 3xx status code.
 .TP
 .B failed
-The number of requests failed, including HTTP level failures
-(non\-successful HTTP status code).
+The total number of failed requests.  This includes both
+\fBerrored\fP requests and requests that completed with a
+non\-2xx/3xx status code.
 .TP
 .B errored
-The number of requests failed, except for HTTP level failures.
-This is the subset of the number reported in \fBfailed\fP and most
-likely the network level failures or stream was reset by
-RST_STREAM.
+A subset of \fBfailed\fP where the requests failed due to
+network\-level issues (e.g., TCP resets, \fBRST_STREAM\fP) rather
+than HTTP status codes.
 .TP
 .B timeout
-The number of requests whose connection timed out before they were
-completed.   This  is  the  subset   of  the  number  reported  in
-\fBerrored\fP\&.
+A subset of \fBerrored\fP where the connection timed out before
+completion.
 .UNINDENT
 .TP
 .B status codes
-The number of status code h2load received.
+The specific count of received HTTP status codes categorized by
+class (2xx, 3xx, 4xx, 5xx).
+.UNINDENT
+.SS TRAFFIC METRICS
+.INDENT 0.0
 .TP
 .B traffic
 .INDENT 7.0
 .TP
 .B total
-The number of bytes received from the server \(dqon the wire\(dq.  If
-requests were made via TLS, this value is the number of decrypted
-bytes.
+Total application data bytes received \(dqon the wire\(dq (decrypted if
+using TLS).
 .TP
 .B headers
-The  number  of response  header  bytes  from the  server  without
-decompression.  The  \fBspace savings\fP shows efficiency  of header
-compression.  Let \fBdecompressed(headers)\fP to the number of bytes
-used for header fields after decompression.  The \fBspace savings\fP
-is calculated  by (1 \- \fBheaders\fP  / \fBdecompressed(headers)\fP) *
-100.  For HTTP/1.1, this is usually  0.00%, since it does not have
-header compression.  For HTTP/2, it shows some insightful numbers.
+Total bytes used for response headers (pre\-decompression).
+.INDENT 7.0
+.TP
+.B space savings
+Header compression efficiency, calculated as:
+.sp
+(1 \- headers / decompressed_headers) * 100
+.sp
+where \fBheaders\fP is the compressed size and
+\fBdecompressed_headers\fP is the size after decompression.
+.UNINDENT
 .TP
 .B data
-The number of response body bytes received from the server.
+Total bytes received in response bodies.
 .UNINDENT
+.UNINDENT
+.SS PERFORMANCE STATISTICS
+.INDENT 0.0
 .TP
-.B time for request
+.B Metric Definitions
 .INDENT 7.0
 .TP
-.B min
-The minimum time taken for request and response.
+.B request
+The duration from sending the first byte of a request to receiving
+the last byte of the response.
 .TP
-.B max
-The maximum time taken for request and response.
+.B connect
+The time taken to establish a connection, including TLS
+handshakes.
 .TP
-.B mean
-The mean time taken for request and response.
-.TP
-.B sd
-The standard deviation of the time taken for request and response.
-.TP
-.B +/\- sd
-The fraction of the number of requests within standard deviation
-range (mean +/\- sd) against total number of successful requests.
-.UNINDENT
-.TP
-.B time for connect
-.INDENT 7.0
-.TP
-.B min
-The minimum time taken to connect to a server including TLS
-handshake.
-.TP
-.B max
-The maximum time taken to connect to a server including TLS
-handshake.
-.TP
-.B mean
-The mean time taken to connect to a server including TLS
-handshake.
-.TP
-.B sd
-The standard deviation of the time taken to connect to a server.
-.TP
-.B +/\- sd
-The  fraction  of  the   number  of  connections  within  standard
-deviation range (mean  +/\- sd) against total  number of successful
-connections.
-.UNINDENT
-.TP
-.B time for 1st byte (of (decrypted in case of TLS) application data)
-.INDENT 7.0
-.TP
-.B min
-The minimum time taken to get 1st byte from a server.
-.TP
-.B max
-The maximum time taken to get 1st byte from a server.
-.TP
-.B mean
-The mean time taken to get 1st byte from a server.
-.TP
-.B sd
-The standard deviation of the time taken to get 1st byte from a
-server.
-.TP
-.B +/\- sd
-The fraction of the number of connections within standard
-deviation range (mean +/\- sd) against total number of successful
-connections.
-.UNINDENT
+.B TTFB
+The duration until the first byte of application data is received
+from the server (decrypted if using TLS).
 .TP
 .B req/s
+The requests per second measured individually across all clients.
+.TP
+.B min RTT
+The minimum RTT (QUIC).
+.TP
+.B smoothed RTT
+The smoothed RTT (QUIC).
+.TP
+.B packets sent
+The number of packets sent (QUIC).
+.TP
+.B packets recv
+The number of packets received (QUIC).
+.TP
+.B packets lost
+The number of packets declared lost (QUIC).
+.TP
+.B GRO packets
+The number of packets received in a single recvmsg call (QUIC).
+.UNINDENT
+.TP
+.B Distribution Fields
 .INDENT 7.0
 .TP
-.B min
-The minimum request per second among all clients.
+.B min / max
+The absolute minimum and maximum values recorded.
 .TP
-.B max
-The maximum request per second among all clients.
+.B median
+The 50th percentile value.
+.TP
+.B p95 / p99
+The 95th and 99th percentiles, indicating tail performance.
 .TP
 .B mean
-The mean request per second among all clients.
+The arithmetic average of all samples.
 .TP
 .B sd
-The standard deviation of request per second among all clients.
-server.
+The standard deviation (measure of data dispersion).
 .TP
 .B +/\- sd
-The fraction of the number of connections within standard
-deviation range (mean +/\- sd) against total number of successful
-connections.
+The percentage of successful samples falling within one standard
+deviation of the mean (mean +/\- sd).
 .UNINDENT
 .UNINDENT
 .SH FLOW CONTROL
 .sp
 h2load sets large flow control window by default, and effectively
 disables flow control to avoid under utilization of server
-performance.  To set smaller flow control window, use \fI\%\-w\fP and
-\fI\%\-W\fP options.  For example, use \fB\-w16 \-W16\fP to set default
+performance.  To set smaller flow control window, use \fB\-w\fP and
+\fB\-W\fP options.  For example, use \fB\-w16 \-W16\fP to set default
 window size described in HTTP/2 protocol specification.
 .SH SEE ALSO
 .sp
 \fBnghttp(1)\fP, \fBnghttpd(1)\fP, \fBnghttpx(1)\fP
-.SH AUTHOR
+.SH Author
 Tatsuhiro Tsujikawa
-.SH COPYRIGHT
+.SH Copyright
 2012, 2015, 2016, Tatsuhiro Tsujikawa
-.\" Generated by docutils manpage writer.
-.
+.\" End of generated man page.
