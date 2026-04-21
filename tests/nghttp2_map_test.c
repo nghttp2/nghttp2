@@ -40,7 +40,8 @@ static const MunitTest tests[] = {
 };
 
 const MunitSuite map_suite = {
-  "/map", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/map",
+  .tests = tests,
 };
 
 #define NGHTTP2_TEST_MAP_SEED 0xfefefefefefefefellu
@@ -52,8 +53,10 @@ typedef struct strentry {
 
 static void strentry_init(strentry *entry, nghttp2_map_key_type key,
                           const char *str) {
-  entry->key = key;
-  entry->str = str;
+  *entry = (strentry){
+    .key = key,
+    .str = str,
+  };
 }
 
 void test_nghttp2_map(void) {

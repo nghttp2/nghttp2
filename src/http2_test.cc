@@ -38,12 +38,6 @@
 using namespace nghttp2;
 using namespace std::literals;
 
-#define MAKE_NV(K, V)                                                          \
-  {                                                                            \
-    (uint8_t *)K,  (uint8_t *)V,         sizeof(K) - 1,                        \
-    sizeof(V) - 1, NGHTTP2_NV_FLAG_NONE,                                       \
-  }
-
 namespace shrpx {
 
 namespace {
@@ -70,7 +64,8 @@ const MunitTest tests[]{
 } // namespace
 
 const MunitSuite http2_suite{
-  "/http2", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/http2",
+  .tests = tests,
 };
 
 namespace {

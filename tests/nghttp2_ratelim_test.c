@@ -37,7 +37,8 @@ static const MunitTest tests[] = {
 };
 
 const MunitSuite ratelim_suite = {
-  "/ratelim", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/ratelim",
+  .tests = tests,
 };
 
 void test_nghttp2_ratelim_update(void) {

@@ -61,7 +61,8 @@ static const MunitTest tests[] = {
 };
 
 const MunitSuite hd_suite = {
-  "/hd", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/hd",
+  .tests = tests,
 };
 
 void test_nghttp2_hd_deflate(void) {
@@ -356,10 +357,11 @@ void test_nghttp2_hd_inflate_indname_inc_eviction(void) {
 
   memset(value, '0', sizeof(value));
   value[sizeof(value) - 1] = '\0';
-  nv.value = value;
-  nv.valuelen = sizeof(value) - 1;
-
-  nv.flags = NGHTTP2_NV_FLAG_NONE;
+  nv = (nghttp2_nv){
+    .value = value,
+    .valuelen = sizeof(value) - 1,
+    .flags = NGHTTP2_NV_FLAG_NONE,
+  };
 
   assert_int(
     0, ==,
@@ -482,20 +484,23 @@ void test_nghttp2_hd_inflate_clearall_inc(void) {
   uint8_t value[4061];
   nva_out out;
   nghttp2_mem *mem;
+  static const char hd_name[] = "alpha";
 
   mem = nghttp2_mem_default();
   bufs_large_init(&bufs, 8192);
 
   nva_out_init(&out);
   /* Total 4097 bytes space required to hold this entry */
-  nv.name = (uint8_t *)"alpha";
-  nv.namelen = strlen((char *)nv.name);
   memset(value, '0', sizeof(value));
   value[sizeof(value) - 1] = '\0';
-  nv.value = value;
-  nv.valuelen = sizeof(value) - 1;
 
-  nv.flags = NGHTTP2_NV_FLAG_NONE;
+  nv = (nghttp2_nv){
+    .name = (uint8_t *)hd_name,
+    .value = value,
+    .namelen = nghttp2_strlen_lit(hd_name),
+    .valuelen = sizeof(value) - 1,
+    .flags = NGHTTP2_NV_FLAG_NONE,
+  };
 
   nghttp2_hd_inflate_init(&inflater, mem);
 
@@ -710,12 +715,13 @@ void test_nghttp2_hd_ringbuf_reserve(void) {
   frame_pack_bufs_init(&bufs);
   nva_out_init(&out);
 
-  nv.flags = NGHTTP2_NV_FLAG_NONE;
-  nv.name = (uint8_t *)"a";
-  nv.namelen = strlen((const char *)nv.name);
-  nv.valuelen = 4;
-  nv.value = mem->malloc(nv.valuelen + 1, NULL);
-  memset(nv.value, 0, nv.valuelen);
+  nv = (nghttp2_nv){
+    .name = (uint8_t *)"a",
+    .value = mem->calloc(4 + 1, 1, NULL),
+    .namelen = 1,
+    .valuelen = 4,
+    .flags = NGHTTP2_NV_FLAG_NONE,
+  };
 
   nghttp2_hd_deflate_init2(&deflater, 8000, mem);
   nghttp2_hd_inflate_init(&inflater, mem);
@@ -1353,10 +1359,14 @@ void test_nghttp2_hd_deflate_hd_vec(void) {
 
   buflen = nghttp2_hd_deflate_bound(deflater, nva, ARRLEN(nva));
 
-  vec[0].base = &buf[0];
-  vec[0].len = buflen / 2;
-  vec[1].base = &buf[buflen / 2];
-  vec[1].len = buflen / 2;
+  vec[0] = (nghttp2_vec){
+    .base = &buf[0],
+    .len = buflen / 2,
+  };
+  vec[1] = (nghttp2_vec){
+    .base = &buf[buflen / 2],
+    .len = buflen / 2,
+  };
 
   blocklen = nghttp2_hd_deflate_hd_vec2(deflater, vec, 2, nva, ARRLEN(nva));
 
@@ -1388,10 +1398,8 @@ void test_nghttp2_hd_deflate_hd_vec(void) {
   nghttp2_hd_deflate_del(deflater);
 
   /* check the case when chunk length is 0 */
-  vec[0].base = NULL;
-  vec[0].len = 0;
-  vec[1].base = NULL;
-  vec[1].len = 0;
+  vec[0] = (nghttp2_vec){0};
+  vec[1] = (nghttp2_vec){0};
 
   nghttp2_hd_deflate_new(&deflater, 4096);
   nghttp2_hd_inflate_new(&inflater);
@@ -1409,10 +1417,14 @@ void test_nghttp2_hd_deflate_hd_vec(void) {
 
   buflen = nghttp2_hd_deflate_bound(deflater, nva, ARRLEN(nva));
 
-  vec[0].base = &buf[0];
-  vec[0].len = buflen / 2;
-  vec[1].base = &buf[buflen / 2];
-  vec[1].len = (buflen / 2) + 1;
+  vec[0] = (nghttp2_vec){
+    .base = &buf[0],
+    .len = buflen / 2,
+  };
+  vec[1] = (nghttp2_vec){
+    .base = &buf[buflen / 2],
+    .len = (buflen / 2) + 1,
+  };
 
   blocklen = nghttp2_hd_deflate_hd_vec2(deflater, vec, 2, nva, ARRLEN(nva));
 
@@ -1440,8 +1452,10 @@ void test_nghttp2_hd_deflate_hd_vec(void) {
   assert(buflen <= ARRLEN(vec));
 
   for (i = 0; i < buflen; ++i) {
-    vec[i].base = &buf[i];
-    vec[i].len = 1;
+    vec[i] = (nghttp2_vec){
+      .base = &buf[i],
+      .len = 1,
+    };
   }
 
   blocklen =

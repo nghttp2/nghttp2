@@ -46,7 +46,8 @@ const MunitTest tests[]{
 } // namespace
 
 const MunitSuite worker_suite{
-  "/worker", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/worker",
+  .tests = tests,
 };
 
 void test_shrpx_worker_match_downstream_addr_group(void) {

@@ -53,18 +53,18 @@ static MunitTest tests[] = {
 };
 
 const MunitSuite frame_suite = {
-  "/frame", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/frame",
+  .tests = tests,
 };
 
 static nghttp2_nv make_nv(const char *name, const char *value) {
-  nghttp2_nv nv;
-  nv.name = (uint8_t *)name;
-  nv.value = (uint8_t *)value;
-  nv.namelen = strlen(name);
-  nv.valuelen = strlen(value);
-  nv.flags = NGHTTP2_NV_FLAG_NONE;
-
-  return nv;
+  return (nghttp2_nv){
+    .name = (uint8_t *)name,
+    .value = (uint8_t *)value,
+    .namelen = strlen(name),
+    .valuelen = strlen(value),
+    .flags = NGHTTP2_NV_FLAG_NONE,
+  };
 }
 
 #define HEADERS_LENGTH 7
@@ -196,18 +196,22 @@ void test_nghttp2_frame_pack_headers_frame_too_large(void) {
   size_t i;
   int rv;
   nghttp2_mem *mem;
+  static const char hd_name[] = "header";
 
   mem = nghttp2_mem_default();
   frame_pack_bufs_init(&bufs);
 
   for (i = 0; i < big_hdslen; ++i) {
-    big_hds[i].name = (uint8_t *)"header";
-    big_hds[i].value = mem->malloc(big_vallen + 1, NULL);
+    big_hds[i] = (nghttp2_nv){
+      .name = (uint8_t *)hd_name,
+      .value = mem->malloc(big_vallen + 1, NULL),
+      .namelen = nghttp2_strlen_lit(hd_name),
+      .valuelen = big_vallen,
+      .flags = NGHTTP2_NV_FLAG_NONE,
+    };
+
     memset(big_hds[i].value, '0' + (int)i, big_vallen);
     big_hds[i].value[big_vallen] = '\0';
-    big_hds[i].namelen = strlen((char *)big_hds[i].name);
-    big_hds[i].valuelen = big_vallen;
-    big_hds[i].flags = NGHTTP2_NV_FLAG_NONE;
   }
 
   nghttp2_nv_array_copy(&nva, big_hds, big_hdslen, mem);
@@ -296,9 +300,19 @@ void test_nghttp2_frame_pack_settings(void) {
   nghttp2_bufs bufs;
   int i;
   int rv;
-  nghttp2_settings_entry iv[] = {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 256},
-                                 {NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, 16384},
-                                 {NGHTTP2_SETTINGS_HEADER_TABLE_SIZE, 4096}};
+  static const nghttp2_settings_entry iv[] = {
+    {
+      .settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS,
+      .value = 256,
+    },
+    {
+      .settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE,
+      .value = 16384,
+    },
+    {
+      .settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE,
+      .value = 4096,
+    }};
   nghttp2_mem *mem;
 
   mem = nghttp2_mem_default();
@@ -549,16 +563,13 @@ void test_nghttp2_frame_pack_origin(void) {
   static const uint8_t nghttp2[] = "https://nghttp2.org";
   nghttp2_origin_entry ov[] = {
     {
-      (uint8_t *)example,
-      nghttp2_strlen_lit(example),
+      .origin = (uint8_t *)example,
+      .origin_len = nghttp2_strlen_lit(example),
     },
+    {},
     {
-      NULL,
-      0,
-    },
-    {
-      (uint8_t *)nghttp2,
-      nghttp2_strlen_lit(nghttp2),
+      .origin = (uint8_t *)nghttp2,
+      .origin_len = nghttp2_strlen_lit(nghttp2),
     },
   };
   nghttp2_mem *mem;
@@ -677,14 +688,18 @@ void test_nghttp2_nv_array_copy(void) {
   nghttp2_nv nv[] = {MAKE_NV("alpha", "bravo"), MAKE_NV("charlie", "delta")};
   nghttp2_nv bignv;
   nghttp2_mem *mem;
+  const size_t valuelen = (1 << 14) - 1;
 
   mem = nghttp2_mem_default();
 
-  bignv.name = (uint8_t *)"echo";
-  bignv.namelen = strlen("echo");
-  bignv.valuelen = (1 << 14) - 1;
-  bignv.value = mem->malloc(bignv.valuelen, NULL);
-  bignv.flags = NGHTTP2_NV_FLAG_NONE;
+  bignv = (nghttp2_nv){
+    .name = (uint8_t *)"echo",
+    .value = mem->malloc(valuelen, NULL),
+    .namelen = strlen("echo"),
+    .valuelen = valuelen,
+    .flags = NGHTTP2_NV_FLAG_NONE,
+  };
+
   memset(bignv.value, '0', bignv.valuelen);
 
   rv = nghttp2_nv_array_copy(&nva, NULL, 0, mem);
@@ -725,15 +740,21 @@ void test_nghttp2_nv_array_copy(void) {
 void test_nghttp2_iv_check(void) {
   nghttp2_settings_entry iv[5];
 
-  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  iv[0].value = 100;
-  iv[1].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
-  iv[1].value = 1024;
+  iv[0] = (nghttp2_settings_entry){
+    .settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS,
+    .value = 100,
+  };
+  iv[1] = (nghttp2_settings_entry){
+    .settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE,
+    .value = 1024,
+  };
 
   assert_true(nghttp2_iv_check(iv, 2));
 
-  iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  iv[1].value = NGHTTP2_MAX_WINDOW_SIZE;
+  iv[1] = (nghttp2_settings_entry){
+    .settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE,
+    .value = NGHTTP2_MAX_WINDOW_SIZE,
+  };
   assert_true(nghttp2_iv_check(iv, 2));
 
   /* Too large window size */
@@ -741,8 +762,9 @@ void test_nghttp2_iv_check(void) {
   assert_false(nghttp2_iv_check(iv, 2));
 
   /* ENABLE_PUSH only allows 0 or 1 */
-  iv[1].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
-  iv[1].value = 0;
+  iv[1] = (nghttp2_settings_entry){
+    .settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH,
+  };
   assert_true(nghttp2_iv_check(iv, 2));
   iv[1].value = 1;
   assert_true(nghttp2_iv_check(iv, 2));
@@ -750,30 +772,41 @@ void test_nghttp2_iv_check(void) {
   assert_false(nghttp2_iv_check(iv, 2));
 
   /* Undefined SETTINGS ID is allowed */
-  iv[1].settings_id = 1000000009;
-  iv[1].value = 0;
+  iv[1] = (nghttp2_settings_entry){
+    .settings_id = 1000000009,
+  };
   assert_true(nghttp2_iv_check(iv, 2));
 
   /* Full size SETTINGS_HEADER_TABLE_SIZE (UINT32_MAX) must be
      accepted */
-  iv[1].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
-  iv[1].value = UINT32_MAX;
+  iv[1] = (nghttp2_settings_entry){
+    .settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE,
+    .value = UINT32_MAX,
+  };
   assert_true(nghttp2_iv_check(iv, 2));
 
   /* Too small SETTINGS_MAX_FRAME_SIZE */
-  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE;
-  iv[0].value = NGHTTP2_MAX_FRAME_SIZE_MIN - 1;
+  iv[0] = (nghttp2_settings_entry){
+    .settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE,
+    .value = NGHTTP2_MAX_FRAME_SIZE_MIN - 1,
+  };
   assert_false(nghttp2_iv_check(iv, 1));
 
   /* Too large SETTINGS_MAX_FRAME_SIZE */
-  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE;
-  iv[0].value = NGHTTP2_MAX_FRAME_SIZE_MAX + 1;
+  iv[0] = (nghttp2_settings_entry){
+    .settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE,
+    .value = NGHTTP2_MAX_FRAME_SIZE_MAX + 1,
+  };
   assert_false(nghttp2_iv_check(iv, 1));
 
   /* Max and min SETTINGS_MAX_FRAME_SIZE */
-  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE;
-  iv[0].value = NGHTTP2_MAX_FRAME_SIZE_MIN;
-  iv[1].settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE;
-  iv[1].value = NGHTTP2_MAX_FRAME_SIZE_MAX;
+  iv[0] = (nghttp2_settings_entry){
+    .settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE,
+    .value = NGHTTP2_MAX_FRAME_SIZE_MIN,
+  };
+  iv[1] = (nghttp2_settings_entry){
+    .settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE,
+    .value = NGHTTP2_MAX_FRAME_SIZE_MAX,
+  };
   assert_true(nghttp2_iv_check(iv, 2));
 }

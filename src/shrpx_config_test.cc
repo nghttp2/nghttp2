@@ -50,7 +50,8 @@ const MunitTest tests[]{
 } // namespace
 
 const MunitSuite config_suite{
-  "/config_suite", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/config_suite",
+  .tests = tests,
 };
 
 void test_shrpx_config_parse_header(void) {

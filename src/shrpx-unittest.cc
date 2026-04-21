@@ -68,7 +68,9 @@ int main(int argc, char *argv[]) {
     allocator_suite,     {},
   };
   const MunitSuite suite = {
-    "", nullptr, suites, 1, MUNIT_SUITE_OPTION_NONE,
+    .prefix = "",
+    .suites = suites,
+    .iterations = 1,
   };
 
   return munit_suite_main(&suite, nullptr, argc, argv);

@@ -36,7 +36,8 @@ static const MunitTest tests[] = {
 };
 
 const MunitSuite pq_suite = {
-  "/pq", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/pq",
+  .tests = tests,
 };
 
 typedef struct {
@@ -160,8 +161,10 @@ void test_nghttp2_pq_update(void) {
   nghttp2_pq_init(&pq, node_less, nghttp2_mem_default());
 
   for (i = 0; i < (int)(sizeof(nodes) / sizeof(nodes[0])); ++i) {
-    nodes[i].key = i;
-    nodes[i].val = i;
+    nodes[i] = (node){
+      .key = i,
+      .val = i,
+    };
     nghttp2_pq_push(&pq, &nodes[i].ent);
   }
 
@@ -179,8 +182,10 @@ void test_nghttp2_pq_update(void) {
 static void push_nodes(nghttp2_pq *pq, node *dest, size_t n) {
   size_t i;
   for (i = 0; i < n; ++i) {
-    dest[i].key = (int)i;
-    dest[i].val = (int)i;
+    dest[i] = (node){
+      .key = (int)i,
+      .val = (int)i,
+    };
     nghttp2_pq_push(pq, &dest[i].ent);
   }
 }

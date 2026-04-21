@@ -46,7 +46,8 @@ const MunitTest tests[]{
 } // namespace
 
 const MunitSuite buffer_suite{
-  "/buffer", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/buffer",
+  .tests = tests,
 };
 
 void test_buffer_write(void) {

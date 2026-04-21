@@ -47,7 +47,8 @@ const MunitTest tests[]{
 } // namespace
 
 const MunitSuite template_suite{
-  "/template", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/template",
+  .tests = tests,
 };
 
 void test_template_immutable_string(void) {

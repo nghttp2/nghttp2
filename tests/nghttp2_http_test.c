@@ -39,14 +39,18 @@ static const MunitTest tests[] = {
 };
 
 const MunitSuite http_suite = {
-  "/http", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/http",
+  .tests = tests,
 };
 
 void test_nghttp2_http_parse_priority(void) {
   int rv;
 
   {
-    nghttp2_extpri pri = {(uint32_t)-1, -1};
+    nghttp2_extpri pri = {
+      .urgency = (uint32_t)-1,
+      .inc = -1,
+    };
     const uint8_t v[] = "";
 
     rv = nghttp2_http_parse_priority(&pri, v, nghttp2_strlen_lit(v));
@@ -57,7 +61,10 @@ void test_nghttp2_http_parse_priority(void) {
   }
 
   {
-    nghttp2_extpri pri = {(uint32_t)-1, -1};
+    nghttp2_extpri pri = {
+      .urgency = (uint32_t)-1,
+      .inc = -1,
+    };
     const uint8_t v[] = "u=7,i";
 
     rv = nghttp2_http_parse_priority(&pri, v, nghttp2_strlen_lit(v));
@@ -68,7 +75,10 @@ void test_nghttp2_http_parse_priority(void) {
   }
 
   {
-    nghttp2_extpri pri = {(uint32_t)-1, -1};
+    nghttp2_extpri pri = {
+      .urgency = (uint32_t)-1,
+      .inc = -1,
+    };
     const uint8_t v[] = "u=0,i=?0";
 
     rv = nghttp2_http_parse_priority(&pri, v, nghttp2_strlen_lit(v));
@@ -79,7 +89,10 @@ void test_nghttp2_http_parse_priority(void) {
   }
 
   {
-    nghttp2_extpri pri = {(uint32_t)-1, -1};
+    nghttp2_extpri pri = {
+      .urgency = (uint32_t)-1,
+      .inc = -1,
+    };
     const uint8_t v[] = "u=3, i";
 
     rv = nghttp2_http_parse_priority(&pri, v, nghttp2_strlen_lit(v));
@@ -90,7 +103,10 @@ void test_nghttp2_http_parse_priority(void) {
   }
 
   {
-    nghttp2_extpri pri = {(uint32_t)-1, -1};
+    nghttp2_extpri pri = {
+      .urgency = (uint32_t)-1,
+      .inc = -1,
+    };
     const uint8_t v[] = "u=0, i, i=?0, u=6";
 
     rv = nghttp2_http_parse_priority(&pri, v, nghttp2_strlen_lit(v));
@@ -101,7 +117,10 @@ void test_nghttp2_http_parse_priority(void) {
   }
 
   {
-    nghttp2_extpri pri = {(uint32_t)-1, -1};
+    nghttp2_extpri pri = {
+      .urgency = (uint32_t)-1,
+      .inc = -1,
+    };
     const uint8_t v[] = "u=0,";
 
     rv = nghttp2_http_parse_priority(&pri, v, nghttp2_strlen_lit(v));
@@ -110,7 +129,10 @@ void test_nghttp2_http_parse_priority(void) {
   }
 
   {
-    nghttp2_extpri pri = {(uint32_t)-1, -1};
+    nghttp2_extpri pri = {
+      .urgency = (uint32_t)-1,
+      .inc = -1,
+    };
     const uint8_t v[] = "u=0, ";
 
     rv = nghttp2_http_parse_priority(&pri, v, nghttp2_strlen_lit(v));
@@ -119,7 +141,10 @@ void test_nghttp2_http_parse_priority(void) {
   }
 
   {
-    nghttp2_extpri pri = {(uint32_t)-1, -1};
+    nghttp2_extpri pri = {
+      .urgency = (uint32_t)-1,
+      .inc = -1,
+    };
     const uint8_t v[] = "u=";
 
     rv = nghttp2_http_parse_priority(&pri, v, nghttp2_strlen_lit(v));
@@ -128,7 +153,10 @@ void test_nghttp2_http_parse_priority(void) {
   }
 
   {
-    nghttp2_extpri pri = {(uint32_t)-1, -1};
+    nghttp2_extpri pri = {
+      .urgency = (uint32_t)-1,
+      .inc = -1,
+    };
     const uint8_t v[] = "u";
 
     rv = nghttp2_http_parse_priority(&pri, v, nghttp2_strlen_lit(v));
@@ -137,7 +165,10 @@ void test_nghttp2_http_parse_priority(void) {
   }
 
   {
-    nghttp2_extpri pri = {(uint32_t)-1, -1};
+    nghttp2_extpri pri = {
+      .urgency = (uint32_t)-1,
+      .inc = -1,
+    };
     const uint8_t v[] = "i=?1";
 
     rv = nghttp2_http_parse_priority(&pri, v, nghttp2_strlen_lit(v));
@@ -148,7 +179,10 @@ void test_nghttp2_http_parse_priority(void) {
   }
 
   {
-    nghttp2_extpri pri = {(uint32_t)-1, -1};
+    nghttp2_extpri pri = {
+      .urgency = (uint32_t)-1,
+      .inc = -1,
+    };
     const uint8_t v[] = "i=?2";
 
     rv = nghttp2_http_parse_priority(&pri, v, nghttp2_strlen_lit(v));
@@ -157,7 +191,10 @@ void test_nghttp2_http_parse_priority(void) {
   }
 
   {
-    nghttp2_extpri pri = {(uint32_t)-1, -1};
+    nghttp2_extpri pri = {
+      .urgency = (uint32_t)-1,
+      .inc = -1,
+    };
     const uint8_t v[] = "i=?";
 
     rv = nghttp2_http_parse_priority(&pri, v, nghttp2_strlen_lit(v));
@@ -166,7 +203,10 @@ void test_nghttp2_http_parse_priority(void) {
   }
 
   {
-    nghttp2_extpri pri = {(uint32_t)-1, -1};
+    nghttp2_extpri pri = {
+      .urgency = (uint32_t)-1,
+      .inc = -1,
+    };
     const uint8_t v[] = "i=";
 
     rv = nghttp2_http_parse_priority(&pri, v, nghttp2_strlen_lit(v));
@@ -175,7 +215,10 @@ void test_nghttp2_http_parse_priority(void) {
   }
 
   {
-    nghttp2_extpri pri = {(uint32_t)-1, -1};
+    nghttp2_extpri pri = {
+      .urgency = (uint32_t)-1,
+      .inc = -1,
+    };
     const uint8_t v[] = "u=-1";
 
     rv = nghttp2_http_parse_priority(&pri, v, nghttp2_strlen_lit(v));
@@ -184,7 +227,10 @@ void test_nghttp2_http_parse_priority(void) {
   }
 
   {
-    nghttp2_extpri pri = {(uint32_t)-1, -1};
+    nghttp2_extpri pri = {
+      .urgency = (uint32_t)-1,
+      .inc = -1,
+    };
     const uint8_t v[] = "u=8";
 
     rv = nghttp2_http_parse_priority(&pri, v, nghttp2_strlen_lit(v));
@@ -193,7 +239,10 @@ void test_nghttp2_http_parse_priority(void) {
   }
 
   {
-    nghttp2_extpri pri = {(uint32_t)-1, -1};
+    nghttp2_extpri pri = {
+      .urgency = (uint32_t)-1,
+      .inc = -1,
+    };
     const uint8_t v[] =
       "i=?0, u=1, a=(x y z), u=2; i=?0;foo=\",,,\", i=?1;i=?0; u=6";
 
@@ -205,7 +254,10 @@ void test_nghttp2_http_parse_priority(void) {
   }
 
   {
-    nghttp2_extpri pri = {(uint32_t)-1, -1};
+    nghttp2_extpri pri = {
+      .urgency = (uint32_t)-1,
+      .inc = -1,
+    };
     const uint8_t v[] = {'u', '='};
 
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v));

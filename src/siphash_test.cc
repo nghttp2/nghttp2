@@ -44,7 +44,8 @@ const MunitTest tests[]{
 } // namespace
 
 const MunitSuite siphash_suite{
-  "/siphash", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/siphash",
+  .tests = tests,
 };
 
 void test_siphash(void) {

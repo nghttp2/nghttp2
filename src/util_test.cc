@@ -106,7 +106,8 @@ const MunitTest tests[]{
 } // namespace
 
 const MunitSuite util_suite{
-  "/util", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/util",
+  .tests = tests,
 };
 
 void test_util_streq(void) {

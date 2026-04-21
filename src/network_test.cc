@@ -49,7 +49,8 @@ const MunitTest tests[]{
 } // namespace
 
 const MunitSuite network_suite{
-  "/network", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/network",
+  .tests = tests,
 };
 
 namespace {
