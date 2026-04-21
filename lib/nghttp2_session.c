@@ -392,13 +392,15 @@ static void session_inbound_frame_reset(nghttp2_session *session) {
 }
 
 static void init_settings(nghttp2_settings_storage *settings) {
-  settings->header_table_size = NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
-  settings->enable_push = 1;
-  settings->max_concurrent_streams = NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS;
-  settings->initial_window_size = NGHTTP2_INITIAL_WINDOW_SIZE;
-  settings->max_frame_size = NGHTTP2_MAX_FRAME_SIZE_MIN;
-  settings->max_header_list_size = UINT32_MAX;
-  settings->no_rfc7540_priorities = UINT32_MAX;
+  *settings = (nghttp2_settings_storage){
+    .header_table_size = NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE,
+    .enable_push = 1,
+    .max_concurrent_streams = NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS,
+    .initial_window_size = NGHTTP2_INITIAL_WINDOW_SIZE,
+    .max_frame_size = NGHTTP2_MAX_FRAME_SIZE_MIN,
+    .max_header_list_size = UINT32_MAX,
+    .no_rfc7540_priorities = UINT32_MAX,
+  };
 }
 
 static void active_outbound_item_reset(nghttp2_active_outbound_item *aob,
@@ -4176,14 +4178,13 @@ static int update_remote_initial_window_size_func(void *entry, void *ptr) {
 static int
 session_update_remote_initial_window_size(nghttp2_session *session,
                                           int32_t new_initial_window_size) {
-  nghttp2_update_window_size_arg arg;
-
-  arg.session = session;
-  arg.new_window_size = new_initial_window_size;
-  arg.old_window_size = (int32_t)session->remote_settings.initial_window_size;
-
-  return nghttp2_map_each(&session->streams,
-                          update_remote_initial_window_size_func, &arg);
+  return nghttp2_map_each(
+    &session->streams, update_remote_initial_window_size_func,
+    &(nghttp2_update_window_size_arg){
+      .session = session,
+      .new_window_size = new_initial_window_size,
+      .old_window_size = (int32_t)session->remote_settings.initial_window_size,
+    });
 }
 
 static int update_local_initial_window_size_func(void *entry, void *ptr) {
@@ -4236,12 +4237,13 @@ static int
 session_update_local_initial_window_size(nghttp2_session *session,
                                          int32_t new_initial_window_size,
                                          int32_t old_initial_window_size) {
-  nghttp2_update_window_size_arg arg;
-  arg.session = session;
-  arg.new_window_size = new_initial_window_size;
-  arg.old_window_size = old_initial_window_size;
   return nghttp2_map_each(&session->streams,
-                          update_local_initial_window_size_func, &arg);
+                          update_local_initial_window_size_func,
+                          &(nghttp2_update_window_size_arg){
+                            .session = session,
+                            .new_window_size = new_initial_window_size,
+                            .old_window_size = old_initial_window_size,
+                          });
 }
 
 /*
