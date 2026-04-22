@@ -1212,10 +1212,12 @@ int parse_mapping(
   Config *config, DownstreamAddrConfig &addr,
   std::unordered_map<std::string_view, size_t> &pattern_addr_indexer,
   std::string_view src_pattern, std::string_view src_params) {
-  // This returns at least 1 element (it could be empty string).  We
-  // will append '/' to all patterns, so it becomes catch-all pattern.
+  // This could include an empty string.  We will append '/' to all
+  // patterns, so it becomes catch-all pattern.
   auto mapping = util::split_str(src_pattern, ':');
-  assert(!mapping.empty());
+  if (mapping.empty()) {
+    mapping.emplace_back(""sv);
+  }
   auto &downstreamconf = *config->conn.downstream;
   auto &addr_groups = downstreamconf.addr_groups;
 
@@ -3520,18 +3522,13 @@ int parse_config(
   case SHRPX_OPTID_WORKER_WRITE_BURST:
     Log{WARN} << opt << ": not implemented yet";
     return 0;
-  case SHRPX_OPTID_TLS_PROTO_LIST: {
+  case SHRPX_OPTID_TLS_PROTO_LIST:
     Log{WARN} << opt
               << ": deprecated.  Use tls-min-proto-version and "
                  "tls-max-proto-version instead.";
-    auto list = util::split_str(optarg, ',');
-    config->tls.tls_proto_list.resize(list.size());
-    for (size_t i = 0; i < list.size(); ++i) {
-      config->tls.tls_proto_list[i] = make_string_ref(config->balloc, list[i]);
-    }
+    config->tls.tls_proto_list = util::split_str(config->balloc, optarg, ',');
 
     return 0;
-  }
   case SHRPX_OPTID_VERIFY_CLIENT:
     config->tls.client_verify.enabled = util::strieq("yes"sv, optarg);
 
@@ -4336,15 +4333,10 @@ int parse_config(
   case SHRPX_OPTID_NPN_LIST:
     Log{WARN} << opt << ": deprecated.  Use alpn-list instead.";
     // fall through
-  case SHRPX_OPTID_ALPN_LIST: {
-    auto list = util::split_str(optarg, ',');
-    config->tls.alpn_list.resize(list.size());
-    for (size_t i = 0; i < list.size(); ++i) {
-      config->tls.alpn_list[i] = make_string_ref(config->balloc, list[i]);
-    }
+  case SHRPX_OPTID_ALPN_LIST:
+    config->tls.alpn_list = util::split_str(config->balloc, optarg, ',');
 
     return 0;
-  }
   case SHRPX_OPTID_ECH_CONFIG_FILE:
     return read_ech_config_file(config, opt, optarg);
   case SHRPX_OPTID_ECH_RETRY_CONFIG_FILE:

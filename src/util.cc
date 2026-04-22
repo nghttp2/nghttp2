@@ -992,73 +992,52 @@ bool select_protocol(const unsigned char **out, unsigned char *outlen,
 }
 
 std::vector<std::string_view> split_str(std::string_view s, char delim) {
-  size_t len = 1;
-  auto last = std::ranges::end(s);
-  std::string_view::const_iterator d;
-  for (auto first = std::ranges::begin(s);
-       (d = std::ranges::find(first, last, delim)) != last;
-       ++len, first = d + 1)
-    ;
+  return s | std::ranges::views::split(delim) |
+         std::ranges::views::transform(
+           [](auto &&r) { return std::string_view{r}; }) |
+         std::ranges::to<std::vector>();
+}
 
-  auto list = std::vector<std::string_view>(len);
-
-  len = 0;
-  for (auto first = std::ranges::begin(s);; ++len) {
-    auto stop = std::ranges::find(first, last, delim);
-    list[len] = std::string_view{first, stop};
-    if (stop == last) {
-      break;
-    }
-    first = stop + 1;
-  }
-  return list;
+std::vector<std::string_view> split_str(BlockAllocator &balloc,
+                                        std::string_view s, char delim) {
+  return s | std::ranges::views::split(delim) |
+         std::ranges::views::transform(
+           [&balloc](auto &&r) { return make_string_ref(balloc, r); }) |
+         std::ranges::to<std::vector>();
 }
 
 std::vector<std::string_view> split_str(std::string_view s, char delim,
                                         size_t n) {
-  if (n == 0) {
-    return split_str(s, delim);
+  assert(n);
+
+  if (s.empty()) {
+    return {};
   }
 
   if (n == 1) {
     return {s};
   }
 
-  size_t len = 1;
-  auto last = std::ranges::end(s);
-  std::string_view::const_iterator d;
-  for (auto first = std::ranges::begin(s);
-       len < n && (d = std::ranges::find(first, last, delim)) != last;
-       ++len, first = d + 1)
-    ;
+  auto res = std::vector<std::string_view>{};
+  res.reserve(n);
 
-  auto list = std::vector<std::string_view>(len);
+  auto parts = std::ranges::views::split(s, delim);
+  auto it = std::ranges::begin(parts);
 
-  len = 0;
-  for (auto first = std::ranges::begin(s);; ++len) {
-    if (len == n - 1) {
-      list[len] = std::string_view{first, last};
-      break;
-    }
-
-    auto stop = std::ranges::find(first, last, delim);
-    list[len] = std::string_view{first, stop};
-    if (stop == last) {
-      break;
-    }
-    first = stop + 1;
+  for (; it != std::ranges::end(parts) && n > 1; ++it, --n) {
+    res.emplace_back(*it);
   }
-  return list;
+
+  if (it != std::ranges::end(parts)) {
+    res.emplace_back(it.base(), std::ranges::end(s));
+  }
+
+  return res;
 }
 
 std::vector<std::string> parse_config_str_list(std::string_view s, char delim) {
-  auto sublist = split_str(s, delim);
-  auto res = std::vector<std::string>();
-  res.reserve(sublist.size());
-  for (const auto &s : sublist) {
-    res.emplace_back(std::ranges::begin(s), std::ranges::end(s));
-  }
-  return res;
+  return s | std::ranges::views::split(delim) |
+         std::ranges::to<std::vector<std::string>>();
 }
 
 int make_socket_closeonexec(int fd) {

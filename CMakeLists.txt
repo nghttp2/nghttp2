@@ -126,7 +126,7 @@ endif()
 
 if(NOT ENABLE_LIB_ONLY)
   include(ExtractValidFlags)
-  foreach(_cxx1x_flag -std=c++20)
+  foreach(_cxx1x_flag -std=c++23)
     extract_valid_cxx_flags(_cxx1x_flag_supported ${_cxx1x_flag})
     if(_cxx1x_flag_supported)
       set(CXX1XCXXFLAGS ${_cxx1x_flag})

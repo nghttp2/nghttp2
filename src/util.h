@@ -1014,12 +1014,20 @@ std::vector<std::string> parse_config_str_list(std::string_view s,
 
 // Parses delimited strings in |s| and returns Substrings in |s|
 // delimited by |delim|.  The any white spaces around substring are
-// treated as a part of substring.
+// treated as a part of substring if |delim| is not a white space.  If
+// |s| is an empty string, this function returns an empty vector.
 std::vector<std::string_view> split_str(std::string_view s, char delim);
 
+// Behaves like split_str, but this variant allocates new string using
+// |balloc|.  The each element of the returned container is a view
+// over the allocated string.
+std::vector<std::string_view> split_str(BlockAllocator &balloc,
+                                        std::string_view s, char delim);
+
 // Behaves like split_str, but this variant splits at most |n| - 1
-// times and returns at most |n| sub-strings.  If |n| is zero, it
-// falls back to split_str.
+// times and returns at most |n| sub-strings.  |n| must be greater
+// than zero.  If |s| is an empty string, this function returns an
+// empty vector.
 std::vector<std::string_view> split_str(std::string_view s, char delim,
                                         size_t n);
 

@@ -799,8 +799,7 @@ void test_util_parse_config_str_list(void) {
   assert_stdstring_equal("", res[3]);
 
   res = util::parse_config_str_list(""sv);
-  assert_size(1, ==, res.size());
-  assert_stdstring_equal("", res[0]);
+  assert_true(res.empty());
 
   res = util::parse_config_str_list("alpha,bravo,charlie"sv);
   assert_size(3, ==, res.size());
@@ -978,8 +977,7 @@ void test_util_split_hostport(void) {
 }
 
 void test_util_split_str(void) {
-  assert_true(std::vector<std::string_view>{""sv} ==
-              util::split_str(""sv, ','));
+  assert_true(util::split_str(""sv, ',').empty());
   assert_true(std::vector<std::string_view>{"alpha"sv} ==
               util::split_str("alpha"sv, ','));
   assert_true((std::vector<std::string_view>{"alpha"sv, ""sv}) ==
@@ -989,21 +987,23 @@ void test_util_split_str(void) {
   assert_true(
     (std::vector<std::string_view>{"alpha"sv, "bravo"sv, "charlie"sv}) ==
     util::split_str("alpha,bravo,charlie"sv, ','));
+
+  BlockAllocator balloc(4096, 4096);
+
+  assert_true((std::vector<std::string_view>{"alpha"sv, "bravo"sv}) ==
+              util::split_str(balloc, "alpha,bravo"sv, ','));
+
   assert_true(
     (std::vector<std::string_view>{"alpha"sv, "bravo"sv, "charlie"sv}) ==
-    util::split_str("alpha,bravo,charlie"sv, ',', 0));
-  assert_true(std::vector<std::string_view>{""sv} ==
-              util::split_str(""sv, ',', 1));
-  assert_true(std::vector<std::string_view>{""sv} ==
-              util::split_str(""sv, ',', 2));
+    util::split_str("alpha,bravo,charlie"sv, ',', 3));
+  assert_true(util::split_str(""sv, ',', 1).empty());
+  assert_true(util::split_str(""sv, ',', 2).empty());
   assert_true((std::vector<std::string_view>{"alpha"sv, "bravo,charlie"sv}) ==
               util::split_str("alpha,bravo,charlie"sv, ',', 2));
   assert_true(std::vector<std::string_view>{"alpha"sv} ==
               util::split_str("alpha"sv, ',', 2));
   assert_true((std::vector<std::string_view>{"alpha"sv, ""sv}) ==
               util::split_str("alpha,"sv, ',', 2));
-  assert_true(std::vector<std::string_view>{"alpha"sv} ==
-              util::split_str("alpha"sv, ',', 0));
   assert_true(std::vector<std::string_view>{"alpha,bravo,charlie"sv} ==
               util::split_str("alpha,bravo,charlie"sv, ',', 1));
 }
