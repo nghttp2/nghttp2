@@ -162,24 +162,29 @@ constexpr auto WEEKDAY = std::to_array({
 });
 
 std::string format_http_date(const std::chrono::system_clock::time_point &tp) {
-  // Sat, 27 Sep 2014 06:31:15 GMT
-  std::string res(29 + /* NUL */ 1, 0);
+  std::string res;
 
-  auto s = format_http_date(res.data(), tp);
+  res.resize_and_overwrite("Sat, 27 Sep 2014 06:31:15 GMT"sv.size() +
+                             /* NUL */ 1,
+                           [tp](auto p, auto len) {
+                             auto s = format_http_date(p, tp);
 
-  res.resize(s.size());
+                             return s.size();
+                           });
 
   return res;
 }
 
 std::string format_iso8601(const std::chrono::system_clock::time_point &tp) {
-  // 2014-11-15T12:58:24.741Z
-  // 2014-11-15T12:58:24.741+09:00
-  std::string res(29 + /* NUL */ 1, 0);
+  std::string res;
 
-  auto s = format_iso8601(res.data(), tp);
+  res.resize_and_overwrite("2014-11-15T12:58:24.741+09:00"sv.size() +
+                             /* NUL */ 1,
+                           [tp](auto p, auto len) {
+                             auto s = format_iso8601(p, tp);
 
-  res.resize(s.size());
+                             return s.size();
+                           });
 
   return res;
 }
@@ -863,22 +868,32 @@ std::string to_numeric_addr(const struct sockaddr *sa, socklen_t salen) {
   auto serv = std::string_view{servbuf.data()};
 
   std::string s;
-  char *p;
 
   if (family == AF_INET6) {
-    s.resize(host.size() + serv.size() + 2 + 1);
-    p = &s[0];
-    *p++ = '[';
-    p = std::ranges::copy(host, p).out;
-    *p++ = ']';
-  } else {
-    s.resize(host.size() + serv.size() + 1);
-    p = &s[0];
-    p = std::ranges::copy(host, p).out;
-  }
+    s.resize_and_overwrite(host.size() + serv.size() + 2 + 1,
+                           [host, serv](auto p, auto len) {
+                             auto first = p;
 
-  *p++ = ':';
-  std::ranges::copy(serv, p);
+                             *p++ = '[';
+                             p = std::ranges::copy(host, p).out;
+                             *p++ = ']';
+                             *p++ = ':';
+                             p = std::ranges::copy(serv, p).out;
+
+                             return std::ranges::distance(first, p);
+                           });
+  } else {
+    s.resize_and_overwrite(host.size() + serv.size() + 1,
+                           [host, serv](auto p, auto len) {
+                             auto first = p;
+
+                             p = std::ranges::copy(host, p).out;
+                             *p++ = ':';
+                             p = std::ranges::copy(serv, p).out;
+
+                             return std::ranges::distance(first, p);
+                           });
+  }
 
   return s;
 }
