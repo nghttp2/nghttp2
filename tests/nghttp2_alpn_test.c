@@ -42,8 +42,9 @@ const MunitSuite alpn_suite = {
 };
 
 static void http2(void) {
-  const unsigned char p[] = {8,   'h', 't', 't', 'p', '/', '1', '.', '1', 2,
-                             'h', '2', 6,   's', 'p', 'd', 'y', '/', '3'};
+  static const unsigned char p[] = {8,   'h', 't', 't', 'p', '/', '1',
+                                    '.', '1', 2,   'h', '2', 6,   's',
+                                    'p', 'd', 'y', '/', '3'};
   unsigned char outlen;
   const unsigned char *out;
   assert_int(1, ==,
@@ -61,7 +62,7 @@ static void http2(void) {
 }
 
 static void http11(void) {
-  const unsigned char spdy[] = {
+  static const unsigned char spdy[] = {
     6,   's', 'p', 'd', 'y', '/', '4', 8,   's', 'p', 'd', 'y', '/',
     '2', '.', '1', 8,   'h', 't', 't', 'p', '/', '1', '.', '1',
   };
@@ -82,7 +83,7 @@ static void http11(void) {
 }
 
 static void no_overlap(void) {
-  const unsigned char spdy[] = {
+  static const unsigned char spdy[] = {
     6,   's', 'p', 'd', 'y', '/', '4', 8,   's', 'p', 'd', 'y', '/',
     '2', '.', '1', 8,   'h', 't', 't', 'p', '/', '1', '.', '0',
   };

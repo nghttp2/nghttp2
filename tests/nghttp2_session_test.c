@@ -2012,7 +2012,7 @@ void test_nghttp2_session_recv_headers_with_extpri(void) {
   nghttp2_hd_deflater deflater;
   nghttp2_stream *stream;
   nghttp2_mem *mem;
-  const nghttp2_nv extpri_reqnv[] = {
+  static const nghttp2_nv extpri_reqnv[] = {
     MAKE_NV(":method", "GET"),    MAKE_NV(":path", "/"),
     MAKE_NV(":scheme", "https"),  MAKE_NV(":authority", "localhost"),
     MAKE_NV("priority", "i,u=2"),
@@ -2433,7 +2433,7 @@ void test_nghttp2_session_recv_settings_header_table_size(void) {
   nghttp2_ssize rv;
   my_user_data ud;
   nghttp2_settings_entry iv[3];
-  nghttp2_nv nv = MAKE_NV(":authority", "example.org");
+  static const nghttp2_nv nv = MAKE_NV(":authority", "example.org");
   nghttp2_mem *mem;
 
   mem = nghttp2_mem_default();
@@ -2650,7 +2650,7 @@ void test_nghttp2_session_recv_extension(void) {
   nghttp2_buf buf;
   nghttp2_frame_hd hd;
   nghttp2_mem *mem;
-  const char data[] = "Hello World!";
+  static const char data[] = "Hello World!";
   nghttp2_ssize rv;
   nghttp2_option *option;
 
@@ -3366,9 +3366,14 @@ void test_nghttp2_session_continue(void) {
     .on_begin_headers_callback = on_begin_headers_callback,
   };
   my_user_data user_data;
-  const nghttp2_nv nv1[] = {MAKE_NV(":method", "GET"), MAKE_NV(":path", "/")};
-  const nghttp2_nv nv2[] = {MAKE_NV("user-agent", "nghttp2/1.0.0"),
-                            MAKE_NV("alpha", "bravo")};
+  static const nghttp2_nv nv1[] = {
+    MAKE_NV(":method", "GET"),
+    MAKE_NV(":path", "/"),
+  };
+  static const nghttp2_nv nv2[] = {
+    MAKE_NV("user-agent", "nghttp2/1.0.0"),
+    MAKE_NV("alpha", "bravo"),
+  };
   nghttp2_bufs bufs;
   nghttp2_buf *buf;
   size_t framelen1, framelen2;
@@ -3601,7 +3606,9 @@ void test_nghttp2_session_on_request_headers_received(void) {
   nghttp2_frame frame;
   nghttp2_stream *stream;
   int32_t stream_id = 1;
-  nghttp2_nv malformed_nva[] = {MAKE_NV(":path", "\x01")};
+  static const nghttp2_nv malformed_nva[] = {
+    MAKE_NV(":path", "\x01"),
+  };
   nghttp2_nv *nva;
   size_t nvlen;
   nghttp2_priority_spec pri_spec;
@@ -3990,7 +3997,7 @@ void test_nghttp2_session_on_settings_received(void) {
   const size_t niv = 5;
   nghttp2_settings_entry iv[255];
   nghttp2_outbound_item *item;
-  nghttp2_nv nv = MAKE_NV(":authority", "example.org");
+  static const nghttp2_nv nv = MAKE_NV(":authority", "example.org");
   nghttp2_mem *mem;
   nghttp2_option *option;
   uint8_t data[2048] = {0};
@@ -4315,7 +4322,9 @@ void test_nghttp2_session_on_push_promise_received(void) {
   nghttp2_frame frame;
   nghttp2_stream *stream, *promised_stream;
   nghttp2_outbound_item *item;
-  nghttp2_nv malformed_nva[] = {MAKE_NV(":path", "\x01")};
+  static const nghttp2_nv malformed_nva[] = {
+    MAKE_NV(":path", "\x01"),
+  };
   nghttp2_nv *nva;
   size_t nvlen;
   nghttp2_mem *mem;
@@ -4568,7 +4577,7 @@ void test_nghttp2_session_on_ping_received(void) {
   my_user_data user_data;
   nghttp2_frame frame;
   nghttp2_outbound_item *top;
-  const uint8_t opaque_data[] = "01234567";
+  static const uint8_t opaque_data[] = "01234567";
   nghttp2_option *option;
 
   user_data.frame_recv_cb_called = 0;
@@ -6740,8 +6749,10 @@ void test_nghttp2_submit_shutdown_notice(void) {
 void test_nghttp2_submit_invalid_nv(void) {
   nghttp2_session *session;
   static const nghttp2_session_callbacks callbacks = {0};
-  nghttp2_nv empty_name_nv[] = {MAKE_NV("Version", "HTTP/1.1"),
-                                MAKE_NV("", "empty name")};
+  static const nghttp2_nv empty_name_nv[] = {
+    MAKE_NV("Version", "HTTP/1.1"),
+    MAKE_NV("", "empty name"),
+  };
 
   /* Now invalid header name/value pair in HTTP/1.1 is accepted in
      nghttp2 */
@@ -6788,7 +6799,7 @@ void test_nghttp2_submit_extension(void) {
   my_user_data ud;
   accumulator acc;
   nghttp2_mem *mem;
-  const char data[] = "Hello World!";
+  static const char data[] = "Hello World!";
   size_t len;
   int32_t stream_id;
   int rv;
@@ -6847,8 +6858,8 @@ void test_nghttp2_submit_altsvc(void) {
   const uint8_t *data;
   nghttp2_frame_hd hd;
   size_t origin_len;
-  const uint8_t origin[] = "nghttp2.org";
-  const uint8_t field_value[] = "h2=\":443\"";
+  static const uint8_t origin[] = "nghttp2.org";
+  static const uint8_t field_value[] = "h2=\":443\"";
 
   nghttp2_session_server_new(&session, &callbacks, &ud);
 
@@ -7004,7 +7015,7 @@ void test_nghttp2_submit_priority_update(void) {
   static const nghttp2_session_callbacks callbacks = {
     .on_frame_send_callback = on_frame_send_callback,
   };
-  const uint8_t field_value[] = "i";
+  static const uint8_t field_value[] = "i";
   my_user_data ud;
   const uint8_t *data;
   int rv;
@@ -8739,7 +8750,10 @@ void test_nghttp2_session_on_header_temporal_failure(void) {
   nghttp2_bufs bufs;
   nghttp2_buf *buf;
   nghttp2_hd_deflater deflater;
-  nghttp2_nv nv[] = {MAKE_NV("alpha", "bravo"), MAKE_NV("charlie", "delta")};
+  static const nghttp2_nv nv[] = {
+    MAKE_NV("alpha", "bravo"),
+    MAKE_NV("charlie", "delta"),
+  };
   nghttp2_nv *nva;
   size_t hdpos;
   nghttp2_ssize rv;
@@ -10336,7 +10350,7 @@ void test_nghttp2_session_verify_iframe_state(void) {
   nghttp2_frame_hd hd;
   uint8_t size_err_hd[NGHTTP2_FRAME_HDLEN];
   nghttp2_ssize rv;
-  const char field_value[] = "i";
+  static const char field_value[] = "i";
   nghttp2_option *option;
   nghttp2_hd_deflater deflater;
   size_t nvlen;
@@ -10344,7 +10358,7 @@ void test_nghttp2_session_verify_iframe_state(void) {
   nghttp2_mem *mem = nghttp2_mem_default();
   my_user_data ud;
   nghttp2_buf udbuf;
-  const char uddata[] = "hello world";
+  static const char uddata[] = "hello world";
 
   nghttp2_frame_hd_init(&hd, 0, NGHTTP2_RST_STREAM, NGHTTP2_FLAG_NONE, 1);
   nghttp2_frame_pack_frame_hd(size_err_hd, &hd);
@@ -10808,93 +10822,157 @@ static void check_nghttp2_http_recv_headers_ok(check_http_opts opts,
 
 void test_nghttp2_http_mandatory_headers(void) {
   /* test case for response */
-  const nghttp2_nv nostatus_resnv[] = {MAKE_NV("server", "foo")};
-  const nghttp2_nv dupstatus_resnv[] = {MAKE_NV(":status", "200"),
-                                        MAKE_NV(":status", "200")};
-  const nghttp2_nv badpseudo_resnv[] = {MAKE_NV(":status", "200"),
-                                        MAKE_NV(":scheme", "https")};
-  const nghttp2_nv latepseudo_resnv[] = {MAKE_NV("server", "foo"),
-                                         MAKE_NV(":status", "200")};
-  const nghttp2_nv badstatus_resnv[] = {MAKE_NV(":status", "2000")};
-  const nghttp2_nv badcl_resnv[] = {MAKE_NV(":status", "200"),
-                                    MAKE_NV("content-length", "-1")};
-  const nghttp2_nv dupcl_resnv[] = {MAKE_NV(":status", "200"),
-                                    MAKE_NV("content-length", "0"),
-                                    MAKE_NV("content-length", "0")};
-  const nghttp2_nv badhd_resnv[] = {MAKE_NV(":status", "200"),
-                                    MAKE_NV("connection", "close")};
-  const nghttp2_nv cl1xx_resnv[] = {MAKE_NV(":status", "100"),
-                                    MAKE_NV("content-length", "0")};
-  const nghttp2_nv cl204_resnv[] = {MAKE_NV(":status", "204"),
-                                    MAKE_NV("content-length", "0")};
-  const nghttp2_nv clnonzero204_resnv[] = {MAKE_NV(":status", "204"),
-                                           MAKE_NV("content-length", "100")};
-  const nghttp2_nv status101_resnv[] = {MAKE_NV(":status", "101")};
-  const nghttp2_nv unexpectedhost_resnv[] = {MAKE_NV(":status", "200"),
-                                             MAKE_NV("host", "/localhost")};
+  static const nghttp2_nv nostatus_resnv[] = {
+    MAKE_NV("server", "foo"),
+  };
+  static const nghttp2_nv dupstatus_resnv[] = {
+    MAKE_NV(":status", "200"),
+    MAKE_NV(":status", "200"),
+  };
+  static const nghttp2_nv badpseudo_resnv[] = {
+    MAKE_NV(":status", "200"),
+    MAKE_NV(":scheme", "https"),
+  };
+  static const nghttp2_nv latepseudo_resnv[] = {
+    MAKE_NV("server", "foo"),
+    MAKE_NV(":status", "200"),
+  };
+  static const nghttp2_nv badstatus_resnv[] = {
+    MAKE_NV(":status", "2000"),
+  };
+  static const nghttp2_nv badcl_resnv[] = {
+    MAKE_NV(":status", "200"),
+    MAKE_NV("content-length", "-1"),
+  };
+  static const nghttp2_nv dupcl_resnv[] = {
+    MAKE_NV(":status", "200"),
+    MAKE_NV("content-length", "0"),
+    MAKE_NV("content-length", "0"),
+  };
+  static const nghttp2_nv badhd_resnv[] = {
+    MAKE_NV(":status", "200"),
+    MAKE_NV("connection", "close"),
+  };
+  static const nghttp2_nv cl1xx_resnv[] = {
+    MAKE_NV(":status", "100"),
+    MAKE_NV("content-length", "0"),
+  };
+  static const nghttp2_nv cl204_resnv[] = {
+    MAKE_NV(":status", "204"),
+    MAKE_NV("content-length", "0"),
+  };
+  static const nghttp2_nv clnonzero204_resnv[] = {
+    MAKE_NV(":status", "204"),
+    MAKE_NV("content-length", "100"),
+  };
+  static const nghttp2_nv status101_resnv[] = {
+    MAKE_NV(":status", "101"),
+  };
+  static const nghttp2_nv unexpectedhost_resnv[] = {
+    MAKE_NV(":status", "200"),
+    MAKE_NV("host", "/localhost"),
+  };
 
   /* test case for request */
-  const nghttp2_nv nopath_reqnv[] = {MAKE_NV(":scheme", "https"),
-                                     MAKE_NV(":method", "GET"),
-                                     MAKE_NV(":authority", "localhost")};
-  const nghttp2_nv earlyconnect_reqnv[] = {
-    MAKE_NV(":method", "CONNECT"), MAKE_NV(":scheme", "https"),
-    MAKE_NV(":path", "/"), MAKE_NV(":authority", "localhost")};
-  const nghttp2_nv lateconnect_reqnv[] = {
-    MAKE_NV(":scheme", "https"), MAKE_NV(":path", "/"),
-    MAKE_NV(":method", "CONNECT"), MAKE_NV(":authority", "localhost")};
-  const nghttp2_nv duppath_reqnv[] = {
-    MAKE_NV(":scheme", "https"), MAKE_NV(":method", "GET"),
-    MAKE_NV(":authority", "localhost"), MAKE_NV(":path", "/"),
-    MAKE_NV(":path", "/")};
-  const nghttp2_nv badcl_reqnv[] = {
-    MAKE_NV(":scheme", "https"), MAKE_NV(":method", "POST"),
-    MAKE_NV(":authority", "localhost"), MAKE_NV(":path", "/"),
-    MAKE_NV("content-length", "-1")};
-  const nghttp2_nv dupcl_reqnv[] = {
+  static const nghttp2_nv nopath_reqnv[] = {
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV(":method", "GET"),
+    MAKE_NV(":authority", "localhost"),
+  };
+  static const nghttp2_nv earlyconnect_reqnv[] = {
+    MAKE_NV(":method", "CONNECT"),
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV(":path", "/"),
+    MAKE_NV(":authority", "localhost"),
+  };
+  static const nghttp2_nv lateconnect_reqnv[] = {
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV(":path", "/"),
+    MAKE_NV(":method", "CONNECT"),
+    MAKE_NV(":authority", "localhost"),
+  };
+  static const nghttp2_nv duppath_reqnv[] = {
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV(":method", "GET"),
+    MAKE_NV(":authority", "localhost"),
+    MAKE_NV(":path", "/"),
+    MAKE_NV(":path", "/"),
+  };
+  static const nghttp2_nv badcl_reqnv[] = {
     MAKE_NV(":scheme", "https"),        MAKE_NV(":method", "POST"),
     MAKE_NV(":authority", "localhost"), MAKE_NV(":path", "/"),
-    MAKE_NV("content-length", "0"),     MAKE_NV("content-length", "0")};
-  const nghttp2_nv badhd_reqnv[] = {
-    MAKE_NV(":scheme", "https"), MAKE_NV(":method", "GET"),
+    MAKE_NV("content-length", "-1"),
+  };
+  static const nghttp2_nv dupcl_reqnv[] = {
+    MAKE_NV(":scheme", "https"),        MAKE_NV(":method", "POST"),
     MAKE_NV(":authority", "localhost"), MAKE_NV(":path", "/"),
-    MAKE_NV("connection", "close")};
-  const nghttp2_nv badauthority_reqnv[] = {
+    MAKE_NV("content-length", "0"),     MAKE_NV("content-length", "0"),
+  };
+  static const nghttp2_nv badhd_reqnv[] = {
+    MAKE_NV(":scheme", "https"),        MAKE_NV(":method", "GET"),
+    MAKE_NV(":authority", "localhost"), MAKE_NV(":path", "/"),
+    MAKE_NV("connection", "close"),
+  };
+  static const nghttp2_nv badauthority_reqnv[] = {
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV(":method", "GET"),
+    MAKE_NV(":authority", "\x0d\x0alocalhost"),
+    MAKE_NV(":path", "/"),
+  };
+  static const nghttp2_nv badhdbtw_reqnv[] = {
     MAKE_NV(":scheme", "https"), MAKE_NV(":method", "GET"),
-    MAKE_NV(":authority", "\x0d\x0alocalhost"), MAKE_NV(":path", "/")};
-  const nghttp2_nv badhdbtw_reqnv[] = {
-    MAKE_NV(":scheme", "https"), MAKE_NV(":method", "GET"),
-    MAKE_NV("foo", "\x0d\x0a"), MAKE_NV(":authority", "localhost"),
-    MAKE_NV(":path", "/")};
-  const nghttp2_nv asteriskget1_reqnv[] = {
-    MAKE_NV(":path", "*"), MAKE_NV(":scheme", "https"),
-    MAKE_NV(":authority", "localhost"), MAKE_NV(":method", "GET")};
-  const nghttp2_nv asteriskget2_reqnv[] = {
-    MAKE_NV(":scheme", "https"), MAKE_NV(":authority", "localhost"),
-    MAKE_NV(":method", "GET"), MAKE_NV(":path", "*")};
-  const nghttp2_nv asteriskoptions1_reqnv[] = {
-    MAKE_NV(":path", "*"), MAKE_NV(":scheme", "https"),
-    MAKE_NV(":authority", "localhost"), MAKE_NV(":method", "OPTIONS")};
-  const nghttp2_nv asteriskoptions2_reqnv[] = {
-    MAKE_NV(":scheme", "https"), MAKE_NV(":authority", "localhost"),
-    MAKE_NV(":method", "OPTIONS"), MAKE_NV(":path", "*")};
-  const nghttp2_nv connectproto_reqnv[] = {
-    MAKE_NV(":scheme", "https"), MAKE_NV(":path", "/"),
-    MAKE_NV(":method", "CONNECT"), MAKE_NV(":authority", "localhost"),
-    MAKE_NV(":protocol", "websocket")};
-  const nghttp2_nv connectprotoget_reqnv[] = {
-    MAKE_NV(":scheme", "https"), MAKE_NV(":path", "/"),
-    MAKE_NV(":method", "GET"), MAKE_NV(":authority", "localhost"),
-    MAKE_NV(":protocol", "websocket")};
-  const nghttp2_nv connectprotonopath_reqnv[] = {
-    MAKE_NV(":scheme", "https"), MAKE_NV(":method", "CONNECT"),
-    MAKE_NV(":authority", "localhost"), MAKE_NV(":protocol", "websocket")};
-  const nghttp2_nv connectprotonoauth_reqnv[] = {
-    MAKE_NV(":scheme", "http"), MAKE_NV(":path", "/"),
-    MAKE_NV(":method", "CONNECT"), MAKE_NV("host", "localhost"),
-    MAKE_NV(":protocol", "websocket")};
-  const nghttp2_nv regularconnect_reqnv[] = {
-    MAKE_NV(":method", "CONNECT"), MAKE_NV(":authority", "localhost")};
+    MAKE_NV("foo", "\x0d\x0a"),  MAKE_NV(":authority", "localhost"),
+    MAKE_NV(":path", "/"),
+  };
+  static const nghttp2_nv asteriskget1_reqnv[] = {
+    MAKE_NV(":path", "*"),
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV(":authority", "localhost"),
+    MAKE_NV(":method", "GET"),
+  };
+  static const nghttp2_nv asteriskget2_reqnv[] = {
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV(":authority", "localhost"),
+    MAKE_NV(":method", "GET"),
+    MAKE_NV(":path", "*"),
+  };
+  static const nghttp2_nv asteriskoptions1_reqnv[] = {
+    MAKE_NV(":path", "*"),
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV(":authority", "localhost"),
+    MAKE_NV(":method", "OPTIONS"),
+  };
+  static const nghttp2_nv asteriskoptions2_reqnv[] = {
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV(":authority", "localhost"),
+    MAKE_NV(":method", "OPTIONS"),
+    MAKE_NV(":path", "*"),
+  };
+  static const nghttp2_nv connectproto_reqnv[] = {
+    MAKE_NV(":scheme", "https"),       MAKE_NV(":path", "/"),
+    MAKE_NV(":method", "CONNECT"),     MAKE_NV(":authority", "localhost"),
+    MAKE_NV(":protocol", "websocket"),
+  };
+  static const nghttp2_nv connectprotoget_reqnv[] = {
+    MAKE_NV(":scheme", "https"),       MAKE_NV(":path", "/"),
+    MAKE_NV(":method", "GET"),         MAKE_NV(":authority", "localhost"),
+    MAKE_NV(":protocol", "websocket"),
+  };
+  static const nghttp2_nv connectprotonopath_reqnv[] = {
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV(":method", "CONNECT"),
+    MAKE_NV(":authority", "localhost"),
+    MAKE_NV(":protocol", "websocket"),
+  };
+  static const nghttp2_nv connectprotonoauth_reqnv[] = {
+    MAKE_NV(":scheme", "http"),        MAKE_NV(":path", "/"),
+    MAKE_NV(":method", "CONNECT"),     MAKE_NV("host", "localhost"),
+    MAKE_NV(":protocol", "websocket"),
+  };
+  static const nghttp2_nv regularconnect_reqnv[] = {
+    MAKE_NV(":method", "CONNECT"),
+    MAKE_NV(":authority", "localhost"),
+  };
   check_http_opts opts = {0};
 
   /* response header lacks :status */
@@ -11061,13 +11139,16 @@ void test_nghttp2_http_content_length(void) {
   nghttp2_bufs bufs;
   nghttp2_ssize rv;
   nghttp2_stream *stream;
-  const nghttp2_nv cl_resnv[] = {MAKE_NV(":status", "200"),
-                                 MAKE_NV("te", "trailers"),
-                                 MAKE_NV("content-length", "9000000000")};
-  const nghttp2_nv cl_reqnv[] = {
+  static const nghttp2_nv cl_resnv[] = {
+    MAKE_NV(":status", "200"),
+    MAKE_NV("te", "trailers"),
+    MAKE_NV("content-length", "9000000000"),
+  };
+  static const nghttp2_nv cl_reqnv[] = {
     MAKE_NV(":path", "/"),        MAKE_NV(":method", "PUT"),
     MAKE_NV(":scheme", "https"),  MAKE_NV("te", "trailers"),
-    MAKE_NV("host", "localhost"), MAKE_NV("content-length", "9000000000")};
+    MAKE_NV("host", "localhost"), MAKE_NV("content-length", "9000000000"),
+  };
 
   mem = nghttp2_mem_default();
   frame_pack_bufs_init(&bufs);
@@ -11131,12 +11212,17 @@ void test_nghttp2_http_content_length_mismatch(void) {
   nghttp2_mem *mem;
   nghttp2_bufs bufs;
   nghttp2_ssize rv;
-  const nghttp2_nv cl_reqnv[] = {
-    MAKE_NV(":path", "/"), MAKE_NV(":method", "PUT"),
-    MAKE_NV(":authority", "localhost"), MAKE_NV(":scheme", "https"),
-    MAKE_NV("content-length", "20")};
-  const nghttp2_nv cl_resnv[] = {MAKE_NV(":status", "200"),
-                                 MAKE_NV("content-length", "20")};
+  static const nghttp2_nv cl_reqnv[] = {
+    MAKE_NV(":path", "/"),
+    MAKE_NV(":method", "PUT"),
+    MAKE_NV(":authority", "localhost"),
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV("content-length", "20"),
+  };
+  static const nghttp2_nv cl_resnv[] = {
+    MAKE_NV(":status", "200"),
+    MAKE_NV("content-length", "20"),
+  };
   nghttp2_outbound_item *item;
   nghttp2_frame_hd hd;
 
@@ -11327,7 +11413,7 @@ void test_nghttp2_http_non_final_response(void) {
   nghttp2_mem *mem;
   nghttp2_bufs bufs;
   nghttp2_ssize rv;
-  const nghttp2_nv nonfinal_resnv[] = {
+  static const nghttp2_nv nonfinal_resnv[] = {
     MAKE_NV(":status", "100"),
   };
   nghttp2_outbound_item *item;
@@ -11492,7 +11578,7 @@ void test_nghttp2_http_trailer_headers(void) {
   nghttp2_mem *mem;
   nghttp2_bufs bufs;
   nghttp2_ssize rv;
-  const nghttp2_nv trailer_reqnv[] = {
+  static const nghttp2_nv trailer_reqnv[] = {
     MAKE_NV("foo", "bar"),
   };
   nghttp2_outbound_item *item;
@@ -11613,7 +11699,7 @@ void test_nghttp2_http_ignore_regular_header(void) {
   nghttp2_bufs bufs;
   nghttp2_ssize rv;
   my_user_data ud;
-  const nghttp2_nv bad_reqnv[] = {
+  static const nghttp2_nv bad_reqnv[] = {
     MAKE_NV(":authority", "localhost"),
     MAKE_NV(":scheme", "https"),
     MAKE_NV(":path", "/"),
@@ -11621,9 +11707,13 @@ void test_nghttp2_http_ignore_regular_header(void) {
     MAKE_NV("foo", "\x0zzz"),
     MAKE_NV("bar", "buzz"),
   };
-  const nghttp2_nv bad_ansnv[] = {
-    MAKE_NV(":authority", "localhost"), MAKE_NV(":scheme", "https"),
-    MAKE_NV(":path", "/"), MAKE_NV(":method", "GET"), MAKE_NV("bar", "buzz")};
+  static const nghttp2_nv bad_ansnv[] = {
+    MAKE_NV(":authority", "localhost"),
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV(":path", "/"),
+    MAKE_NV(":method", "GET"),
+    MAKE_NV("bar", "buzz"),
+  };
   size_t proclen;
   size_t i;
   nghttp2_outbound_item *item;
@@ -11743,13 +11833,19 @@ void test_nghttp2_http_ignore_content_length(void) {
   nghttp2_mem *mem;
   nghttp2_bufs bufs;
   nghttp2_ssize rv;
-  const nghttp2_nv cl_resnv[] = {MAKE_NV(":status", "304"),
-                                 MAKE_NV("content-length", "20")};
-  const nghttp2_nv conn_reqnv[] = {MAKE_NV(":authority", "localhost"),
-                                   MAKE_NV(":method", "CONNECT"),
-                                   MAKE_NV("content-length", "999999")};
-  const nghttp2_nv conn_cl_resnv[] = {MAKE_NV(":status", "200"),
-                                      MAKE_NV("content-length", "0")};
+  static const nghttp2_nv cl_resnv[] = {
+    MAKE_NV(":status", "304"),
+    MAKE_NV("content-length", "20"),
+  };
+  static const nghttp2_nv conn_reqnv[] = {
+    MAKE_NV(":authority", "localhost"),
+    MAKE_NV(":method", "CONNECT"),
+    MAKE_NV("content-length", "999999"),
+  };
+  static const nghttp2_nv conn_cl_resnv[] = {
+    MAKE_NV(":status", "200"),
+    MAKE_NV("content-length", "0"),
+  };
   nghttp2_stream *stream;
 
   mem = nghttp2_mem_default();
@@ -11829,10 +11925,14 @@ void test_nghttp2_http_record_request_method(void) {
   static const nghttp2_session_callbacks callbacks = {
     .send_callback2 = null_send_callback,
   };
-  const nghttp2_nv conn_reqnv[] = {MAKE_NV(":method", "CONNECT"),
-                                   MAKE_NV(":authority", "localhost")};
-  const nghttp2_nv conn_resnv[] = {MAKE_NV(":status", "200"),
-                                   MAKE_NV("content-length", "9999")};
+  static const nghttp2_nv conn_reqnv[] = {
+    MAKE_NV(":method", "CONNECT"),
+    MAKE_NV(":authority", "localhost"),
+  };
+  static const nghttp2_nv conn_resnv[] = {
+    MAKE_NV(":status", "200"),
+    MAKE_NV("content-length", "9999"),
+  };
   nghttp2_stream *stream;
   nghttp2_ssize rv;
   nghttp2_bufs bufs;
@@ -11889,7 +11989,9 @@ void test_nghttp2_http_push_promise(void) {
   nghttp2_bufs bufs;
   nghttp2_ssize rv;
   nghttp2_stream *stream;
-  const nghttp2_nv bad_reqnv[] = {MAKE_NV(":method", "GET")};
+  static const nghttp2_nv bad_reqnv[] = {
+    MAKE_NV(":method", "GET"),
+  };
   nghttp2_outbound_item *item;
 
   mem = nghttp2_mem_default();
@@ -11961,8 +12063,10 @@ void test_nghttp2_http_head_method_upgrade_workaround(void) {
   static const nghttp2_session_callbacks callbacks = {
     .send_callback2 = null_send_callback,
   };
-  const nghttp2_nv cl_resnv[] = {MAKE_NV(":status", "200"),
-                                 MAKE_NV("content-length", "1000000007")};
+  static const nghttp2_nv cl_resnv[] = {
+    MAKE_NV(":status", "200"),
+    MAKE_NV("content-length", "1000000007"),
+  };
   nghttp2_bufs bufs;
   nghttp2_hd_deflater deflater;
   nghttp2_mem *mem;
@@ -12004,7 +12108,7 @@ void test_nghttp2_http_no_rfc9113_leading_and_trailing_ws_validation(void) {
   nghttp2_mem *mem;
   nghttp2_bufs bufs;
   nghttp2_ssize rv;
-  const nghttp2_nv ws_reqnv[] = {
+  static const nghttp2_nv ws_reqnv[] = {
     MAKE_NV(":path", "/"),
     MAKE_NV(":method", "GET"),
     MAKE_NV(":authority", "localhost"),
