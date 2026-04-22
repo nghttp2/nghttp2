@@ -1564,13 +1564,16 @@ int read_tls_sct_from_dir(std::vector<uint8_t> &dst, std::string_view opt,
     }
 
     std::string path;
-    path.resize(dir_path.size() + 1 + name.size());
-    {
-      auto p = std::ranges::begin(path);
-      p = std::ranges::copy(dir_path, p).out;
-      *p++ = '/';
-      std::ranges::copy(name, p);
-    }
+    path.resize_and_overwrite(dir_path.size() + 1 + name.size(),
+                              [dir_path, name](auto p, auto len) {
+                                auto first = p;
+
+                                p = std::ranges::copy(dir_path, p).out;
+                                *p++ = '/';
+                                p = std::ranges::copy(name, p).out;
+
+                                return std::ranges::distance(first, p);
+                              });
 
     auto fd = open(path.c_str(), O_RDONLY);
     if (fd == -1) {

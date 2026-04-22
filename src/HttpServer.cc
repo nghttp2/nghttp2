@@ -1292,16 +1292,18 @@ void prepare_response(Stream *stream, Http2Handler *hd,
       len += DEFAULT_HTML.size();
     }
 
-    file_path.resize(len);
+    file_path.resize_and_overwrite(
+      len, [hd, path, trailing_slash](auto p, auto len) {
+        auto first = p;
+        auto &htdocs = hd->get_config()->htdocs;
+        p = std::ranges::copy(htdocs, p).out;
+        p = std::ranges::copy(path, p).out;
+        if (trailing_slash) {
+          p = std::ranges::copy(DEFAULT_HTML, p).out;
+        }
 
-    auto p = &file_path[0];
-
-    auto &htdocs = hd->get_config()->htdocs;
-    p = std::ranges::copy(htdocs, p).out;
-    p = std::ranges::copy(path, p).out;
-    if (trailing_slash) {
-      std::ranges::copy(DEFAULT_HTML, p);
-    }
+        return std::ranges::distance(first, p);
+      });
   }
 
   if (stream->echo_upload) {

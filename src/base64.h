@@ -112,9 +112,9 @@ constexpr std::string encode(R &&r) {
     return res;
   }
 
-  res.resize((len + 2) / 3 * 4);
-
-  encode(std::forward<R>(r), std::ranges::begin(res));
+  res.resize_and_overwrite((len + 2) / 3 * 4, [&r](auto p, auto len) {
+    return std::ranges::distance(p, encode(r, p));
+  });
 
   return res;
 }

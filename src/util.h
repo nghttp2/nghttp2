@@ -282,13 +282,13 @@ template <std::forward_iterator I>
 constexpr std::string percent_decode(I first, I last) {
   std::string result;
 
-  result.resize(as_unsigned(std::ranges::distance(first, last)));
-
-  auto p = percent_decode(std::move(first), std::move(last),
-                          std::ranges::begin(result));
-
-  result.resize(
-    as_unsigned(std::ranges::distance(std::ranges::begin(result), p)));
+  result.resize_and_overwrite(
+    as_unsigned(std::ranges::distance(first, last)),
+    [first = std::move(first), last = std::move(last)](auto p,
+                                                       auto len) mutable {
+      return std::ranges::distance(
+        p, percent_decode(std::move(first), std::move(last), p));
+    });
 
   return result;
 }
@@ -442,9 +442,10 @@ requires(!std::is_array_v<std::remove_cvref_t<R>> &&
 constexpr std::string format_hex(R &&r) {
   std::string res;
 
-  res.resize(as_unsigned(std::ranges::distance(r) * 2));
-
-  format_hex(std::forward<R>(r), std::ranges::begin(res));
+  res.resize_and_overwrite(as_unsigned(std::ranges::distance(r) * 2),
+                           [&r](auto p, auto len) {
+                             return std::ranges::distance(p, format_hex(r, p));
+                           });
 
   return res;
 }
@@ -807,9 +808,9 @@ template <std::unsigned_integral T> constexpr std::string utos(T n) {
 
   std::string res;
 
-  res.resize(count_digit(n));
-
-  utos(n, std::ranges::begin(res));
+  res.resize_and_overwrite(count_digit(n), [n](auto p, auto len) {
+    return std::ranges::distance(p, utos(n, p));
+  });
 
   return res;
 }
