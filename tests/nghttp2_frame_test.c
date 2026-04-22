@@ -684,8 +684,14 @@ void test_nghttp2_frame_pack_priority_update(void) {
 void test_nghttp2_nv_array_copy(void) {
   nghttp2_nv *nva;
   int rv;
-  nghttp2_nv emptynv[] = {MAKE_NV("", ""), MAKE_NV("", "")};
-  nghttp2_nv nv[] = {MAKE_NV("alpha", "bravo"), MAKE_NV("charlie", "delta")};
+  static const nghttp2_nv emptynv[] = {
+    MAKE_NV("", ""),
+    MAKE_NV("", ""),
+  };
+  static const nghttp2_nv nv[] = {
+    MAKE_NV("alpha", "bravo"),
+    MAKE_NV("charlie", "delta"),
+  };
   nghttp2_nv bignv;
   nghttp2_mem *mem;
   const size_t valuelen = (1 << 14) - 1;
