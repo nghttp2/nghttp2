@@ -47,22 +47,14 @@ extern int nghttp2_enable_strict_preface;
 
 int main(int argc, char *argv[]) {
   const MunitSuite suites[] = {
-    pq_suite,
-    map_suite,
-    queue_suite,
-    frame_suite,
-    session_suite,
-    hd_suite,
-    alpn_suite,
-    helper_suite,
-    buf_suite,
-    http_suite,
-    extpri_suite,
-    ratelim_suite,
-    {NULL, NULL, NULL, 0, MUNIT_SUITE_OPTION_NONE},
+    pq_suite,     map_suite,     queue_suite,  frame_suite, session_suite,
+    hd_suite,     alpn_suite,    helper_suite, buf_suite,   http_suite,
+    extpri_suite, ratelim_suite, {0},
   };
   const MunitSuite suite = {
-    "", NULL, suites, 1, MUNIT_SUITE_OPTION_NONE,
+    .prefix = "",
+    .suites = suites,
+    .iterations = 1,
   };
 
   nghttp2_enable_strict_preface = 0;

@@ -45,7 +45,8 @@ static const MunitTest tests[] = {
 };
 
 const MunitSuite buf_suite = {
-  "/buf", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/buf",
+  .tests = tests,
 };
 
 void test_nghttp2_bufs_add(void) {

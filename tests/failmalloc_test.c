@@ -46,7 +46,8 @@ static const MunitTest tests[] = {
 };
 
 const MunitSuite failmalloc_suite = {
-  "/failmalloc", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/failmalloc",
+  .tests = tests,
 };
 
 typedef struct {
@@ -141,23 +142,28 @@ static nghttp2_ssize fixed_length_data_source_read_callback(
 
 static void run_nghttp2_session_send(void) {
   nghttp2_session *session;
-  nghttp2_session_callbacks callbacks;
+  static const nghttp2_session_callbacks callbacks = {
+    .send_callback2 = null_send_callback,
+  };
   nghttp2_nv nv[] = {MAKE_NV(":host", "example.org"),
                      MAKE_NV(":scheme", "https")};
-  nghttp2_data_provider2 data_prd;
-  nghttp2_settings_entry iv[2];
+  static const nghttp2_data_provider2 data_prd = {
+    .read_callback = fixed_length_data_source_read_callback,
+  };
+  static const nghttp2_settings_entry iv[] = {
+    {
+      .settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE,
+      .value = 4096,
+    },
+    {
+      .settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS,
+      .value = 100,
+    },
+  };
   my_user_data ud;
   int rv;
-  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
-  callbacks.send_callback2 = null_send_callback;
 
-  data_prd.read_callback = fixed_length_data_source_read_callback;
   ud.data_source_length = 64 * 1024;
-
-  iv[0].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
-  iv[0].value = 4096;
-  iv[1].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  iv[1].value = 100;
 
   rv = nghttp2_session_client_new3(&session, &callbacks, &ud, NULL,
                                    nghttp2_mem_fm());
@@ -287,7 +293,9 @@ void test_nghttp2_session_send_server(void) {
 
 static void run_nghttp2_session_recv(void) {
   nghttp2_session *session;
-  nghttp2_session_callbacks callbacks;
+  static const nghttp2_session_callbacks callbacks = {
+    .recv_callback2 = data_feed_recv_callback,
+  };
   nghttp2_hd_deflater deflater;
   nghttp2_frame frame;
   nghttp2_bufs bufs;
@@ -297,7 +305,16 @@ static void run_nghttp2_session_recv(void) {
     MAKE_NV(":authority", "example.org"),
     MAKE_NV(":path", "/"),
   };
-  nghttp2_settings_entry iv[2];
+  static const nghttp2_settings_entry iv[] = {
+    {
+      .settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE,
+      .value = 4096,
+    },
+    {
+      .settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS,
+      .value = 100,
+    },
+  };
   my_user_data ud;
   data_feed df;
   int rv;
@@ -310,8 +327,6 @@ static void run_nghttp2_session_recv(void) {
     return;
   }
 
-  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
-  callbacks.recv_callback2 = data_feed_recv_callback;
   ud.df = &df;
 
   nghttp2_failmalloc_pause();
@@ -332,10 +347,6 @@ static void run_nghttp2_session_recv(void) {
 
   nghttp2_failmalloc_pause();
   /* SETTINGS */
-  iv[0].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
-  iv[0].value = 4096;
-  iv[1].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  iv[1].value = 100;
   nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE,
                               nghttp2_frame_iv_copy(iv, 2, nghttp2_mem_fm()),
                               2);
@@ -462,7 +473,17 @@ static void run_nghttp2_frame_pack_settings(void) {
   nghttp2_frame frame, oframe;
   nghttp2_bufs bufs;
   nghttp2_buf *buf;
-  nghttp2_settings_entry iv[2], *iv_copy;
+  static const nghttp2_settings_entry iv[] = {
+    {
+      .settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE,
+      .value = 4096,
+    },
+    {
+      .settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS,
+      .value = 100,
+    },
+  };
+  nghttp2_settings_entry *iv_copy;
   int rv;
 
   rv = frame_pack_bufs_init(&bufs);
@@ -470,11 +491,6 @@ static void run_nghttp2_frame_pack_settings(void) {
   if (rv != 0) {
     return;
   }
-
-  iv[0].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
-  iv[0].value = 4096;
-  iv[1].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  iv[1].value = 100;
 
   iv_copy = nghttp2_frame_iv_copy(iv, 2, nghttp2_mem_fm());
 

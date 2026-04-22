@@ -39,7 +39,8 @@ static const MunitTest tests[] = {
 };
 
 const MunitSuite helper_suite = {
-  "/helper", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/helper",
+  .tests = tests,
 };
 
 void test_nghttp2_adjust_local_window_size(void) {

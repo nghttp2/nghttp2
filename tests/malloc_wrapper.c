@@ -66,7 +66,12 @@ static void *my_realloc(void *ptr, size_t size, void *mud) {
   return realloc(ptr, size);
 }
 
-static nghttp2_mem mem = {NULL, my_malloc, my_free, my_calloc, my_realloc};
+static nghttp2_mem mem = {
+  .malloc = my_malloc,
+  .free = my_free,
+  .calloc = my_calloc,
+  .realloc = my_realloc,
+};
 
 nghttp2_mem *nghttp2_mem_fm(void) { return &mem; }
 

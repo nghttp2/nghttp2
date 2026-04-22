@@ -38,24 +38,35 @@ static const MunitTest tests[] = {
 };
 
 const MunitSuite extpri_suite = {
-  "/extpri", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/extpri",
+  .tests = tests,
 };
 
 void test_nghttp2_extpri_to_uint8(void) {
   {
-    nghttp2_extpri pri = {1, 0};
+    static const nghttp2_extpri pri = {
+      .urgency = 1,
+    };
     assert_uint8(1, ==, nghttp2_extpri_to_uint8(&pri));
   }
   {
-    nghttp2_extpri pri = {1, 1};
+    static const nghttp2_extpri pri = {
+      .urgency = 1,
+      .inc = 1,
+    };
     assert_uint8((0x80 | 1), ==, nghttp2_extpri_to_uint8(&pri));
   }
   {
-    nghttp2_extpri pri = {7, 1};
+    static const nghttp2_extpri pri = {
+      .urgency = 7,
+      .inc = 1,
+    };
     assert_uint8((0x80 | 7), ==, nghttp2_extpri_to_uint8(&pri));
   }
   {
-    nghttp2_extpri pri = {7, 0};
+    static const nghttp2_extpri pri = {
+      .urgency = 7,
+    };
     assert_uint8(7, ==, nghttp2_extpri_to_uint8(&pri));
   }
 }

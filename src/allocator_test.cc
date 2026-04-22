@@ -47,7 +47,8 @@ const MunitTest tests[]{
 } // namespace
 
 const MunitSuite allocator_suite{
-  "/allocator", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/allocator",
+  .tests = tests,
 };
 
 namespace {

@@ -36,7 +36,8 @@ static const MunitTest tests[] = {
 };
 
 const MunitSuite queue_suite = {
-  "/queue", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/queue",
+  .tests = tests,
 };
 
 void test_nghttp2_queue(void) {

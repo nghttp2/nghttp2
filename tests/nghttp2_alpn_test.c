@@ -37,7 +37,8 @@ static const MunitTest tests[] = {
 };
 
 const MunitSuite alpn_suite = {
-  "/alpn", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/alpn",
+  .tests = tests,
 };
 
 static void http2(void) {

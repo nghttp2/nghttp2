@@ -39,7 +39,8 @@ static const MunitTest tests[] = {
 };
 
 const MunitSuite gzip_suite = {
-  "/gzip", tests, NULL, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/gzip",
+  .tests = tests,
 };
 
 static size_t deflate_data(uint8_t *out, size_t outlen, const uint8_t *in,

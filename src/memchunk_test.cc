@@ -53,7 +53,8 @@ const MunitTest tests[]{
 } // namespace
 
 const MunitSuite memchunk_suite{
-  "/memchunk", tests, nullptr, 1, MUNIT_SUITE_OPTION_NONE,
+  .prefix = "/memchunk",
+  .tests = tests,
 };
 
 void test_pool_recycle(void) {
