@@ -31,7 +31,6 @@ EXTRA_DIST += \
 	mruby/AUTHORS \
 	mruby/docker-compose.yml \
 	mruby/CONTRIBUTING.md \
-	mruby/NEWS \
 	mruby/tools/lrama/LEGAL.md \
 	mruby/tools/lrama/exe/lrama \
 	mruby/tools/lrama/lib/lrama/state.rb \
@@ -117,7 +116,10 @@ EXTRA_DIST += \
 	mruby/Gemfile \
 	mruby/benchmark/plot.gpl \
 	mruby/benchmark/bm_ao_render.rb \
+	mruby/benchmark/bm_mandel_term.rb \
 	mruby/benchmark/bm_so_mandelbrot.rb \
+	mruby/benchmark/vm_optimization_bench.rb \
+	mruby/benchmark/vm_dispatch_bench.c \
 	mruby/benchmark/bm_fib.rb \
 	mruby/benchmark/bm_so_lists.rb \
 	mruby/benchmark/bm_app_lc_fizzbuzz.rb \
@@ -131,6 +133,7 @@ EXTRA_DIST += \
 	mruby/tasks/toolchains/gcc.rake \
 	mruby/tasks/toolchains/clang.rake \
 	mruby/tasks/toolchains/emscripten.rake \
+	mruby/tasks/amalgam.rake \
 	mruby/tasks/doc.rake \
 	mruby/tasks/benchmark.rake \
 	mruby/tasks/mrbgems.rake \
@@ -180,7 +183,9 @@ EXTRA_DIST += \
 	mruby/build_config/RX630.rb \
 	mruby/build_config/luckfox_pico.rb \
 	mruby/build_config/host-nofloat.rb \
+	mruby/build_config/cosmopolitan.rb \
 	mruby/build_config/emscripten-cxx.rb \
+	mruby/build_config/host-m32-f32.rb \
 	mruby/build_config/android_arm64_v8a.rb \
 	mruby/build_config/cross-32bit.rb \
 	mruby/build_config/milkv_duo.rb \
@@ -190,6 +195,7 @@ EXTRA_DIST += \
 	mruby/lib/mruby/build/load_gems.rb \
 	mruby/lib/mruby/lockfile.rb \
 	mruby/lib/mruby/build.rb \
+	mruby/lib/mruby/amalgam.rb \
 	mruby/lib/mruby/core_ext.rb \
 	mruby/lib/mruby/doc.rb \
 	mruby/lib/mruby/gem.rb \
@@ -311,11 +317,13 @@ EXTRA_DIST += \
 	mruby/src/allocf.c \
 	mruby/mruby-source.gemspec \
 	mruby/mrbgems/mruby-eval/mrbgem.rake \
+	mruby/mrbgems/mruby-eval/README.md \
 	mruby/mrbgems/mruby-eval/test/binding.rb \
 	mruby/mrbgems/mruby-eval/test/eval.rb \
 	mruby/mrbgems/mruby-eval/src/eval.c \
 	mruby/mrbgems/stdlib.gembox \
 	mruby/mrbgems/mruby-string-ext/mrbgem.rake \
+	mruby/mrbgems/mruby-string-ext/README.md \
 	mruby/mrbgems/mruby-string-ext/test/range.rb \
 	mruby/mrbgems/mruby-string-ext/test/string.rb \
 	mruby/mrbgems/mruby-string-ext/test/numeric.rb \
@@ -327,6 +335,7 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-set/test/set.rb \
 	mruby/mrbgems/mruby-set/mrblib/set.rb \
 	mruby/mrbgems/mruby-set/LICENSE \
+	mruby/mrbgems/mruby-set/src/set.c \
 	mruby/mrbgems/mruby-set/mruby-set.gem \
 	mruby/mrbgems/mruby-method/mrbgem.rake \
 	mruby/mrbgems/mruby-method/README.md \
@@ -334,16 +343,20 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-method/mrblib/method.rb \
 	mruby/mrbgems/mruby-method/src/method.c \
 	mruby/mrbgems/mruby-random/mrbgem.rake \
+	mruby/mrbgems/mruby-random/README.md \
 	mruby/mrbgems/mruby-random/test/random.rb \
 	mruby/mrbgems/mruby-random/src/random.c \
 	mruby/mrbgems/mruby-catch/mrbgem.rake \
+	mruby/mrbgems/mruby-catch/README.md \
 	mruby/mrbgems/mruby-catch/test/catch.rb \
 	mruby/mrbgems/mruby-catch/mrblib/catch.rb \
 	mruby/mrbgems/mruby-catch/src/catch.c \
 	mruby/mrbgems/mruby-cmath/mrbgem.rake \
+	mruby/mrbgems/mruby-cmath/README.md \
 	mruby/mrbgems/mruby-cmath/test/cmath.rb \
 	mruby/mrbgems/mruby-cmath/src/cmath.c \
 	mruby/mrbgems/mruby-compar-ext/mrbgem.rake \
+	mruby/mrbgems/mruby-compar-ext/README.md \
 	mruby/mrbgems/mruby-compar-ext/test/compar.rb \
 	mruby/mrbgems/mruby-compar-ext/mrblib/compar.rb \
 	mruby/mrbgems/mruby-pack/mrbgem.rake \
@@ -351,6 +364,7 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-pack/test/pack.rb \
 	mruby/mrbgems/mruby-pack/src/pack.c \
 	mruby/mrbgems/mruby-struct/mrbgem.rake \
+	mruby/mrbgems/mruby-struct/README.md \
 	mruby/mrbgems/mruby-struct/test/struct.rb \
 	mruby/mrbgems/mruby-struct/mrblib/struct.rb \
 	mruby/mrbgems/mruby-struct/src/struct.c \
@@ -360,7 +374,10 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-bigint/README.md \
 	mruby/mrbgems/mruby-bigint/test/bigint.rb \
 	mruby/mrbgems/mruby-bigint/README-fgmp.md \
+	mruby/mrbgems/hal-posix-dir/mrbgem.rake \
+	mruby/mrbgems/hal-posix-dir/src/dir_hal.c \
 	mruby/mrbgems/mruby-symbol-ext/mrbgem.rake \
+	mruby/mrbgems/mruby-symbol-ext/README.md \
 	mruby/mrbgems/mruby-symbol-ext/test/symbol.rb \
 	mruby/mrbgems/mruby-symbol-ext/mrblib/symbol.rb \
 	mruby/mrbgems/mruby-symbol-ext/src/symbol.c \
@@ -378,7 +395,8 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-io/src/file_test.c \
 	mruby/mrbgems/mruby-io/src/io.c \
 	mruby/mrbgems/mruby-io/src/file.c \
-	mruby/mrbgems/mruby-io/include/mruby/ext/io.h \
+	mruby/mrbgems/mruby-io/include/mruby/io.h \
+	mruby/mrbgems/mruby-io/include/io_hal.h \
 	mruby/mrbgems/mruby-compiler/core/parse.y \
 	mruby/mrbgems/mruby-compiler/core/y.tab.c \
 	mruby/mrbgems/mruby-compiler/core/node.h \
@@ -386,43 +404,61 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-compiler/core/codegen.c \
 	mruby/mrbgems/mruby-compiler/core/lex.def \
 	mruby/mrbgems/mruby-compiler/mrbgem.rake \
+	mruby/mrbgems/mruby-compiler/README.md \
 	mruby/mrbgems/mruby-bin-config/mrbgem.rake \
+	mruby/mrbgems/mruby-bin-config/README.md \
 	mruby/mrbgems/mruby-bin-config/mruby-config \
 	mruby/mrbgems/mruby-bin-config/mruby-config.bat \
 	mruby/mrbgems/mruby-proc-ext/mrbgem.rake \
+	mruby/mrbgems/mruby-proc-ext/README.md \
 	mruby/mrbgems/mruby-proc-ext/test/proc.rb \
 	mruby/mrbgems/mruby-proc-ext/test/proc.c \
 	mruby/mrbgems/mruby-proc-ext/mrblib/proc.rb \
 	mruby/mrbgems/mruby-proc-ext/src/proc.c \
 	mruby/mrbgems/mruby-data/mrbgem.rake \
+	mruby/mrbgems/mruby-data/README.md \
 	mruby/mrbgems/mruby-data/test/data.rb \
 	mruby/mrbgems/mruby-data/src/data.c \
+	mruby/mrbgems/hal-win-task/mrbgem.rake \
+	mruby/mrbgems/hal-win-task/README.md \
+	mruby/mrbgems/hal-win-task/src/task_hal.c \
+	mruby/mrbgems/hal-posix-task/mrbgem.rake \
+	mruby/mrbgems/hal-posix-task/README.md \
+	mruby/mrbgems/hal-posix-task/src/task_hal.c \
 	mruby/mrbgems/mruby-dir/mrbgem.rake \
 	mruby/mrbgems/mruby-dir/README.md \
 	mruby/mrbgems/mruby-dir/test/dir.rb \
 	mruby/mrbgems/mruby-dir/test/dirtest.c \
 	mruby/mrbgems/mruby-dir/mrblib/dir.rb \
-	mruby/mrbgems/mruby-dir/src/Win/dirent.c \
 	mruby/mrbgems/mruby-dir/src/dir.c \
+	mruby/mrbgems/mruby-dir/include/dir_hal.h \
 	mruby/mrbgems/mruby-object-ext/mrbgem.rake \
+	mruby/mrbgems/mruby-object-ext/README.md \
 	mruby/mrbgems/mruby-object-ext/test/object_ext.c \
 	mruby/mrbgems/mruby-object-ext/test/nil.rb \
 	mruby/mrbgems/mruby-object-ext/test/object.rb \
 	mruby/mrbgems/mruby-object-ext/mrblib/object.rb \
 	mruby/mrbgems/mruby-object-ext/src/object.c \
 	mruby/mrbgems/mruby-kernel-ext/mrbgem.rake \
+	mruby/mrbgems/mruby-kernel-ext/README.md \
 	mruby/mrbgems/mruby-kernel-ext/test/kernel.rb \
 	mruby/mrbgems/mruby-kernel-ext/src/kernel.c \
+	mruby/mrbgems/mruby-benchmark/mrbgem.rake \
+	mruby/mrbgems/mruby-benchmark/README.md \
+	mruby/mrbgems/mruby-benchmark/test/benchmark.rb \
+	mruby/mrbgems/mruby-benchmark/mrblib/benchmark.rb \
 	mruby/mrbgems/mruby-class-ext/mrbgem.rake \
+	mruby/mrbgems/mruby-class-ext/README.md \
 	mruby/mrbgems/mruby-class-ext/test/class.rb \
 	mruby/mrbgems/mruby-class-ext/test/module.rb \
-	mruby/mrbgems/mruby-class-ext/mrblib/module.rb \
 	mruby/mrbgems/mruby-class-ext/src/class.c \
 	mruby/mrbgems/mruby-binding/mrbgem.rake \
+	mruby/mrbgems/mruby-binding/README.md \
 	mruby/mrbgems/mruby-binding/test/binding.rb \
 	mruby/mrbgems/mruby-binding/test/binding.c \
 	mruby/mrbgems/mruby-binding/src/binding.c \
 	mruby/mrbgems/mruby-hash-ext/mrbgem.rake \
+	mruby/mrbgems/mruby-hash-ext/README.md \
 	mruby/mrbgems/mruby-hash-ext/test/hash.rb \
 	mruby/mrbgems/mruby-hash-ext/mrblib/hash.rb \
 	mruby/mrbgems/mruby-hash-ext/src/hash_ext.c \
@@ -432,36 +468,56 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-sleep/test/sleep_test.rb \
 	mruby/mrbgems/mruby-sleep/src/sleep.c \
 	mruby/mrbgems/mruby-sprintf/mrbgem.rake \
+	mruby/mrbgems/mruby-sprintf/README.md \
 	mruby/mrbgems/mruby-sprintf/test/sprintf.rb \
 	mruby/mrbgems/mruby-sprintf/mrblib/string.rb \
 	mruby/mrbgems/mruby-sprintf/src/sprintf.c \
 	mruby/mrbgems/mruby-enum-chain/mrbgem.rake \
+	mruby/mrbgems/mruby-enum-chain/README.md \
 	mruby/mrbgems/mruby-enum-chain/test/enum_chain.rb \
 	mruby/mrbgems/mruby-enum-chain/mrblib/chain.rb \
 	mruby/mrbgems/mruby-range-ext/mrbgem.rake \
+	mruby/mrbgems/mruby-range-ext/README.md \
 	mruby/mrbgems/mruby-range-ext/test/range.rb \
 	mruby/mrbgems/mruby-range-ext/mrblib/range.rb \
 	mruby/mrbgems/mruby-range-ext/src/range.c \
+	mruby/mrbgems/mruby-bin-mirb/tools/mirb/mirb_history.h \
 	mruby/mrbgems/mruby-bin-mirb/tools/mirb/mirb.c \
+	mruby/mrbgems/mruby-bin-mirb/tools/mirb/mirb_term.h \
+	mruby/mrbgems/mruby-bin-mirb/tools/mirb/mirb_buffer.h \
+	mruby/mrbgems/mruby-bin-mirb/tools/mirb/mirb_highlight.c \
+	mruby/mrbgems/mruby-bin-mirb/tools/mirb/mirb_editor.h \
+	mruby/mrbgems/mruby-bin-mirb/tools/mirb/mirb_history.c \
+	mruby/mrbgems/mruby-bin-mirb/tools/mirb/mirb_editor.c \
+	mruby/mrbgems/mruby-bin-mirb/tools/mirb/mirb_term.c \
+	mruby/mrbgems/mruby-bin-mirb/tools/mirb/mirb_buffer.c \
+	mruby/mrbgems/mruby-bin-mirb/tools/mirb/mirb_completion.h \
+	mruby/mrbgems/mruby-bin-mirb/tools/mirb/mirb_completion.c \
+	mruby/mrbgems/mruby-bin-mirb/tools/mirb/mirb_highlight.h \
 	mruby/mrbgems/mruby-bin-mirb/mrbgem.rake \
+	mruby/mrbgems/mruby-bin-mirb/README.md \
 	mruby/mrbgems/mruby-bin-mirb/bintest/mirb.rb \
 	mruby/mrbgems/mruby-metaprog/mrbgem.rake \
+	mruby/mrbgems/mruby-metaprog/README.md \
 	mruby/mrbgems/mruby-metaprog/test/metaprog.rb \
 	mruby/mrbgems/mruby-metaprog/src/metaprog.c \
 	mruby/mrbgems/mruby-test-inline-struct/mrbgem.rake \
 	mruby/mrbgems/mruby-test-inline-struct/test/inline.c \
 	mruby/mrbgems/mruby-test-inline-struct/test/inline.rb \
 	mruby/mrbgems/mruby-time/mrbgem.rake \
+	mruby/mrbgems/mruby-time/README.md \
 	mruby/mrbgems/mruby-time/test/time.rb \
 	mruby/mrbgems/mruby-time/src/time.c \
 	mruby/mrbgems/mruby-time/include/mruby/time.h \
 	mruby/mrbgems/mruby-proc-binding/mrbgem.rake \
+	mruby/mrbgems/mruby-proc-binding/README.md \
 	mruby/mrbgems/mruby-proc-binding/test/proc_binding.c \
 	mruby/mrbgems/mruby-proc-binding/test/proc_binding.rb \
 	mruby/mrbgems/mruby-proc-binding/src/proc_binding.c \
 	mruby/mrbgems/stdlib-ext.gembox \
 	mruby/mrbgems/metaprog.gembox \
 	mruby/mrbgems/mruby-enumerator/mrbgem.rake \
+	mruby/mrbgems/mruby-enumerator/README.md \
 	mruby/mrbgems/mruby-enumerator/test/enumerator.rb \
 	mruby/mrbgems/mruby-enumerator/mrblib/enumerator.rb \
 	mruby/mrbgems/math.gembox \
@@ -480,35 +536,63 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-socket/src/gen.rb \
 	mruby/mrbgems/mruby-socket/src/const.cstub \
 	mruby/mrbgems/mruby-socket/src/const.def \
+	mruby/mrbgems/mruby-socket/include/socket_hal.h \
 	mruby/mrbgems/mruby-objectspace/mrbgem.rake \
+	mruby/mrbgems/mruby-objectspace/README.md \
 	mruby/mrbgems/mruby-objectspace/test/objectspace.rb \
 	mruby/mrbgems/mruby-objectspace/src/mruby_objectspace.c \
 	mruby/mrbgems/full-core.gembox \
 	mruby/mrbgems/mruby-rational/mrbgem.rake \
+	mruby/mrbgems/mruby-rational/README.md \
 	mruby/mrbgems/mruby-rational/test/rational.rb \
 	mruby/mrbgems/mruby-rational/mrblib/rational.rb \
 	mruby/mrbgems/mruby-rational/src/rational.c \
+	mruby/mrbgems/mruby-task/mrbgem.rake \
+	mruby/mrbgems/mruby-task/README.md \
+	mruby/mrbgems/mruby-task/examples/simple.rb \
+	mruby/mrbgems/mruby-task/examples/statistics.rb \
+	mruby/mrbgems/mruby-task/examples/task_pass.rb \
+	mruby/mrbgems/mruby-task/examples/producer_consumer.rb \
+	mruby/mrbgems/mruby-task/examples/suspend_resume.rb \
+	mruby/mrbgems/mruby-task/examples/priority.rb \
+	mruby/mrbgems/mruby-task/examples/inspection.rb \
+	mruby/mrbgems/mruby-task/test/task.rb \
+	mruby/mrbgems/mruby-task/src/task.c \
+	mruby/mrbgems/mruby-task/include/task_hal.h \
+	mruby/mrbgems/mruby-task/include/task.h \
 	mruby/mrbgems/mruby-numeric-ext/mrbgem.rake \
+	mruby/mrbgems/mruby-numeric-ext/README.md \
 	mruby/mrbgems/mruby-numeric-ext/test/numeric.rb \
 	mruby/mrbgems/mruby-numeric-ext/mrblib/numeric_ext.rb \
 	mruby/mrbgems/mruby-numeric-ext/src/numeric_ext.c \
+	mruby/mrbgems/hal-posix-socket/mrbgem.rake \
+	mruby/mrbgems/hal-posix-socket/src/socket_hal.c \
+	mruby/mrbgems/hal-posix-io/mrbgem.rake \
+	mruby/mrbgems/hal-posix-io/src/io_hal.c \
 	mruby/mrbgems/mruby-fiber/mrbgem.rake \
 	mruby/mrbgems/mruby-fiber/test/fiber2.rb \
 	mruby/mrbgems/mruby-fiber/test/fibertest.c \
 	mruby/mrbgems/mruby-fiber/test/fiber.rb \
 	mruby/mrbgems/mruby-fiber/src/fiber.c \
 	mruby/mrbgems/mruby-complex/mrbgem.rake \
+	mruby/mrbgems/mruby-complex/README.md \
 	mruby/mrbgems/mruby-complex/test/complex.rb \
 	mruby/mrbgems/mruby-complex/mrblib/complex.rb \
 	mruby/mrbgems/mruby-complex/src/complex.c \
 	mruby/mrbgems/mruby-exit/mrbgem.rake \
 	mruby/mrbgems/mruby-exit/src/mruby_exit.c \
 	mruby/mrbgems/mruby-error/mrbgem.rake \
+	mruby/mrbgems/mruby-error/README.md \
 	mruby/mrbgems/mruby-error/test/exception.rb \
 	mruby/mrbgems/mruby-error/test/exception.c \
 	mruby/mrbgems/mruby-error/src/exception.c \
+	mruby/mrbgems/mruby-strftime/mrbgem.rake \
+	mruby/mrbgems/mruby-strftime/README.md \
+	mruby/mrbgems/mruby-strftime/test/strftime.rb \
+	mruby/mrbgems/mruby-strftime/src/strftime.c \
 	mruby/mrbgems/mruby-bin-mruby/tools/mruby/mruby.c \
 	mruby/mrbgems/mruby-bin-mruby/mrbgem.rake \
+	mruby/mrbgems/mruby-bin-mruby/README.md \
 	mruby/mrbgems/mruby-bin-mruby/bintest/mruby.rb \
 	mruby/mrbgems/mruby-test/mrbgem.rake \
 	mruby/mrbgems/mruby-test/vformat.c \
@@ -531,17 +615,23 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-bin-debugger/tools/mrdb/mrdb.c \
 	mruby/mrbgems/mruby-bin-debugger/tools/mrdb/apilist.c \
 	mruby/mrbgems/mruby-bin-debugger/mrbgem.rake \
+	mruby/mrbgems/mruby-bin-debugger/README.md \
 	mruby/mrbgems/mruby-bin-debugger/bintest/mrdb.rb \
 	mruby/mrbgems/mruby-bin-debugger/bintest/print.rb \
 	mruby/mrbgems/mruby-array-ext/mrbgem.rake \
+	mruby/mrbgems/mruby-array-ext/README.md \
 	mruby/mrbgems/mruby-array-ext/test/array.rb \
 	mruby/mrbgems/mruby-array-ext/mrblib/array.rb \
 	mruby/mrbgems/mruby-array-ext/src/array.c \
+	mruby/mrbgems/hal-win-dir/mrbgem.rake \
+	mruby/mrbgems/hal-win-dir/src/dir_hal.c \
 	mruby/mrbgems/mruby-enum-lazy/mrbgem.rake \
+	mruby/mrbgems/mruby-enum-lazy/README.md \
 	mruby/mrbgems/mruby-enum-lazy/test/lazy.rb \
 	mruby/mrbgems/mruby-enum-lazy/mrblib/lazy.rb \
 	mruby/mrbgems/mruby-bin-strip/tools/mruby-strip/mruby_strip.c \
 	mruby/mrbgems/mruby-bin-strip/mrbgem.rake \
+	mruby/mrbgems/mruby-bin-strip/README.md \
 	mruby/mrbgems/mruby-bin-strip/bintest/mruby_strip.rb \
 	mruby/mrbgems/mruby-errno/mrbgem.rake \
 	mruby/mrbgems/mruby-errno/README.md \
@@ -552,46 +642,67 @@ EXTRA_DIST += \
 	mruby/mrbgems/mruby-errno/src/known_errors.def \
 	mruby/mrbgems/mruby-errno/src/errno.c \
 	mruby/mrbgems/mruby-toplevel-ext/mrbgem.rake \
+	mruby/mrbgems/mruby-toplevel-ext/README.md \
 	mruby/mrbgems/mruby-toplevel-ext/test/toplevel.rb \
 	mruby/mrbgems/mruby-toplevel-ext/mrblib/toplevel.rb \
+	mruby/mrbgems/hal-win-socket/mrbgem.rake \
+	mruby/mrbgems/hal-win-socket/src/socket_hal.c \
 	mruby/mrbgems/mruby-math/mrbgem.rake \
+	mruby/mrbgems/mruby-math/README.md \
 	mruby/mrbgems/mruby-math/test/math.rb \
 	mruby/mrbgems/mruby-math/src/math.c \
 	mruby/mrbgems/mruby-bin-mrbc/tools/mrbc/stub.c \
 	mruby/mrbgems/mruby-bin-mrbc/tools/mrbc/mrbc.c \
 	mruby/mrbgems/mruby-bin-mrbc/mrbgem.rake \
+	mruby/mrbgems/mruby-bin-mrbc/README.md \
 	mruby/mrbgems/mruby-bin-mrbc/bintest/mrbc.rb \
 	mruby/mrbgems/mruby-encoding/mrbgem.rake \
+	mruby/mrbgems/mruby-encoding/README.md \
 	mruby/mrbgems/mruby-encoding/test/string.rb \
 	mruby/mrbgems/mruby-encoding/test/numeric.rb \
 	mruby/mrbgems/mruby-encoding/src/encoding.c \
+	mruby/mrbgems/hal-win-io/mrbgem.rake \
+	mruby/mrbgems/hal-win-io/src/io_hal.c \
 	mruby/mrbgems/stdlib-io.gembox \
 	mruby/mrbgems/default.gembox \
 	mruby/mrbgems/mruby-os-memsize/mrbgem.rake \
+	mruby/mrbgems/mruby-os-memsize/README.md \
 	mruby/mrbgems/mruby-os-memsize/test/memsize.rb \
 	mruby/mrbgems/mruby-os-memsize/src/memsize.c \
 	mruby/mrbgems/default-no-fpu.gembox \
 	mruby/mrbgems/mruby-enum-ext/mrbgem.rake \
+	mruby/mrbgems/mruby-enum-ext/README.md \
 	mruby/mrbgems/mruby-enum-ext/test/enum.rb \
 	mruby/mrbgems/mruby-enum-ext/mrblib/enum.rb \
 	mruby/Rakefile \
 	mruby/SECURITY.md \
 	mruby/doc/mruby_logo_red_icon.png \
+	mruby/doc/mruby4.0.md \
 	mruby/doc/mruby3.0.md \
 	mruby/doc/mruby3.1.md \
 	mruby/doc/internal/opcode.md \
+	mruby/doc/internal/vm.md \
+	mruby/doc/internal/gc.md \
+	mruby/doc/internal/architecture.md \
 	mruby/doc/internal/boxing.md \
+	mruby/doc/internal/compiler.md \
 	mruby/doc/limitations.md \
+	mruby/doc/README.md \
 	mruby/doc/mruby3.2.md \
 	mruby/doc/mruby3.4.md \
 	mruby/doc/mruby3.3.md \
 	mruby/doc/guides/compile.md \
+	mruby/doc/guides/amalgamation.md \
+	mruby/doc/guides/rom-method-table.md \
 	mruby/doc/guides/memory.md \
 	mruby/doc/guides/mrbgems.md \
 	mruby/doc/guides/debugger.md \
 	mruby/doc/guides/hier.md \
 	mruby/doc/guides/link.md \
 	mruby/doc/guides/symbol.md \
+	mruby/doc/guides/capi.md \
+	mruby/doc/guides/language.md \
+	mruby/doc/guides/getting-started.md \
 	mruby/doc/guides/gc-arena-howto.md \
 	mruby/doc/guides/mrbconf.md \
 	mruby/minirake \
@@ -626,12 +737,11 @@ EXTRA_DIST += \
 	mruby/include/mruby/version.h \
 	mruby/include/mruby/khash.h \
 	mruby/include/mruby/gc.h \
-	mruby/include/mruby/presym/enable.h \
-	mruby/include/mruby/presym/disable.h \
 	mruby/include/mruby/presym/scanning.h \
 	mruby/include/mruby/proc.h \
 	mruby/include/mrbconf.h \
-	mruby/include/mruby.h
+	mruby/include/mruby.h \
+	mruby/NEWS.md
 
 if ENABLE_THIRD_PARTY
 
