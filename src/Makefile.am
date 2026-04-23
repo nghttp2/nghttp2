@@ -206,7 +206,9 @@ nghttpx_LDADD = libnghttpx.a ${LDADD}
 
 if HAVE_MRUBY
 libnghttpx_a_CPPFLAGS += \
-	-I${top_srcdir}/third-party/mruby/include @LIBMRUBY_CFLAGS@
+	-I${top_srcdir}/third-party/mruby/include \
+	-I${top_builddir}/third-party/mruby/build/include \
+	@LIBMRUBY_CFLAGS@
 nghttpx_LDADD += -L${top_builddir}/third-party/mruby/build/lib @LIBMRUBY_LIBS@
 endif # HAVE_MRUBY
 
@@ -245,7 +247,9 @@ nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} @TESTLDADD@
 
 if HAVE_MRUBY
 nghttpx_unittest_CPPFLAGS += \
-	-I${top_srcdir}/third-party/mruby/include @LIBMRUBY_CFLAGS@
+	-I${top_srcdir}/third-party/mruby/include \
+	-I${top_builddir}/third-party/mruby/build/include \
+	@LIBMRUBY_CFLAGS@
 nghttpx_unittest_LDADD += \
 	-L${top_builddir}/third-party/mruby/build/lib @LIBMRUBY_LIBS@
 endif # HAVE_MRUBY

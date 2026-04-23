@@ -175,6 +175,7 @@ if(ENABLE_APP)
 
   if(HAVE_MRUBY)
     target_link_libraries(nghttpx_static mruby-lib)
+    target_include_directories(nghttpx_static PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/../third-party/mruby/build/include)
   endif()
 
   if(HAVE_NEVERBLEED)
