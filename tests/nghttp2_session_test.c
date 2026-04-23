@@ -234,7 +234,7 @@ static const nghttp2_nv resnv[] = {
 };
 
 static const nghttp2_nv trailernv[] = {
-  // from http://tools.ietf.org/html/rfc6249#section-7
+  /* from http://tools.ietf.org/html/rfc6249#section-7 */
   MAKE_NV("digest", "SHA-256="
                     "MWVkMWQxYTRiMzk5MDQ0MzI3NGU5NDEyZTk5OWY1ZGFmNzgyZTJlODYz"
                     "YjRjYzFhOTlmNTQwYzI2M2QwM2U2MQ=="),
@@ -9269,7 +9269,7 @@ static int submit_response_on_stream_close(nghttp2_session *session,
   (void)error_code;
   (void)user_data;
 
-  // Attempt to submit response or data to the stream being closed
+  /* Attempt to submit response or data to the stream being closed */
   switch (stream_id) {
   case 1:
     assert_int(0, ==,
