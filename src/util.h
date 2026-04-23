@@ -1037,19 +1037,19 @@ std::vector<std::string_view> split_str(std::string_view s, char delim,
 // must be at least 27 bytes, including terminal NULL byte.  This
 // function returns std::string_view wrapping the buffer pointed by |out|,
 // and this string is terminated by NULL.
-std::string_view
-format_common_log(char *out, const std::chrono::system_clock::time_point &tp);
+std::string_view format_common_log(char *out,
+                                   std::chrono::system_clock::time_point tp);
 
 #ifdef HAVE_STD_CHRONO_TIME_ZONE
 // Works like above but with a given time zone.
-std::string_view
-format_common_log(char *out, const std::chrono::system_clock::time_point &tp,
-                  const std::chrono::time_zone *tz);
+std::string_view format_common_log(char *out,
+                                   std::chrono::system_clock::time_point tp,
+                                   const std::chrono::time_zone *tz);
 #endif // defined(HAVE_STD_CHRONO_TIME_ZONE)
 
 // Returns given time |tp| in ISO 8601 format (e.g.,
 // 2014-11-15T12:58:24.741Z or 2014-11-15T12:58:24.741+09:00).
-std::string format_iso8601(const std::chrono::system_clock::time_point &tp);
+std::string format_iso8601(std::chrono::system_clock::time_point tp);
 
 // Writes given time |tp| in ISO 8601 format (e.g.,
 // 2014-11-15T12:58:24.741Z or 2014-11-15T12:58:24.741+09:00) in
@@ -1057,13 +1057,13 @@ std::string format_iso8601(const std::chrono::system_clock::time_point &tp);
 // including terminal NULL byte.  This function returns std::string_view
 // wrapping the buffer pointed by |out|, and this string is terminated
 // by NULL.
-std::string_view
-format_iso8601(char *out, const std::chrono::system_clock::time_point &tp);
+std::string_view format_iso8601(char *out,
+                                std::chrono::system_clock::time_point tp);
 
 #ifdef HAVE_STD_CHRONO_TIME_ZONE
 // Works like above but with a given time zone.
 std::string_view format_iso8601(char *out,
-                                const std::chrono::system_clock::time_point &tp,
+                                std::chrono::system_clock::time_point tp,
                                 const std::chrono::time_zone *tz);
 #endif // defined(HAVE_STD_CHRONO_TIME_ZONE)
 
@@ -1072,28 +1072,27 @@ std::string_view format_iso8601(char *out,
 // by |out|.  The buffer must be at least 25 bytes, including terminal
 // NULL byte.  This function returns std::string_view wrapping the buffer
 // pointed by |out|, and this string is terminated by NULL.
-std::string_view
-format_iso8601_basic(char *out,
-                     const std::chrono::system_clock::time_point &tp);
+std::string_view format_iso8601_basic(char *out,
+                                      std::chrono::system_clock::time_point tp);
 
 #ifdef HAVE_STD_CHRONO_TIME_ZONE
 // Works like above but with a given time zone.
-std::string_view
-format_iso8601_basic(char *out, const std::chrono::system_clock::time_point &tp,
-                     const std::chrono::time_zone *tz);
+std::string_view format_iso8601_basic(char *out,
+                                      std::chrono::system_clock::time_point tp,
+                                      const std::chrono::time_zone *tz);
 #endif // defined(HAVE_STD_CHRONO_TIME_ZONE)
 
 // Returns given time |tp| in HTTP Date format (e.g., Mon, 10 Oct 2016
 // 10:25:58 GMT)
-std::string format_http_date(const std::chrono::system_clock::time_point &tp);
+std::string format_http_date(std::chrono::system_clock::time_point tp);
 
 // Writes given time |tp| in HTTP Date format (e.g., Mon, 10 Oct 2016
 // 10:25:58 GMT) in buffer pointed by |out|.  The buffer must be at
 // least 30 bytes, including terminal NULL byte.  This function
 // returns std::string_view wrapping the buffer pointed by |out|, and this
 // string is terminated by NULL.
-std::string_view
-format_http_date(char *out, const std::chrono::system_clock::time_point &tp);
+std::string_view format_http_date(char *out,
+                                  std::chrono::system_clock::time_point tp);
 
 // Return the system precision of the template parameter |Clock| as
 // a nanosecond value of type |Rep|
@@ -1160,7 +1159,7 @@ std::string duration_str(double t);
 // unit after the formatting.  The available units are s, ms and us.
 // The unit which is equal to or less than |t| is used and 2
 // fractional digits follow.
-std::string format_duration(const std::chrono::microseconds &u);
+std::string format_duration(std::chrono::microseconds u);
 
 // Just like above, but this takes |t| as seconds.
 std::string format_duration(double t);

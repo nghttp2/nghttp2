@@ -35,7 +35,7 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-Timestamp::Timestamp(const std::chrono::system_clock::time_point &tp) {
+Timestamp::Timestamp(std::chrono::system_clock::time_point tp) {
   time_local = util::format_common_log(time_local_buf.data(), tp);
   time_iso8601 = util::format_iso8601(time_iso8601_buf.data(), tp);
   time_http = util::format_http_date(time_http_buf.data(), tp);
@@ -61,7 +61,7 @@ LogConfig *log_config() {
 }
 
 void LogConfig::update_tstamp_millis(
-  const std::chrono::system_clock::time_point &now) {
+  std::chrono::system_clock::time_point now) {
   if (std::chrono::duration_cast<std::chrono::milliseconds>(
         now.time_since_epoch()) ==
       std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -74,8 +74,7 @@ void LogConfig::update_tstamp_millis(
   tstamp = std::make_shared<Timestamp>(now);
 }
 
-void LogConfig::update_tstamp(
-  const std::chrono::system_clock::time_point &now) {
+void LogConfig::update_tstamp(std::chrono::system_clock::time_point now) {
   if (std::chrono::duration_cast<std::chrono::seconds>(
         now.time_since_epoch()) ==
       std::chrono::duration_cast<std::chrono::seconds>(

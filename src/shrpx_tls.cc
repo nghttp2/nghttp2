@@ -2404,7 +2404,7 @@ std::vector<uint8_t> serialize_ssl_session(SSL_SESSION *session) {
 } // namespace
 
 void try_cache_tls_session(TLSSessionCache *cache, SSL_SESSION *session,
-                           const std::chrono::steady_clock::time_point &t) {
+                           std::chrono::steady_clock::time_point t) {
   if (cache->last_updated + 1min > t) {
     if (log_enabled(INFO)) {
       Log{INFO} << "Client session cache entry is still fresh.";

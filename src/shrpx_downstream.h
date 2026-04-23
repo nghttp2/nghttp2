@@ -383,8 +383,7 @@ public:
 
   void
   set_request_start_time(std::chrono::high_resolution_clock::time_point time);
-  const std::chrono::high_resolution_clock::time_point &
-  get_request_start_time() const;
+  std::chrono::high_resolution_clock::time_point get_request_start_time() const;
   int push_request_headers();
   bool get_chunked_request() const;
   void set_chunked_request(bool f);

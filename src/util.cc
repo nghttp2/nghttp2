@@ -161,7 +161,7 @@ constexpr auto WEEKDAY = std::to_array({
   "Sat"sv,
 });
 
-std::string format_http_date(const std::chrono::system_clock::time_point &tp) {
+std::string format_http_date(std::chrono::system_clock::time_point tp) {
   std::string res;
 
   res.resize_and_overwrite("Sat, 27 Sep 2014 06:31:15 GMT"sv.size() +
@@ -175,7 +175,7 @@ std::string format_http_date(const std::chrono::system_clock::time_point &tp) {
   return res;
 }
 
-std::string format_iso8601(const std::chrono::system_clock::time_point &tp) {
+std::string format_iso8601(std::chrono::system_clock::time_point tp) {
   std::string res;
 
   res.resize_and_overwrite("2014-11-15T12:58:24.741+09:00"sv.size() +
@@ -197,13 +197,13 @@ const std::chrono::time_zone *get_current_time_zone() {
 }
 } // namespace
 
-std::string_view
-format_iso8601(char *out, const std::chrono::system_clock::time_point &tp) {
+std::string_view format_iso8601(char *out,
+                                std::chrono::system_clock::time_point tp) {
   return format_iso8601(out, tp, get_current_time_zone());
 }
 
 std::string_view format_iso8601(char *out,
-                                const std::chrono::system_clock::time_point &tp,
+                                std::chrono::system_clock::time_point tp,
                                 const std::chrono::time_zone *tz) {
   auto t = std::chrono::floor<std::chrono::milliseconds>(tp);
   auto zt = std::chrono::zoned_time{tz, t};
@@ -253,14 +253,13 @@ std::string_view format_iso8601(char *out,
 }
 
 std::string_view
-format_iso8601_basic(char *out,
-                     const std::chrono::system_clock::time_point &tp) {
+format_iso8601_basic(char *out, std::chrono::system_clock::time_point tp) {
   return format_iso8601_basic(out, tp, get_current_time_zone());
 }
 
-std::string_view
-format_iso8601_basic(char *out, const std::chrono::system_clock::time_point &tp,
-                     const std::chrono::time_zone *tz) {
+std::string_view format_iso8601_basic(char *out,
+                                      std::chrono::system_clock::time_point tp,
+                                      const std::chrono::time_zone *tz) {
   auto t = std::chrono::floor<std::chrono::milliseconds>(tp);
   auto zt = std::chrono::zoned_time{tz, t};
   auto lt = zt.get_local_time();
@@ -303,14 +302,14 @@ format_iso8601_basic(char *out, const std::chrono::system_clock::time_point &tp,
   return {out, p};
 }
 
-std::string_view
-format_common_log(char *out, const std::chrono::system_clock::time_point &tp) {
+std::string_view format_common_log(char *out,
+                                   std::chrono::system_clock::time_point tp) {
   return format_common_log(out, tp, get_current_time_zone());
 }
 
-std::string_view
-format_common_log(char *out, const std::chrono::system_clock::time_point &tp,
-                  const std::chrono::time_zone *tz) {
+std::string_view format_common_log(char *out,
+                                   std::chrono::system_clock::time_point tp,
+                                   const std::chrono::time_zone *tz) {
   auto t = std::chrono::floor<std::chrono::milliseconds>(tp);
   auto zt = std::chrono::zoned_time{tz, t};
   auto lt = zt.get_local_time();
@@ -353,8 +352,8 @@ format_common_log(char *out, const std::chrono::system_clock::time_point &tp,
   return {out, p};
 }
 
-std::string_view
-format_http_date(char *out, const std::chrono::system_clock::time_point &tp) {
+std::string_view format_http_date(char *out,
+                                  std::chrono::system_clock::time_point tp) {
   auto t = std::chrono::floor<std::chrono::seconds>(tp);
   auto days = std::chrono::floor<std::chrono::days>(t);
   auto ymd = std::chrono::year_month_day{days};
@@ -387,7 +386,7 @@ format_http_date(char *out, const std::chrono::system_clock::time_point &tp) {
 }
 #else // !defined(HAVE_STD_CHRONO_TIME_ZONE)
 namespace {
-char *iso8601_date(char *out, const std::chrono::system_clock::time_point &tp) {
+char *iso8601_date(char *out, std::chrono::system_clock::time_point tp) {
   auto ms = std::chrono::floor<std::chrono::milliseconds>(tp.time_since_epoch())
               .count();
   time_t sec = ms / 1000;
@@ -436,16 +435,15 @@ char *iso8601_date(char *out, const std::chrono::system_clock::time_point &tp) {
 }
 } // namespace
 
-std::string_view
-format_iso8601(char *out, const std::chrono::system_clock::time_point &tp) {
+std::string_view format_iso8601(char *out,
+                                std::chrono::system_clock::time_point tp) {
   auto p = iso8601_date(out, tp);
   *p = '\0';
   return std::string_view{out, p};
 }
 
 namespace {
-char *iso8601_basic_date(char *out,
-                         const std::chrono::system_clock::time_point &tp) {
+char *iso8601_basic_date(char *out, std::chrono::system_clock::time_point tp) {
   auto ms = std::chrono::floor<std::chrono::milliseconds>(tp.time_since_epoch())
               .count();
   time_t sec = ms / 1000;
@@ -490,16 +488,14 @@ char *iso8601_basic_date(char *out,
 } // namespace
 
 std::string_view
-format_iso8601_basic(char *out,
-                     const std::chrono::system_clock::time_point &tp) {
+format_iso8601_basic(char *out, std::chrono::system_clock::time_point tp) {
   auto p = iso8601_basic_date(out, tp);
   *p = '\0';
   return {out, p};
 }
 
 namespace {
-char *common_log_date(char *out,
-                      const std::chrono::system_clock::time_point &tp) {
+char *common_log_date(char *out, std::chrono::system_clock::time_point tp) {
   time_t t =
     std::chrono::floor<std::chrono::seconds>(tp.time_since_epoch()).count();
   struct tm tms;
@@ -542,15 +538,15 @@ char *common_log_date(char *out,
 }
 } // namespace
 
-std::string_view
-format_common_log(char *out, const std::chrono::system_clock::time_point &tp) {
+std::string_view format_common_log(char *out,
+                                   std::chrono::system_clock::time_point tp) {
   auto p = common_log_date(out, tp);
   *p = '\0';
   return {out, p};
 }
 
 namespace {
-char *http_date(char *out, const std::chrono::system_clock::time_point &tp) {
+char *http_date(char *out, std::chrono::system_clock::time_point tp) {
   time_t t =
     std::chrono::floor<std::chrono::seconds>(tp.time_since_epoch()).count();
   struct tm tms;
@@ -581,8 +577,8 @@ char *http_date(char *out, const std::chrono::system_clock::time_point &tp) {
 }
 } // namespace
 
-std::string_view
-format_http_date(char *out, const std::chrono::system_clock::time_point &tp) {
+std::string_view format_http_date(char *out,
+                                  std::chrono::system_clock::time_point tp) {
   auto p = http_date(out, tp);
   *p = '\0';
   return {out, p};
@@ -1366,7 +1362,7 @@ std::string duration_str(double t) {
   return utos(v) + "h";
 }
 
-std::string format_duration(const std::chrono::microseconds &u) {
+std::string format_duration(std::chrono::microseconds u) {
   auto unit = "us"sv;
   int d = 0;
   auto t = as_unsigned(u.count());

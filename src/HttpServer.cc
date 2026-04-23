@@ -201,15 +201,15 @@ constexpr auto FILE_ENTRY_MAX_AGE = 10s;
 constexpr size_t FILE_ENTRY_EVICT_THRES = 2048;
 
 namespace {
-bool need_validation_file_entry(
-  const FileEntry *ent, const std::chrono::steady_clock::time_point &now) {
+bool need_validation_file_entry(const FileEntry *ent,
+                                std::chrono::steady_clock::time_point now) {
   return ent->last_valid + FILE_ENTRY_MAX_AGE < now;
 }
 } // namespace
 
 namespace {
 bool validate_file_entry(FileEntry *ent,
-                         const std::chrono::steady_clock::time_point &now) {
+                         std::chrono::steady_clock::time_point now) {
   struct stat stbuf;
   int rv;
 

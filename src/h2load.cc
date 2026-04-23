@@ -97,7 +97,7 @@ using namespace nghttp2;
 namespace h2load {
 
 namespace {
-bool recorded(const std::chrono::steady_clock::time_point &t) {
+bool recorded(std::chrono::steady_clock::time_point t) {
   return std::chrono::steady_clock::duration::zero() != t.time_since_epoch();
 }
 } // namespace

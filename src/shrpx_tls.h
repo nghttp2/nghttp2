@@ -270,7 +270,7 @@ bool tls_hostname_match(std::string_view pattern, std::string_view hostname);
 // Depending on the existing cache's time stamp, |session| might not
 // be cached.
 void try_cache_tls_session(TLSSessionCache *cache, SSL_SESSION *session,
-                           const std::chrono::steady_clock::time_point &t);
+                           std::chrono::steady_clock::time_point t);
 
 // Returns cached session associated |addr|.  If no cache entry is
 // found associated to |addr|, nullptr will be returned.

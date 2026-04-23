@@ -103,7 +103,7 @@ class Http2Handler;
 struct FileEntry {
   FileEntry(std::string path, int64_t length, int64_t mtime, int fd,
             const std::string *content_type,
-            const std::chrono::steady_clock::time_point &last_valid,
+            std::chrono::steady_clock::time_point last_valid,
             bool stale = false)
     : path(std::move(path)),
       length(length),
