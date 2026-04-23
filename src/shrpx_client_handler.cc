@@ -1219,19 +1219,18 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
     req.tstamp = lgconf->tstamp;
   }
 
-  upstream_accesslog(
-    config->logging.access.format,
-    LogSpec{
-      downstream,
-      ipaddr_,
-      alpn_,
-      sni_,
-      conn_.tls.ssl,
-      std::chrono::high_resolution_clock::now(), // request_end_time
-      port_,
-      faddr_->port,
-      config->pid,
-    });
+  upstream_accesslog(config->logging.access.format,
+                     LogSpec{
+                       downstream,
+                       ipaddr_,
+                       alpn_,
+                       sni_,
+                       conn_.tls.ssl,
+                       std::chrono::steady_clock::now(), // request_end_time
+                       port_,
+                       faddr_->port,
+                       config->pid,
+                     });
 }
 
 ClientHandler::ReadBuf *ClientHandler::get_rb() { return &rb_; }
