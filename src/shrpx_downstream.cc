@@ -138,7 +138,7 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
     balloc_(1024, 1024),
     req_(balloc_),
     resp_(balloc_),
-    request_start_time_(std::chrono::high_resolution_clock::now()),
+    request_start_time_(std::chrono::steady_clock::now()),
     blocked_request_buf_(mcpool),
     request_buf_(mcpool),
     response_buf_(mcpool),
@@ -619,11 +619,11 @@ void FieldStore::erase_content_length_and_transfer_encoding() {
 }
 
 void Downstream::set_request_start_time(
-  std::chrono::high_resolution_clock::time_point time) {
+  std::chrono::steady_clock::time_point time) {
   request_start_time_ = time;
 }
 
-std::chrono::high_resolution_clock::time_point
+std::chrono::steady_clock::time_point
 Downstream::get_request_start_time() const {
   return request_start_time_;
 }

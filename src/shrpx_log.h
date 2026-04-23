@@ -299,7 +299,7 @@ struct LogSpec {
   std::string_view alpn;
   std::string_view sni;
   SSL *ssl;
-  std::chrono::high_resolution_clock::time_point request_end_time;
+  std::chrono::steady_clock::time_point request_end_time;
   std::string_view remote_port;
   uint16_t server_port;
   pid_t pid;

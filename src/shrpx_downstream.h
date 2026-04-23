@@ -381,9 +381,8 @@ public:
   // crumble_request_cookie().
   std::string_view assemble_request_cookie();
 
-  void
-  set_request_start_time(std::chrono::high_resolution_clock::time_point time);
-  std::chrono::high_resolution_clock::time_point get_request_start_time() const;
+  void set_request_start_time(std::chrono::steady_clock::time_point time);
+  std::chrono::steady_clock::time_point get_request_start_time() const;
   int push_request_headers();
   bool get_chunked_request() const;
   void set_chunked_request(bool f);
@@ -548,7 +547,7 @@ private:
   Request req_;
   Response resp_;
 
-  std::chrono::high_resolution_clock::time_point request_start_time_;
+  std::chrono::steady_clock::time_point request_start_time_;
 
   // host we requested to downstream.  This is used to rewrite
   // location header field to decide the location should be rewritten
