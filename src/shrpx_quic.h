@@ -30,8 +30,8 @@
 #include <stdint.h>
 
 #include <functional>
-#include <optional>
 #include <span>
+#include <expected>
 
 #include "ssl_compat.h"
 
@@ -49,6 +49,7 @@
 #include "siphash.h"
 #include "template.h"
 #include "network.h"
+#include "errors.h"
 
 using namespace nghttp2;
 
@@ -140,7 +141,7 @@ int generate_quic_stateless_reset_token(
   std::span<uint8_t, NGTCP2_STATELESS_RESET_TOKENLEN> token,
   const ngtcp2_cid &cid, std::span<const uint8_t> secret);
 
-std::optional<std::span<const uint8_t>>
+std::expected<std::span<const uint8_t>, Error>
 generate_retry_token(std::span<uint8_t> token, uint32_t version,
                      const sockaddr *sa, socklen_t salen,
                      const ngtcp2_cid &retry_scid, const ngtcp2_cid &odcid,
@@ -151,7 +152,7 @@ int verify_retry_token(ngtcp2_cid &odcid, std::span<const uint8_t> token,
                        const sockaddr *sa, socklen_t salen,
                        std::span<const uint8_t> secret);
 
-std::optional<std::span<const uint8_t>>
+std::expected<std::span<const uint8_t>, Error>
 generate_token(std::span<uint8_t> token, const sockaddr *sa, size_t salen,
                std::span<const uint8_t> secret, uint8_t km_id);
 

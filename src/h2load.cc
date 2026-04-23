@@ -2417,7 +2417,7 @@ int parse_header_table_size(uint32_t &dst, const char *opt,
     std::cerr << "--" << opt << ": Bad option value: " << optarg << std::endl;
     return -1;
   }
-  if (n > std::numeric_limits<uint32_t>::max()) {
+  if (*n > std::numeric_limits<uint32_t>::max()) {
     std::cerr << "--" << opt
               << ": Value too large.  It should be less than or equal to "
               << std::numeric_limits<uint32_t>::max() << std::endl;
@@ -2570,12 +2570,12 @@ void output_sd_stat(std::ostream &o, std::string_view title,
 } // namespace
 
 namespace {
-std::optional<SSL_SESSION *> read_tls_session(const std::string &path) {
+std::expected<SSL_SESSION *, Error> read_tls_session(const std::string &path) {
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
   auto f = wolfSSL_BIO_new_file(path.c_str(), "r");
   if (!f) {
     std::cerr << "Could not read TLS session file from " << path << std::endl;
-    return {};
+    return std::unexpected{Error::IO};
   }
 
   auto f_del = defer([f] { wolfSSL_BIO_free(f); });
@@ -2586,7 +2586,7 @@ std::optional<SSL_SESSION *> read_tls_session(const std::string &path) {
 
   if (!wolfSSL_PEM_read_bio(f, &name, &header, &data, &datalen)) {
     std::cerr << "Could not read TLS session file from " << path << std::endl;
-    return {};
+    return std::unexpected{Error::IO};
   }
 
   auto data_del = defer([name, header, data] {
@@ -2597,7 +2597,7 @@ std::optional<SSL_SESSION *> read_tls_session(const std::string &path) {
 
   if ("WOLFSSL SESSION PARAMETERS"sv != name) {
     std::cerr << "Could not read TLS session file from " << path << std::endl;
-    return {};
+    return std::unexpected{Error::INVALID_PEM_TYPE};
   }
 
   const uint8_t *pdata = data;
@@ -2605,7 +2605,7 @@ std::optional<SSL_SESSION *> read_tls_session(const std::string &path) {
   auto session = wolfSSL_d2i_SSL_SESSION(nullptr, &pdata, datalen);
   if (!session) {
     std::cerr << "Could not read TLS session file from " << path << std::endl;
-    return {};
+    return std::unexpected{Error::CRYPTO};
   }
 
   return session;
@@ -2613,7 +2613,7 @@ std::optional<SSL_SESSION *> read_tls_session(const std::string &path) {
   auto f = BIO_new_file(path.c_str(), "r");
   if (!f) {
     std::cerr << "Could not read TLS session file from " << path << std::endl;
-    return {};
+    return std::unexpected{Error::IO};
   }
 
   auto session = PEM_read_bio_SSL_SESSION(f, nullptr, 0, nullptr);
@@ -2621,7 +2621,7 @@ std::optional<SSL_SESSION *> read_tls_session(const std::string &path) {
 
   if (!session) {
     std::cerr << "Could not read TLS session file from " << path << std::endl;
-    return {};
+    return std::unexpected{Error::IO};
   }
 
   return session;
@@ -3099,7 +3099,7 @@ int main(int argc, char **argv) {
     case 'w':
     case 'W': {
       auto n = util::parse_uint(optarg);
-      if (!n || n > 30) {
+      if (!n || *n > 30) {
         std::cerr << "-" << static_cast<char>(c)
                   << ": specify the integer in the range [0, 30], inclusive"
                   << std::endl;
@@ -3322,15 +3322,25 @@ int main(int argc, char **argv) {
       case 11: {
         // --connect-to
         auto p = util::split_hostport(std::string_view{optarg});
-        int64_t port = 0;
-        if (p.first.empty() ||
-            (!p.second.empty() &&
-             (port = util::parse_uint(p.second).value_or(-1)) == -1)) {
+        if (p.first.empty()) {
           std::cerr << "--connect-to: Invalid value " << optarg << std::endl;
           exit(EXIT_FAILURE);
         }
+
+        uint16_t port{};
+        if (!p.second.empty()) {
+          auto maybe_port = util::parse_uint(p.second);
+          if (!maybe_port ||
+              *maybe_port > std::numeric_limits<uint16_t>::max()) {
+            std::cerr << "--connect-to: Invalid value " << optarg << std::endl;
+            exit(EXIT_FAILURE);
+          }
+
+          port = static_cast<uint16_t>(*maybe_port);
+        }
+
         config.connect_to_host = p.first;
-        config.connect_to_port = static_cast<uint16_t>(port);
+        config.connect_to_port = port;
         break;
       }
       case 12: {
@@ -3444,9 +3454,9 @@ int main(int argc, char **argv) {
   }
 
   if (!config.tls_session_file.empty()) {
-    auto session = read_tls_session(config.tls_session_file);
-    if (session) {
-      config.tls_session = *session;
+    auto maybe_session = read_tls_session(config.tls_session_file);
+    if (maybe_session) {
+      config.tls_session = *maybe_session;
     }
   }
 

@@ -29,6 +29,7 @@
 
 #include <vector>
 #include <mutex>
+#include <expected>
 
 #include "ssl_compat.h"
 
@@ -50,6 +51,9 @@
 #include "network.h"
 #include "shrpx_config.h"
 #include "shrpx_router.h"
+#include "errors.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -315,12 +319,12 @@ int get_x509_not_after(time_t &t, X509 *x);
 #ifdef NGHTTP2_OPENSSL_IS_BORINGSSL
 // Read HPKE private key from PEM file denoted by |path|.  It only
 // reads the first private key.
-std::optional<HPKEPrivateKey> read_hpke_private_key_pem(BlockAllocator &balloc,
-                                                        std::string_view path);
+std::expected<HPKEPrivateKey, Error>
+read_hpke_private_key_pem(BlockAllocator &balloc, std::string_view path);
 
 // Read the specific |type| of content from PEM file denoted by
 // |path|.  It only reads the first block of the specified type.
-std::optional<std::span<const uint8_t>>
+std::expected<std::span<const uint8_t>, Error>
 read_pem(BlockAllocator &balloc, std::string_view path, std::string_view type);
 #endif // defined(NGHTTP2_OPENSSL_IS_BORINGSSL)
 

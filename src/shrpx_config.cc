@@ -137,26 +137,26 @@ struct HostPort {
 };
 
 namespace {
-std::optional<HostPort> split_host_port(BlockAllocator &balloc,
-                                        std::string_view hostport,
-                                        std::string_view opt) {
+std::expected<HostPort, Error> split_host_port(BlockAllocator &balloc,
+                                               std::string_view hostport,
+                                               std::string_view opt) {
   // host and port in |hostport| is separated by single ','.
   auto sep = std::ranges::find(hostport, ',');
   if (sep == std::ranges::end(hostport)) {
     Log{ERROR} << opt << ": Invalid host, port: " << hostport;
-    return {};
+    return std::unexpected{Error::INVALID_ARGUMENT};
   }
   auto len = as_unsigned(sep - std::ranges::begin(hostport));
   if (NI_MAXHOST < len + 1) {
     Log{ERROR} << opt << ": Hostname too long: " << hostport;
-    return {};
+    return std::unexpected{Error::INVALID_ARGUMENT};
   }
 
   auto portstr = std::string_view{sep + 1, std::ranges::end(hostport)};
   auto d = util::parse_uint(portstr);
-  if (!d || 1 > d || d > std::numeric_limits<uint16_t>::max()) {
+  if (!d || 1 > *d || *d > std::numeric_limits<uint16_t>::max()) {
     Log{ERROR} << opt << ": Port is invalid: " << portstr;
-    return {};
+    return std::unexpected{Error::INVALID_ARGUMENT};
   }
 
   return HostPort{
@@ -1154,7 +1154,7 @@ int parse_downstream_params(DownstreamParams &out,
       }
 
       auto n = util::parse_uint(valstr);
-      if (!n || (n < 1 || n > 256)) {
+      if (!n || (*n < 1 || *n > 256)) {
         Log{ERROR}
           << "backend: weight: non-negative integer [1, 256] is expected";
         return -1;
@@ -1176,7 +1176,7 @@ int parse_downstream_params(DownstreamParams &out,
       }
 
       auto n = util::parse_uint(valstr);
-      if (!n || (n < 1 || n > 256)) {
+      if (!n || (*n < 1 || *n > 256)) {
         Log{ERROR} << "backend: group-weight: non-negative integer [1, 256] is "
                       "expected";
         return -1;
@@ -1432,7 +1432,7 @@ int parse_error_page(std::vector<ErrorPage> &error_pages, std::string_view opt,
   } else {
     auto n = util::parse_uint(codestr);
 
-    if (!n || n < 400 || n > 599) {
+    if (!n || *n < 400 || *n > 599) {
       Log{ERROR} << opt << ": bad code: '" << codestr << "'";
       return -1;
     }
@@ -2987,15 +2987,17 @@ int parse_config(
                                   std::string_view{path, addr_end});
       addr.host_unix = true;
     } else {
-      auto hp = split_host_port(
+      auto maybe_hp = split_host_port(
         downstreamconf.balloc,
         std::string_view{std::ranges::begin(optarg), addr_end}, opt);
-      if (!hp) {
+      if (!maybe_hp) {
         return -1;
       }
 
-      addr.host = std::move(hp->host);
-      addr.port = hp->port;
+      const auto &hp = *maybe_hp;
+
+      addr.host = hp.host;
+      addr.port = hp.port;
     }
 
     auto mapping =
@@ -3083,15 +3085,17 @@ int parse_config(
       return 0;
     }
 
-    auto hp = split_host_port(
+    auto maybe_hp = split_host_port(
       config->balloc, std::string_view{std::ranges::begin(optarg), addr_end},
       opt);
-    if (!hp) {
+    if (!maybe_hp) {
       return -1;
     }
 
-    addr.host = std::move(hp->host);
-    addr.port = hp->port;
+    const auto &hp = *maybe_hp;
+
+    addr.host = hp.host;
+    addr.port = hp.port;
 
     if (util::numeric_host(addr.host.data(), AF_INET)) {
       addr.family = AF_INET;
@@ -3759,16 +3763,18 @@ int parse_config(
       return -1;
     }
 
-    auto hp = split_host_port(
+    auto maybe_hp = split_host_port(
       config->balloc, std::string_view{std::ranges::begin(optarg), addr_end},
       opt);
-    if (!hp) {
+    if (!maybe_hp) {
       return -1;
     }
 
+    const auto &hp = *maybe_hp;
+
     auto &memcachedconf = config->tls.ticket.memcached;
-    memcachedconf.host = std::move(hp->host);
-    memcachedconf.port = hp->port;
+    memcachedconf.host = hp.host;
+    memcachedconf.port = hp.port;
     memcachedconf.tls = params.tls;
 
     return 0;
@@ -4109,7 +4115,7 @@ int parse_config(
     return parse_tls_proto_version(config->tls.max_proto_version, opt, optarg);
   case SHRPX_OPTID_REDIRECT_HTTPS_PORT: {
     auto n = util::parse_uint(optarg);
-    if (!n || n < 0 || n > 65535) {
+    if (!n || *n < 0 || *n > 65535) {
       Log{ERROR} << opt
                  << ": bad value.  Specify an integer in the range [0, "
                     "65535], inclusive";

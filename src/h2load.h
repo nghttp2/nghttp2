@@ -43,6 +43,7 @@
 #include <chrono>
 #include <array>
 #include <span>
+#include <expected>
 
 #define NGHTTP2_NO_SSIZE_T
 #include <nghttp2/nghttp2.h>
@@ -70,6 +71,7 @@
 #include "http2.h"
 #include "memchunk.h"
 #include "template.h"
+#include "errors.h"
 
 using namespace nghttp2;
 

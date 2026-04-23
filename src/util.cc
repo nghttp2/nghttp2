@@ -1195,63 +1195,56 @@ bool ipv6_numeric_addr(const char *host) {
 }
 
 namespace {
-std::optional<std::pair<int64_t, std::string_view>>
+std::expected<std::pair<uint64_t, size_t>, Error>
 parse_uint_digits(std::string_view s) {
   if (s.empty()) {
-    return {};
+    return std::unexpected{Error::INVALID_ARGUMENT};
   }
 
-  constexpr int64_t max = std::numeric_limits<int64_t>::max();
+  constexpr auto max = std::numeric_limits<int64_t>::max();
 
-  int64_t n = 0;
-  size_t i = 0;
+  uint64_t n = 0;
 
-  for (auto c : s) {
+  for (auto i = 0UZ; i < s.size(); ++i) {
+    auto c = s[i];
     if (!is_digit(c)) {
-      break;
+      if (i == 0) {
+        return std::unexpected{Error::INVALID_ARGUMENT};
+      }
+
+      return {{n, i}};
     }
 
-    if (n > max / 10) {
-      return {};
+    auto d = static_cast<uint64_t>(c - '0');
+    if (n > (max - d) / 10) {
+      return std::unexpected{Error::INTEGER_OVERFLOW};
     }
 
     n *= 10;
-
-    if (n > max - (c - '0')) {
-      return {};
-    }
-
-    n += c - '0';
-
-    ++i;
+    n += d;
   }
 
-  if (i == 0) {
-    return {};
-  }
-
-  return std::pair{n, s.substr(i)};
+  return {{n, s.size()}};
 }
 } // namespace
 
-std::optional<int64_t> parse_uint_with_unit(std::string_view s) {
+std::expected<uint64_t, Error> parse_uint_with_unit(std::string_view s) {
   auto r = parse_uint_digits(s);
   if (!r) {
-    return {};
+    return std::unexpected{r.error()};
   }
 
-  auto [n, rest] = *r;
-
-  if (rest.empty()) {
+  auto [n, last] = *r;
+  if (last == s.size()) {
     return n;
   }
 
-  if (rest.size() != 1) {
-    return {};
+  if (last + 1 != s.size()) {
+    return std::unexpected{Error::INVALID_ARGUMENT};
   }
 
-  int mul = 1;
-  switch (rest[0]) {
+  uint64_t mul;
+  switch (s[last]) {
   case 'K':
   case 'k':
     mul = 1 << 10;
@@ -1265,62 +1258,66 @@ std::optional<int64_t> parse_uint_with_unit(std::string_view s) {
     mul = 1 << 30;
     break;
   default:
-    return {};
+    return std::unexpected{Error::INVALID_ARGUMENT};
   }
 
-  constexpr int64_t max = std::numeric_limits<int64_t>::max();
+  constexpr auto max = std::numeric_limits<int64_t>::max();
   if (n > max / mul) {
-    return {};
+    return std::unexpected{Error::INTEGER_OVERFLOW};
   }
 
   return n * mul;
 }
 
-std::optional<int64_t> parse_uint(std::string_view s) {
+std::expected<uint64_t, Error> parse_uint(std::string_view s) {
   auto r = parse_uint_digits(s);
-  if (!r || !(*r).second.empty()) {
-    return {};
+  if (!r) {
+    return std::unexpected{r.error()};
   }
 
-  return (*r).first;
+  auto [n, last] = *r;
+  if (last != s.size()) {
+    return std::unexpected{Error::INVALID_ARGUMENT};
+  }
+
+  return n;
 }
 
-std::optional<double> parse_duration_with_unit(std::string_view s) {
+std::expected<double, Error> parse_duration_with_unit(std::string_view s) {
   constexpr auto max = std::numeric_limits<int64_t>::max();
 
   auto r = parse_uint_digits(s);
   if (!r) {
-    return {};
+    return std::unexpected{r.error()};
   }
 
-  auto [n, rest] = *r;
-
-  if (rest.empty()) {
+  auto [n, last] = *r;
+  if (last == s.size()) {
     return static_cast<double>(n);
   }
 
-  switch (rest[0]) {
+  switch (s[last]) {
   case 'S':
   case 's':
     // seconds
-    if (rest.size() != 1) {
-      return {};
+    if (last + 1 != s.size()) {
+      return std::unexpected{Error::INVALID_ARGUMENT};
     }
 
     return static_cast<double>(n);
   case 'M':
   case 'm':
-    if (rest.size() == 1) {
+    if (last + 1 == s.size()) {
       // minutes
       if (n > max / 60) {
-        return {};
+        return std::unexpected{Error::INTEGER_OVERFLOW};
       }
 
       return static_cast<double>(n) * 60;
     }
 
-    if (rest.size() != 2 || (rest[1] != 's' && rest[1] != 'S')) {
-      return {};
+    if (last + 2 != s.size() || (s[last + 1] != 's' && s[last + 1] != 'S')) {
+      return std::unexpected{Error::INVALID_ARGUMENT};
     }
 
     // milliseconds
@@ -1328,17 +1325,17 @@ std::optional<double> parse_duration_with_unit(std::string_view s) {
   case 'H':
   case 'h':
     // hours
-    if (rest.size() != 1) {
-      return {};
+    if (last + 1 != s.size()) {
+      return std::unexpected{Error::INVALID_ARGUMENT};
     }
 
     if (n > max / 3600) {
-      return {};
+      return std::unexpected{Error::INTEGER_OVERFLOW};
     }
 
     return static_cast<double>(n) * 3600;
   default:
-    return {};
+    return std::unexpected{Error::INVALID_ARGUMENT};
   }
 }
 

@@ -44,6 +44,7 @@
 #include <memory>
 #include <unordered_set>
 #include <unordered_map>
+#include <expected>
 
 #include "ssl_compat.h"
 
@@ -67,6 +68,7 @@
 #include "http2.h"
 #include "network.h"
 #include "allocator.h"
+#include "errors.h"
 
 using namespace nghttp2;
 

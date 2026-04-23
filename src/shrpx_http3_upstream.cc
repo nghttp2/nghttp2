@@ -2207,7 +2207,7 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
   if (content_length) {
     // libnghttp3 guarantees this can be parsed
     req.fs.content_length =
-      util::parse_uint(content_length->value).value_or(-1);
+      static_cast<int64_t>(*util::parse_uint(content_length->value));
   }
 
   // presence of mandatory header fields are guaranteed by libnghttp3.
