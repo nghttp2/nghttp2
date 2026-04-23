@@ -38,7 +38,7 @@ using namespace nghttp2;
 namespace shrpx {
 
 struct Timestamp {
-  Timestamp(const std::chrono::system_clock::time_point &tp);
+  Timestamp(std::chrono::system_clock::time_point tp);
 
   std::array<char, sizeof("03/Jul/2014:00:19:38 +0900")> time_local_buf;
   std::array<char, sizeof("2014-11-15T12:58:24.741+09:00")> time_iso8601_buf;
@@ -61,10 +61,10 @@ struct LogConfig {
   LogConfig();
   // Updates time stamp if difference between time_str_updated and now
   // is 1 or more milliseconds.
-  void update_tstamp_millis(const std::chrono::system_clock::time_point &now);
+  void update_tstamp_millis(std::chrono::system_clock::time_point now);
   // Updates time stamp if difference between time_str_updated and
   // now, converted to time_t, is 1 or more seconds.
-  void update_tstamp(const std::chrono::system_clock::time_point &now);
+  void update_tstamp(std::chrono::system_clock::time_point now);
 };
 
 // We need LogConfig per thread to avoid data race around opening file
