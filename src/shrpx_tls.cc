@@ -2529,13 +2529,13 @@ int time_t_from_asn1_time(time_t &t, const ASN1_TIME *at) {
 
   char *s;
   auto slen = BIO_get_mem_data(b, &s);
-  auto tt = util::parse_openssl_asn1_time_print(
+  auto maybe_time = util::parse_openssl_asn1_time_print(
     std::string_view{s, static_cast<size_t>(slen)});
-  if (tt == 0) {
+  if (!maybe_time) {
     return -1;
   }
 
-  t = tt;
+  t = *maybe_time;
 #endif // !defined(NGHTTP2_GENUINE_OPENSSL) &&
        // !defined(NGHTTP2_OPENSSL_IS_LIBRESSL) &&
        // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)

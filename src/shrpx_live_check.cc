@@ -271,14 +271,15 @@ int LiveCheck::initiate_connection() {
     raddr_ = &addr_->addr;
   }
 
-  conn_.fd = util::create_nonblock_socket(raddr_->family());
-
-  if (conn_.fd == -1) {
+  auto maybe_fd = util::create_nonblock_socket(raddr_->family());
+  if (!maybe_fd) {
     auto error = errno;
     Log{WARN} << "socket() failed; addr=" << util::to_numeric_addr(raddr_)
               << ", errno=" << error;
     return -1;
   }
+
+  conn_.fd = *maybe_fd;
 
   rv = connect(conn_.fd, raddr_->as_sockaddr(), raddr_->size());
   if (rv != 0 && errno != EINPROGRESS) {

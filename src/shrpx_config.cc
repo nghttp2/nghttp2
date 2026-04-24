@@ -4567,15 +4567,13 @@ namespace {
 // backend to use.
 int compute_affinity_hash(std::vector<AffinityHash> &res, size_t idx,
                           std::string_view s) {
-  int rv;
   std::array<uint8_t, 32> buf;
 
   for (auto i = 0; i < 20; ++i) {
     auto t = std::string{s};
     t += static_cast<char>(i);
 
-    rv = util::sha256(buf.data(), t);
-    if (rv != 0) {
+    if (!util::sha256(buf.data(), t)) {
       return -1;
     }
 

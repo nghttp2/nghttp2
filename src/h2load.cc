@@ -550,10 +550,12 @@ int Client::make_socket(addrinfo *addr) {
 
   if (config.is_quic()) {
 #ifdef ENABLE_HTTP3
-    fd = util::create_nonblock_udp_socket(addr->ai_family);
-    if (fd == -1) {
+    auto maybe_fd = util::create_nonblock_udp_socket(addr->ai_family);
+    if (!maybe_fd) {
       return -1;
     }
+
+    fd = *maybe_fd;
 
 #  ifdef UDP_GRO
     int val = 1;
@@ -563,8 +565,7 @@ int Client::make_socket(addrinfo *addr) {
     }
 #  endif // defined(UDP_GRO)
 
-    rv = util::bind_any_addr_udp(fd, addr->ai_family);
-    if (rv != 0) {
+    if (!util::bind_any_addr_udp(fd, addr->ai_family)) {
       close(fd);
       fd = -1;
       return -1;
@@ -586,10 +587,13 @@ int Client::make_socket(addrinfo *addr) {
     }
 #endif // defined(ENABLE_HTTP3)
   } else {
-    fd = util::create_nonblock_socket(addr->ai_family);
-    if (fd == -1) {
+    auto maybe_fd = util::create_nonblock_socket(addr->ai_family);
+    if (!maybe_fd) {
       return -1;
     }
+
+    fd = *maybe_fd;
+
     if (config.scheme == "https") {
       if (!ssl) {
         ssl = SSL_new(worker->ssl_ctx);
@@ -3321,11 +3325,13 @@ int main(int argc, char **argv) {
         break;
       case 11: {
         // --connect-to
-        auto p = util::split_hostport(std::string_view{optarg});
-        if (p.first.empty()) {
+        auto maybe_hostport = util::split_hostport(std::string_view{optarg});
+        if (!maybe_hostport) {
           std::cerr << "--connect-to: Invalid value " << optarg << std::endl;
           exit(EXIT_FAILURE);
         }
+
+        const auto &p = *maybe_hostport;
 
         uint16_t port{};
         if (!p.second.empty()) {

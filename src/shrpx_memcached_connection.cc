@@ -160,14 +160,15 @@ int MemcachedConnection::initiate_connection() {
     conn_.tls.client_session_cache = &tls_session_cache_;
   }
 
-  conn_.fd = util::create_nonblock_socket(addr_->family());
-
-  if (conn_.fd == -1) {
+  auto maybe_fd = util::create_nonblock_socket(addr_->family());
+  if (!maybe_fd) {
     auto error = errno;
     Log{WARN, this} << "socket() failed; errno=" << error;
 
     return -1;
   }
+
+  conn_.fd = *maybe_fd;
 
   int rv;
   rv = connect(conn_.fd, addr_->as_sockaddr(), addr_->size());

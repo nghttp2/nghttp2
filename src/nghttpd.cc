@@ -461,12 +461,15 @@ int main(int argc, char **argv) {
     config.htdocs = "./";
   }
 
-  if (util::read_mime_types(config.mime_types,
-                            config.mime_types_file.c_str()) != 0) {
+  if (auto maybe_mime_types =
+        util::read_mime_types(config.mime_types_file.c_str());
+      !maybe_mime_types) {
     if (mime_types_file_set_manually) {
       std::cerr << "--mime-types-file: Could not open mime types file: "
                 << config.mime_types_file << std::endl;
     }
+  } else {
+    config.mime_types = std::move(*maybe_mime_types);
   }
 
   auto &trailer_names = config.trailer_names;

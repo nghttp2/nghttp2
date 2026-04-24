@@ -733,11 +733,9 @@ void ClientHandler::pool_downstream_connection(
 namespace {
 // Computes 32bits hash for session affinity for IP address |ip|.
 uint32_t compute_affinity_from_ip(std::string_view ip) {
-  int rv;
   std::array<uint8_t, 32> buf;
 
-  rv = util::sha256(buf.data(), ip);
-  if (rv != 0) {
+  if (!util::sha256(buf.data(), ip)) {
     // Not sure when sha256 failed.  Just fall back to another
     // function.
     return util::hash32(ip);
