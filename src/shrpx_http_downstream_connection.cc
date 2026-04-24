@@ -364,9 +364,8 @@ int HttpDownstreamConnection::initiate_connection() {
       raddr = &addr_->addr;
     }
 
-    conn_.fd = util::create_nonblock_socket(raddr->family());
-
-    if (conn_.fd == -1) {
+    auto maybe_fd = util::create_nonblock_socket(raddr->family());
+    if (!maybe_fd) {
       auto error = errno;
       Log{WARN, this} << "socket() failed; addr="
                       << util::to_numeric_addr(raddr) << ", errno=" << error;
@@ -375,6 +374,8 @@ int HttpDownstreamConnection::initiate_connection() {
 
       return SHRPX_ERR_NETWORK;
     }
+
+    conn_.fd = *maybe_fd;
 
     worker_blocker->on_success();
 

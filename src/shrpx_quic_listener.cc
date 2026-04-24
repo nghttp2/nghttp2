@@ -96,12 +96,14 @@ void QUICListener::on_read() {
       continue;
     }
 
-    Address local_addr;
-    if (util::msghdr_get_local_addr(local_addr, &msg, ss.ss_family) != 0) {
+    auto maybe_local_addr = util::msghdr_get_local_addr(&msg, ss.ss_family);
+    if (!maybe_local_addr) {
       ++pktcnt;
 
       continue;
     }
+
+    auto &local_addr = *maybe_local_addr;
 
     local_addr.port(faddr_->port);
 

@@ -1406,8 +1406,8 @@ int HttpsUpstream::redirect_to_https(Downstream *downstream) {
     return 0;
   }
 
-  auto authority = util::extract_host(req.authority);
-  if (authority.empty()) {
+  auto maybe_authority = util::extract_host(req.authority);
+  if (!maybe_authority) {
     error_reply(400);
     return 0;
   }
@@ -1418,9 +1418,9 @@ int HttpsUpstream::redirect_to_https(Downstream *downstream) {
 
   std::string_view loc;
   if (httpconf.redirect_https_port == "443"sv) {
-    loc = concat_string_ref(balloc, "https://"sv, authority, req.path);
+    loc = concat_string_ref(balloc, "https://"sv, *maybe_authority, req.path);
   } else {
-    loc = concat_string_ref(balloc, "https://"sv, authority, ":"sv,
+    loc = concat_string_ref(balloc, "https://"sv, *maybe_authority, ":"sv,
                             httpconf.redirect_https_port, req.path);
   }
 

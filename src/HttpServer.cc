@@ -1232,8 +1232,11 @@ void prepare_response(Stream *stream, Http2Handler *hd,
   time_t last_mod = 0;
   bool last_mod_found = false;
   if (!ims.empty()) {
-    last_mod_found = true;
-    last_mod = util::parse_http_date(ims);
+    auto maybe_last_mod = util::parse_http_date(ims);
+    if (maybe_last_mod) {
+      last_mod_found = true;
+      last_mod = *maybe_last_mod;
+    }
   }
 
   std::string_view raw_path, raw_query;

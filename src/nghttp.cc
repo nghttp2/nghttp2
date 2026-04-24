@@ -615,10 +615,12 @@ int HttpClient::initiate_connection() {
   while (next_addr) {
     cur_addr = next_addr;
     next_addr = next_addr->ai_next;
-    fd = util::create_nonblock_socket(cur_addr->ai_family);
-    if (fd == -1) {
+    auto maybe_fd = util::create_nonblock_socket(cur_addr->ai_family);
+    if (!maybe_fd) {
       continue;
     }
+
+    fd = *maybe_fd;
 
     if (ssl_ctx) {
       // We are establishing TLS connection.

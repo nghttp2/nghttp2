@@ -86,6 +86,8 @@ enum class Error {
   TLS_REQUIRED,
   // PEM type (e.g., PRIVATE KEY) is not expected one.
   INVALID_PEM_TYPE,
+  // Entity is not found.
+  ENTITY_NOT_FOUND,
 };
 
 } // namespace nghttp2
@@ -169,6 +171,9 @@ struct std::formatter<nghttp2::Error>
       break;
     case nghttp2::Error::INVALID_PEM_TYPE:
       s = "invalid PEM type"sv;
+      break;
+    case nghttp2::Error::ENTITY_NOT_FOUND:
+      s = "entity not found"sv;
       break;
     }
 

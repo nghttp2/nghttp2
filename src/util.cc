@@ -585,29 +585,29 @@ std::string_view format_http_date(char *out,
 }
 #endif   // !defined(HAVE_STD_CHRONO_TIME_ZONE)
 
-time_t parse_http_date(std::string_view s) {
+std::expected<time_t, Error> parse_http_date(std::string_view s) {
   tm tm{};
 #ifdef _WIN32
   // there is no strptime - use std::get_time
   std::stringstream sstr(s.data());
   sstr >> std::get_time(&tm, "%a, %d %b %Y %H:%M:%S GMT");
   if (sstr.fail()) {
-    return 0;
+    return std::unexpected{Error::INVALID_ARGUMENT};
   }
 #else  // !defined(_WIN32)
-  char *r = strptime(s.data(), "%a, %d %b %Y %H:%M:%S GMT", &tm);
-  if (r == 0) {
-    return 0;
+  auto r = strptime(s.data(), "%a, %d %b %Y %H:%M:%S GMT", &tm);
+  if (!r) {
+    return std::unexpected{Error::INVALID_ARGUMENT};
   }
 #endif // !defined(_WIN32)
   return nghttp2_timegm_without_yday(&tm);
 }
 
-time_t parse_openssl_asn1_time_print(std::string_view s) {
+std::expected<time_t, Error> parse_openssl_asn1_time_print(std::string_view s) {
   tm tm{};
   auto r = strptime(s.data(), "%b %d %H:%M:%S %Y GMT", &tm);
   if (r == nullptr) {
-    return 0;
+    return std::unexpected{Error::INVALID_ARGUMENT};
   }
   return nghttp2_timegm_without_yday(&tm);
 }
@@ -1093,18 +1093,18 @@ int make_socket_nodelay(int fd) {
   return 0;
 }
 
-int create_nonblock_socket(int family) {
+std::expected<int, Error> create_nonblock_socket(int family) {
 #ifdef SOCK_NONBLOCK
   auto fd = socket(family, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
 
   if (fd == -1) {
-    return -1;
+    return std::unexpected{Error::SYSCALL};
   }
 #else  // !defined(SOCK_NONBLOCK)
   auto fd = socket(family, SOCK_STREAM, 0);
 
   if (fd == -1) {
-    return -1;
+    return std::unexpected{Error::SYSCALL};
   }
 
   make_socket_nonblocking(fd);
@@ -1118,18 +1118,18 @@ int create_nonblock_socket(int family) {
   return fd;
 }
 
-int create_nonblock_udp_socket(int family) {
+std::expected<int, Error> create_nonblock_udp_socket(int family) {
 #ifdef SOCK_NONBLOCK
   auto fd = socket(family, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
 
   if (fd == -1) {
-    return -1;
+    return std::unexpected{Error::SYSCALL};
   }
 #else  // !defined(SOCK_NONBLOCK)
   auto fd = socket(family, SOCK_DGRAM, 0);
 
   if (fd == -1) {
-    return -1;
+    return std::unexpected{Error::SYSCALL};
   }
 
   make_socket_nonblocking(fd);
@@ -1139,7 +1139,7 @@ int create_nonblock_udp_socket(int family) {
   return fd;
 }
 
-int bind_any_addr_udp(int fd, int family) {
+std::expected<void, Error> bind_any_addr_udp(int fd, int family) {
   addrinfo *res, *rp;
   int rv;
 
@@ -1151,7 +1151,7 @@ int bind_any_addr_udp(int fd, int family) {
 
   rv = getaddrinfo(nullptr, "0", &hints, &res);
   if (rv != 0) {
-    return -1;
+    return std::unexpected{Error::LIBC};
   }
 
   for (rp = res; rp; rp = rp->ai_next) {
@@ -1163,10 +1163,10 @@ int bind_any_addr_udp(int fd, int family) {
   freeaddrinfo(res);
 
   if (!rp) {
-    return -1;
+    return std::unexpected{Error::SYSCALL};
   }
 
-  return 0;
+  return {};
 }
 
 bool check_socket_connected(int fd) {
@@ -1483,22 +1483,24 @@ uint8_t *hexdump_line(uint8_t *dest, const uint8_t *data, size_t datalen,
 } // namespace
 
 namespace {
-int hexdump_write(int fd, const uint8_t *data, size_t datalen) {
+std::expected<void, Error> hexdump_write(int fd, const uint8_t *data,
+                                         size_t datalen) {
   ssize_t nwrite;
 
   for (; (nwrite = write(fd, data, datalen)) == -1 && errno == EINTR;)
     ;
   if (nwrite == -1) {
-    return -1;
+    return std::unexpected{Error::IO};
   }
 
-  return 0;
+  return {};
 }
 } // namespace
 
-int hexdump(FILE *out, const void *data, size_t datalen) {
+std::expected<void, Error> hexdump(FILE *out, const void *data,
+                                   size_t datalen) {
   if (datalen == 0) {
-    return 0;
+    return {};
   }
 
   // min_space is the additional minimum space that the buffer must
@@ -1543,8 +1545,8 @@ int hexdump(FILE *out, const void *data, size_t datalen) {
 
     auto len = static_cast<size_t>(last - buf.data());
     if (len + min_space > buf.size()) {
-      if (hexdump_write(fd, buf.data(), len) != 0) {
-        return -1;
+      if (auto rv = hexdump_write(fd, buf.data(), len); !rv) {
+        return rv;
       }
 
       last = buf.data();
@@ -1559,7 +1561,7 @@ int hexdump(FILE *out, const void *data, size_t datalen) {
     return hexdump_write(fd, buf.data(), len);
   }
 
-  return 0;
+  return {};
 }
 
 void put_uint16be(uint8_t *buf, uint16_t n) {
@@ -1597,14 +1599,16 @@ uint64_t get_uint64(const uint8_t *data) {
   return n;
 }
 
-int read_mime_types(std::unordered_map<std::string, std::string> &res,
-                    const char *filename) {
+std::expected<std::unordered_map<std::string, std::string>, Error>
+read_mime_types(const char *filename) {
   std::ifstream infile(filename);
   if (!infile) {
-    return -1;
+    return std::unexpected{Error::IO};
   }
 
-  auto delim_pred = [](char c) { return c == ' ' || c == '\t'; };
+  std::unordered_map<std::string, std::string> res;
+
+  constexpr auto delim_pred = [](char c) { return c == ' ' || c == '\t'; };
 
   std::string line;
   while (std::getline(infile, line)) {
@@ -1631,7 +1635,11 @@ int read_mime_types(std::unordered_map<std::string, std::string> &res,
     }
   }
 
-  return 0;
+  if (stream_error(infile)) {
+    return std::unexpected{Error::IO};
+  }
+
+  return res;
 }
 
 // Returns x**y
@@ -1657,103 +1665,104 @@ uint32_t hash32(std::string_view s) {
 }
 
 namespace {
-int message_digest(uint8_t *res, const EVP_MD *meth, std::string_view s) {
+std::expected<void, Error> message_digest(uint8_t *res, const EVP_MD *meth,
+                                          std::string_view s) {
   int rv;
 
   auto ctx = EVP_MD_CTX_new();
   if (ctx == nullptr) {
-    return -1;
+    return std::unexpected{Error::CRYPTO};
   }
 
   auto ctx_deleter = defer([ctx] { EVP_MD_CTX_free(ctx); });
 
   rv = EVP_DigestInit_ex(ctx, meth, nullptr);
   if (rv != 1) {
-    return -1;
+    return std::unexpected{Error::CRYPTO};
   }
 
   rv = EVP_DigestUpdate(ctx, s.data(), s.size());
   if (rv != 1) {
-    return -1;
+    return std::unexpected{Error::CRYPTO};
   }
 
   auto mdlen = static_cast<unsigned int>(EVP_MD_size(meth));
 
   rv = EVP_DigestFinal_ex(ctx, res, &mdlen);
   if (rv != 1) {
-    return -1;
+    return std::unexpected{Error::CRYPTO};
   }
 
-  return 0;
+  return {};
 }
 } // namespace
 
-int sha256(uint8_t *res, std::string_view s) {
+std::expected<void, Error> sha256(uint8_t *res, std::string_view s) {
   return message_digest(res, tls::sha256(), s);
 }
 
-int sha1(uint8_t *res, std::string_view s) {
+std::expected<void, Error> sha1(uint8_t *res, std::string_view s) {
   return message_digest(res, tls::sha1(), s);
 }
 
-std::string_view extract_host(std::string_view hostport) {
+std::expected<std::string_view, Error> extract_host(std::string_view hostport) {
   if (hostport.empty()) {
-    return ""sv;
+    return std::unexpected{Error::INVALID_ARGUMENT};
   }
 
   if (hostport[0] == '[') {
     // assume this is IPv6 numeric address
     auto p = std::ranges::find(hostport, ']');
     if (p == std::ranges::end(hostport)) {
-      return ""sv;
+      return std::unexpected{Error::INVALID_ARGUMENT};
     }
     if (p + 1 < std::ranges::end(hostport) && *(p + 1) != ':') {
-      return ""sv;
+      return std::unexpected{Error::INVALID_ARGUMENT};
     }
     return std::string_view{std::ranges::begin(hostport), p + 1};
   }
 
   auto p = std::ranges::find(hostport, ':');
   if (p == std::ranges::begin(hostport)) {
-    return ""sv;
+    return std::unexpected{Error::INVALID_ARGUMENT};
   }
   return std::string_view{std::ranges::begin(hostport), p};
 }
 
-std::pair<std::string_view, std::string_view>
+std::expected<std::pair<std::string_view, std::string_view>, Error>
 split_hostport(std::string_view hostport) {
   if (hostport.empty()) {
-    return {};
+    return std::unexpected{Error::INVALID_ARGUMENT};
   }
   if (hostport[0] == '[') {
     // assume this is IPv6 numeric address
     auto p = std::ranges::find(hostport, ']');
     if (p == std::ranges::end(hostport)) {
-      return {};
+      return std::unexpected{Error::INVALID_ARGUMENT};
     }
     if (p + 1 == std::ranges::end(hostport)) {
-      return {std::string_view{std::ranges::begin(hostport) + 1, p}, {}};
+      return {{std::string_view{std::ranges::begin(hostport) + 1, p}, {}}};
     }
     if (*(p + 1) != ':' || p + 2 == std::ranges::end(hostport)) {
-      return {};
+      return std::unexpected{Error::INVALID_ARGUMENT};
     }
-    return {std::string_view{std::ranges::begin(hostport) + 1, p},
-            std::string_view{p + 2, std::ranges::end(hostport)}};
+    return {{std::string_view{std::ranges::begin(hostport) + 1, p},
+             std::string_view{p + 2, std::ranges::end(hostport)}}};
   }
 
   auto p = std::ranges::find(hostport, ':');
   if (p == std::ranges::begin(hostport)) {
-    return {};
+    return std::unexpected{Error::INVALID_ARGUMENT};
   }
   if (p == std::ranges::end(hostport)) {
-    return {std::string_view{std::ranges::begin(hostport), p}, {}};
+    return {{std::string_view{std::ranges::begin(hostport), p}, {}}};
   }
   if (p + 1 == std::ranges::end(hostport)) {
-    return {};
+    return std::unexpected{Error::INVALID_ARGUMENT};
   }
 
-  return {std::string_view{std::ranges::begin(hostport), p},
-          std::string_view{p + 1, std::ranges::end(hostport)}};
+  return {{std::string_view{std::ranges::begin(hostport), p},
+           std::string_view{p + 1, std::ranges::end(hostport)}}};
 }
 
 std::mt19937 make_mt19937() {
@@ -1828,8 +1837,14 @@ void secure_random(uint8_t *dest, size_t destlen) {
   }
 }
 
+bool stream_error(const std::ifstream &f) {
+  return f.bad() || (!f.eof() && f.fail());
+}
+
 #ifdef ENABLE_HTTP3
-int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
+std::expected<Address, Error> msghdr_get_local_addr(msghdr *msg, int family) {
+  Address dest;
+
   switch (family) {
   case AF_INET:
     for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
@@ -1842,11 +1857,11 @@ int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
         sa.sin_family = AF_INET;
         sa.sin_addr = pktinfo.ipi_addr;
 
-        return 0;
+        return dest;
       }
     }
 
-    return -1;
+    return std::unexpected{Error::ENTITY_NOT_FOUND};
   case AF_INET6:
     for (auto cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
       if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
@@ -1858,14 +1873,14 @@ int msghdr_get_local_addr(Address &dest, msghdr *msg, int family) {
         sa.sin6_family = AF_INET6;
         sa.sin6_addr = pktinfo.ipi6_addr;
 
-        return 0;
+        return dest;
       }
     }
 
-    return -1;
+    return std::unexpected{Error::ENTITY_NOT_FOUND};
   }
 
-  return -1;
+  return std::unexpected{Error::INVALID_ARGUMENT};
 }
 
 uint8_t msghdr_get_ecn(msghdr *msg, int family) {

@@ -793,7 +793,15 @@ void test_util_ends_with(void) {
 
 void test_util_parse_http_date(void) {
   assert_int64(1001939696, ==,
-               util::parse_http_date("Mon, 1 Oct 2001 12:34:56 GMT"sv));
+               util::parse_http_date("Mon, 1 Oct 2001 12:34:56 GMT"sv)
+                 .value_or(std::numeric_limits<time_t>::max()));
+
+  {
+    auto rv = util::parse_http_date("Mon, 1 Oct 200X 12:34:56 GMT"sv);
+
+    assert_false(rv.has_value());
+    assert_true(Error::INVALID_ARGUMENT == rv.error());
+  }
 }
 
 void test_util_localtime_date(void) {
@@ -1065,31 +1073,35 @@ void test_util_decode_hex(void) {
 }
 
 void test_util_extract_host(void) {
-  assert_stdsv_equal("foo"sv, util::extract_host("foo"sv));
-  assert_stdsv_equal("foo"sv, util::extract_host("foo:"sv));
-  assert_stdsv_equal("foo"sv, util::extract_host("foo:0"sv));
-  assert_stdsv_equal("[::1]"sv, util::extract_host("[::1]"sv));
-  assert_stdsv_equal("[::1]"sv, util::extract_host("[::1]:"sv));
+  assert_stdsv_equal("foo"sv, util::extract_host("foo"sv).value_or(""));
+  assert_stdsv_equal("foo"sv, util::extract_host("foo:"sv).value_or(""));
+  assert_stdsv_equal("foo"sv, util::extract_host("foo:0"sv).value_or(""));
+  assert_stdsv_equal("[::1]"sv, util::extract_host("[::1]"sv).value_or(""));
+  assert_stdsv_equal("[::1]"sv, util::extract_host("[::1]:"sv).value_or(""));
 
-  assert_true(util::extract_host(":foo"sv).empty());
-  assert_true(util::extract_host("[::1"sv).empty());
-  assert_true(util::extract_host("[::1]0"sv).empty());
-  assert_true(util::extract_host(""sv).empty());
+  assert_false(util::extract_host(":foo"sv).has_value());
+  assert_false(util::extract_host("[::1"sv).has_value());
+  assert_false(util::extract_host("[::1]0"sv).has_value());
+  assert_false(util::extract_host(""sv).has_value());
 }
 
 void test_util_split_hostport(void) {
-  assert_true(std::make_pair("foo"sv, ""sv) == util::split_hostport("foo"sv));
-  assert_true(std::make_pair("foo"sv, "80"sv) ==
-              util::split_hostport("foo:80"sv));
-  assert_true(std::make_pair("::1"sv, "80"sv) ==
-              util::split_hostport("[::1]:80"sv));
-  assert_true(std::make_pair("::1"sv, ""sv) == util::split_hostport("[::1]"sv));
+  static constexpr auto empty = std::pair<std::string_view, std::string_view>{};
 
-  assert_true(std::make_pair(""sv, ""sv) == util::split_hostport(""sv));
-  assert_true(std::make_pair(""sv, ""sv) == util::split_hostport("[::1]:"sv));
-  assert_true(std::make_pair(""sv, ""sv) == util::split_hostport("foo:"sv));
-  assert_true(std::make_pair(""sv, ""sv) == util::split_hostport("[::1:"sv));
-  assert_true(std::make_pair(""sv, ""sv) == util::split_hostport("[::1]80"sv));
+  assert_true(std::make_pair("foo"sv, ""sv) ==
+              util::split_hostport("foo"sv).value_or(empty));
+  assert_true(std::make_pair("foo"sv, "80"sv) ==
+              util::split_hostport("foo:80"sv).value_or(empty));
+  assert_true(std::make_pair("::1"sv, "80"sv) ==
+              util::split_hostport("[::1]:80"sv).value_or(empty));
+  assert_true(std::make_pair("::1"sv, ""sv) ==
+              util::split_hostport("[::1]"sv).value_or(empty));
+
+  assert_false(util::split_hostport(""sv).has_value());
+  assert_false(util::split_hostport("[::1]:"sv).has_value());
+  assert_false(util::split_hostport("foo:"sv).has_value());
+  assert_false(util::split_hostport("[::1:"sv).has_value());
+  assert_false(util::split_hostport("[::1]80"sv).has_value());
 }
 
 void test_util_split_str(void) {

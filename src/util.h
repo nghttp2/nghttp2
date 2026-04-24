@@ -597,12 +597,12 @@ constexpr size_t percent_encode_tokenlen(R &&r) noexcept {
   return n;
 }
 
-time_t parse_http_date(std::string_view s);
+std::expected<time_t, Error> parse_http_date(std::string_view s);
 
 // Parses time formatted as "MMM DD HH:MM:SS YYYY [GMT]" (e.g., Feb 3
 // 00:55:52 2015 GMT), which is specifically used by OpenSSL
 // ASN1_TIME_print().
-time_t parse_openssl_asn1_time_print(std::string_view s);
+std::expected<time_t, Error> parse_openssl_asn1_time_print(std::string_view s);
 
 inline constexpr auto upcase_tbl = [] {
   std::array<char, 256> tbl;
@@ -1118,10 +1118,10 @@ int make_socket_closeonexec(int fd);
 int make_socket_nonblocking(int fd);
 int make_socket_nodelay(int fd);
 
-int create_nonblock_socket(int family);
-int create_nonblock_udp_socket(int family);
+std::expected<int, Error> create_nonblock_socket(int family);
+std::expected<int, Error> create_nonblock_udp_socket(int family);
 
-int bind_any_addr_udp(int fd, int family);
+std::expected<void, Error> bind_any_addr_udp(int fd, int family);
 
 bool check_socket_connected(int fd);
 
@@ -1236,9 +1236,8 @@ std::string_view make_http_hostport(std::string_view host, uint16_t port,
 }
 
 // hexdump dumps |data| of length |datalen| in the format similar to
-// hexdump(1) with -C option.  This function returns 0 if it succeeds,
-// or -1.
-int hexdump(FILE *out, const void *data, size_t datalen);
+// hexdump(1) with -C option.
+std::expected<void, Error> hexdump(FILE *out, const void *data, size_t datalen);
 
 // Copies 2 byte unsigned integer |n| in host byte order to |buf| in
 // network byte order.
@@ -1261,10 +1260,9 @@ uint32_t get_uint32(const uint8_t *data);
 uint64_t get_uint64(const uint8_t *data);
 
 // Reads mime types file (see /etc/mime.types), and stores extension
-// -> MIME type map in |res|.  This function returns 0 if it succeeds,
-// or -1.
-int read_mime_types(std::unordered_map<std::string, std::string> &res,
-                    const char *filename);
+// -> MIME type map in |res|.
+std::expected<std::unordered_map<std::string, std::string>, Error>
+read_mime_types(const char *filename);
 
 // Fills random alpha and digit byte to the range [|first|, |last|).
 // Returns the one beyond the |last|.
@@ -1325,25 +1323,21 @@ double int_pow(double x, size_t y);
 
 uint32_t hash32(std::string_view s);
 
-// Computes SHA-256 of |s|, and stores it in |buf|.  This function
-// returns 0 if it succeeds, or -1.
-int sha256(uint8_t *buf, std::string_view s);
+// Computes SHA-256 of |s|, and stores it in |buf|.
+std::expected<void, Error> sha256(uint8_t *buf, std::string_view s);
 
-// Computes SHA-1 of |s|, and stores it in |buf|.  This function
-// returns 0 if it succeeds, or -1.
-int sha1(uint8_t *buf, std::string_view s);
+// Computes SHA-1 of |s|, and stores it in |buf|.
+std::expected<void, Error> sha1(uint8_t *buf, std::string_view s);
 
-// Returns host from |hostport|.  If host cannot be found in
-// |hostport|, returns empty string.  The returned string might not be
+// Returns host from |hostport|.  The returned string might not be
 // NULL-terminated.
-std::string_view extract_host(std::string_view hostport);
+std::expected<std::string_view, Error> extract_host(std::string_view hostport);
 
 // split_hostport splits host and port in |hostport|.  Unlike
 // extract_host, square brackets enclosing host name is stripped.  If
 // port is not available, it returns empty string in the second
-// string.  The returned string might not be NULL-terminated.  On any
-// error, it returns a pair which has empty strings.
-std::pair<std::string_view, std::string_view>
+// string.  The returned string might not be NULL-terminated.
+std::expected<std::pair<std::string_view, std::string_view>, Error>
 split_hostport(std::string_view hostport);
 
 // Returns new std::mt19937 object.
@@ -1373,8 +1367,12 @@ constexpr bool contains(I first, I last, const T &value) {
   return std::ranges::find(std::move(first), last, value) != last;
 }
 
+// stream_error returns true if |f| is in error state.  EOF is not
+// considered as an error.
+bool stream_error(const std::ifstream &f);
+
 #ifdef ENABLE_HTTP3
-int msghdr_get_local_addr(Address &dest, msghdr *msg, int family);
+std::expected<Address, Error> msghdr_get_local_addr(msghdr *msg, int family);
 
 uint8_t msghdr_get_ecn(msghdr *msg, int family);
 
