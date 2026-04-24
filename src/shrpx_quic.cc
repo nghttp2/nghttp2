@@ -301,7 +301,7 @@ int generate_quic_stateless_reset_token(
   return 0;
 }
 
-std::optional<std::span<const uint8_t>>
+std::expected<std::span<const uint8_t>, Error>
 generate_retry_token(std::span<uint8_t> token, uint32_t version,
                      const sockaddr *sa, socklen_t salen,
                      const ngtcp2_cid &retry_scid, const ngtcp2_cid &odcid,
@@ -315,7 +315,7 @@ generate_retry_token(std::span<uint8_t> token, uint32_t version,
     token.data(), secret.data(), secret.size(), version, sa, salen, &retry_scid,
     &odcid, t);
   if (tokenlen < 0) {
-    return {};
+    return std::unexpected{Error::QUIC};
   }
 
   return token.first(as_unsigned(tokenlen));
@@ -339,7 +339,7 @@ int verify_retry_token(ngtcp2_cid &odcid, std::span<const uint8_t> token,
   return 0;
 }
 
-std::optional<std::span<const uint8_t>>
+std::expected<std::span<const uint8_t>, Error>
 generate_token(std::span<uint8_t> token, const sockaddr *sa, size_t salen,
                std::span<const uint8_t> secret, uint8_t km_id) {
   auto t = static_cast<ngtcp2_tstamp>(
@@ -351,7 +351,7 @@ generate_token(std::span<uint8_t> token, const sockaddr *sa, size_t salen,
     token.data(), secret.data(), secret.size(), sa,
     static_cast<ngtcp2_socklen>(salen), t);
   if (tokenlen < 0) {
-    return {};
+    return std::unexpected{Error::QUIC};
   }
 
   token[as_unsigned(tokenlen++)] = km_id;

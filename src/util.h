@@ -49,9 +49,9 @@
 #include <chrono>
 #include <unordered_map>
 #include <random>
-#include <optional>
 #include <ranges>
 #include <bit>
+#include <expected>
 
 #ifdef HAVE_LIBEV
 #  include <ev.h>
@@ -62,6 +62,7 @@
 #include "template.h"
 #include "network.h"
 #include "allocator.h"
+#include "errors.h"
 
 using namespace std::literals;
 
@@ -1135,19 +1136,21 @@ bool ipv6_numeric_addr(const char *host);
 // Parses |s| as unsigned integer and returns the parsed integer.
 // Additionally, if |s| ends with 'k', 'm', 'g' and its upper case
 // characters, multiply the integer by 1024, 1024 * 1024 and 1024 *
-// 1024 respectively.  If there is an error, returns no value.
-std::optional<int64_t> parse_uint_with_unit(std::string_view s);
+// 1024 respectively.  The maximum value that this function can
+// recognize is std::numeric_limits<int64_t>::max().
+std::expected<uint64_t, Error> parse_uint_with_unit(std::string_view s);
 
-// Parses |s| as unsigned integer and returns the parsed integer..
-std::optional<int64_t> parse_uint(std::string_view s);
+// Parses |s| as unsigned integer and returns the parsed integer.  The
+// maximum value that this function can recognize is
+// std::numeric_limits<int64_t>::max().
+std::expected<uint64_t, Error> parse_uint(std::string_view s);
 
 // Parses |s| as unsigned integer and returns the parsed integer
 // casted to double.  If |s| ends with "s", the parsed value's unit is
 // a second.  If |s| ends with "ms", the unit is millisecond.
 // Similarly, it also supports 'm' and 'h' for minutes and hours
-// respectively.  If none of them are given, the unit is second.  This
-// function returns no value if error occurs.
-std::optional<double> parse_duration_with_unit(std::string_view s);
+// respectively.  If none of them are given, the unit is second.
+std::expected<double, Error> parse_duration_with_unit(std::string_view s);
 
 // Returns string representation of time duration |t|.  If t has
 // fractional part (at least more than or equal to 1e-3), |t| is

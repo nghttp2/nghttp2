@@ -525,7 +525,7 @@ int FieldStore::parse_content_length() {
     if (content_length != -1) {
       return -1;
     }
-    content_length = *len;
+    content_length = static_cast<int64_t>(*len);
   }
   return 0;
 }
