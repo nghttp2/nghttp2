@@ -1102,13 +1102,18 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
   downstream->set_addr(http2session->get_addr());
 
   if (log_enabled(INFO)) {
-    std::stringstream ss;
+    std::string ss;
     for (auto &nv : nva) {
-      ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
+      ss += tty_http_hd();
+      ss += nv.name;
+      ss += tty_rst();
+      ss += ": ";
+      ss += nv.value;
+      ss += '\n';
     }
     Log{INFO, http2session}
       << "HTTP response headers. stream_id=" << frame->hd.stream_id << "\n"
-      << ss.str();
+      << ss;
   }
 
   if (downstream->get_non_final_response()) {

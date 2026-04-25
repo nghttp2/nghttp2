@@ -2190,17 +2190,25 @@ int Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
   auto &nva = req.fs.headers();
 
   if (log_enabled(INFO)) {
-    std::stringstream ss;
+    std::string ss;
     for (auto &nv : nva) {
       if (nv.name == "authorization"sv) {
-        ss << TTY_HTTP_HD << nv.name << TTY_RST << ": <redacted>\n";
+        ss += tty_http_hd();
+        ss += nv.name;
+        ss += tty_rst();
+        ss += ": <redacted>\n";
         continue;
       }
-      ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
+      ss += tty_http_hd();
+      ss += nv.name;
+      ss += tty_rst();
+      ss += ": ";
+      ss += nv.value;
+      ss += '\n';
     }
     Log{INFO, this} << "HTTP request headers. stream_id="
                     << downstream->get_stream_id() << "\n"
-                    << ss.str();
+                    << ss;
   }
 
   auto content_length = req.fs.header(http2::HD_CONTENT_LENGTH);
@@ -2781,14 +2789,18 @@ void Http3Upstream::remove_downstream(Downstream *downstream) {
 
 void Http3Upstream::log_response_headers(
   Downstream *downstream, const std::vector<nghttp3_nv> &nva) const {
-  std::stringstream ss;
+  std::string ss;
   for (auto &nv : nva) {
-    ss << TTY_HTTP_HD << as_string_view(nv.name, nv.namelen) << TTY_RST << ": "
-       << as_string_view(nv.value, nv.valuelen) << "\n";
+    ss += tty_http_hd();
+    ss += as_string_view(nv.name, nv.namelen);
+    ss += tty_rst();
+    ss += ": ";
+    ss += as_string_view(nv.value, nv.valuelen);
+    ss += '\n';
   }
   Log{INFO, this} << "HTTP response headers. stream_id="
                   << downstream->get_stream_id() << "\n"
-                  << ss.str();
+                  << ss;
 }
 
 int Http3Upstream::check_shutdown() {

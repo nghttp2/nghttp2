@@ -44,7 +44,6 @@
 #include <vector>
 #include <string>
 #include <algorithm>
-#include <sstream>
 #include <memory>
 #include <chrono>
 #include <unordered_map>
@@ -946,9 +945,6 @@ uint16_t get_default_port(const char *uri, const urlparse_url &u);
 
 bool porteq(const char *uri1, const urlparse_url &u1, const char *uri2,
             const urlparse_url &u2);
-
-void write_uri_field(std::ostream &o, const char *uri, const urlparse_url &u,
-                     urlparse_url_fields field);
 
 bool numeric_host(const char *hostname);
 

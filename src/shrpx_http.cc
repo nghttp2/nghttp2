@@ -145,9 +145,9 @@ std::string colorize_headers(std::string_view hdrs) {
       break;
     }
 
-    nhdrs += TTY_HTTP_HD;
+    nhdrs += tty_http_hd();
     nhdrs.append(p, np);
-    nhdrs += TTY_RST;
+    nhdrs += tty_rst();
 
     auto redact = util::strieq("authorization"sv, std::string_view{p, np});
 

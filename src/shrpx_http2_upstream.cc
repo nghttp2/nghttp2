@@ -27,7 +27,6 @@
 #include <netinet/tcp.h>
 #include <assert.h>
 #include <cerrno>
-#include <sstream>
 
 #include "shrpx_client_handler.h"
 #include "shrpx_https_upstream.h"
@@ -287,17 +286,25 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   auto &nva = req.fs.headers();
 
   if (log_enabled(INFO)) {
-    std::stringstream ss;
+    std::string ss;
     for (auto &nv : nva) {
       if (nv.name == "authorization"sv) {
-        ss << TTY_HTTP_HD << nv.name << TTY_RST << ": <redacted>\n";
+        ss += tty_http_hd();
+        ss += nv.name;
+        ss += tty_rst();
+        ss += ": <redacted>\n";
         continue;
       }
-      ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
+      ss += tty_http_hd();
+      ss += nv.name;
+      ss += tty_rst();
+      ss += ": ";
+      ss += nv.value;
+      ss += '\n';
     }
     Log{INFO, this} << "HTTP request headers. stream_id="
                     << downstream->get_stream_id() << "\n"
-                    << ss.str();
+                    << ss;
   }
 
   auto config = get_config();
@@ -2027,16 +2034,28 @@ int Http2Upstream::consume(int32_t stream_id, size_t len) {
   return 0;
 }
 
+namespace {
+std::string format_nva(std::span<const nghttp2_nv> nva) {
+  std::string s;
+
+  for (auto &nv : nva) {
+    s += tty_http_hd();
+    s += as_string_view(nv.name, nv.namelen);
+    s += tty_rst();
+    s += ": ";
+    s += as_string_view(nv.value, nv.valuelen);
+    s += '\n';
+  }
+
+  return s;
+}
+} // namespace
+
 void Http2Upstream::log_response_headers(
   Downstream *downstream, const std::vector<nghttp2_nv> &nva) const {
-  std::stringstream ss;
-  for (auto &nv : nva) {
-    ss << TTY_HTTP_HD << as_string_view(nv.name, nv.namelen) << TTY_RST << ": "
-       << as_string_view(nv.value, nv.valuelen) << "\n";
-  }
   Log{INFO, this} << "HTTP response headers. stream_id="
                   << downstream->get_stream_id() << "\n"
-                  << ss.str();
+                  << format_nva(nva);
 }
 
 int Http2Upstream::on_timeout(Downstream *downstream) {
@@ -2240,14 +2259,9 @@ int Http2Upstream::submit_push_promise(std::string_view scheme,
   }
 
   if (log_enabled(INFO)) {
-    std::stringstream ss;
-    for (auto &nv : nva) {
-      ss << TTY_HTTP_HD << as_string_view(nv.name, nv.namelen) << TTY_RST
-         << ": " << as_string_view(nv.value, nv.valuelen) << "\n";
-    }
     Log{INFO, this} << "HTTP push request headers. promised_stream_id="
                     << promised_stream_id << "\n"
-                    << ss.str();
+                    << format_nva(nva);
   }
 
   return 0;

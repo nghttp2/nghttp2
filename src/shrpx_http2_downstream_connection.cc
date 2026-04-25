@@ -464,18 +464,25 @@ int Http2DownstreamConnection::push_request_headers() {
   }
 
   if (log_enabled(INFO)) {
-    std::stringstream ss;
+    std::string ss;
     for (auto &nv : nva) {
       auto name = as_string_view(nv.name, nv.namelen);
 
       if ("authorization"sv == name) {
-        ss << TTY_HTTP_HD << name << TTY_RST << ": <redacted>\n";
+        ss += tty_http_hd();
+        ss += name;
+        ss += tty_rst();
+        ss += ": <redacted>\n";
         continue;
       }
-      ss << TTY_HTTP_HD << name << TTY_RST << ": "
-         << as_string_view(nv.value, nv.valuelen) << "\n";
+      ss += tty_http_hd();
+      ss += name;
+      ss += tty_rst();
+      ss += ": ";
+      ss += as_string_view(nv.value, nv.valuelen);
+      ss += '\n';
     }
-    Log{INFO, this} << "HTTP request headers\n" << ss.str();
+    Log{INFO, this} << "HTTP request headers\n" << ss;
   }
 
   auto transfer_encoding = req.fs.header(http2::HD_TRANSFER_ENCODING);
