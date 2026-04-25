@@ -32,6 +32,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <compare>
 
 #include <nghttp2/nghttp2.h>
 
@@ -46,48 +47,68 @@
 namespace nghttp2 {
 
 struct Header {
-  Header(std::string name, std::string value, bool no_index = false,
-         int32_t token = -1)
-    : name(std::move(name)),
-      value(std::move(value)),
-      token(token),
-      no_index(no_index) {}
+  constexpr Header(std::string name, std::string value, bool no_index = false,
+                   int32_t token = -1) noexcept
+    : name{std::move(name)},
+      value{std::move(value)},
+      token{token},
+      no_index{no_index} {}
 
-  Header() : token(-1), no_index(false) {}
+  constexpr Header() noexcept = default;
+  constexpr Header(const Header &) = default;
+  constexpr Header(Header &&) noexcept = default;
 
-  bool operator==(const Header &other) const {
+  constexpr Header &operator=(const Header &) = default;
+  constexpr Header &operator=(Header &&) noexcept = default;
+
+  constexpr bool operator==(const Header &other) const noexcept {
     return name == other.name && value == other.value;
   }
 
-  bool operator<(const Header &rhs) const {
-    return name < rhs.name || (name == rhs.name && value < rhs.value);
+  constexpr std::strong_ordering
+  operator<=>(const Header &other) const noexcept {
+    if (auto cmp = name <=> other.name; cmp != 0) {
+      return cmp;
+    }
+
+    return value <=> other.value;
   }
 
   std::string name;
   std::string value;
-  int32_t token;
-  bool no_index;
+  int32_t token{-1};
+  bool no_index{};
 };
 
 struct HeaderRef {
-  HeaderRef(std::string_view name, std::string_view value,
-            bool no_index = false, int32_t token = -1)
-    : name(name), value(value), token(token), no_index(no_index) {}
+  constexpr HeaderRef(std::string_view name, std::string_view value,
+                      bool no_index = false, int32_t token = -1) noexcept
+    : name{name}, value{value}, token{token}, no_index{no_index} {}
 
-  HeaderRef() : token(-1), no_index(false) {}
+  constexpr HeaderRef() noexcept = default;
+  constexpr HeaderRef(const HeaderRef &) noexcept = default;
+  constexpr HeaderRef(HeaderRef &&) noexcept = default;
 
-  bool operator==(const HeaderRef &other) const {
+  constexpr HeaderRef &operator=(const HeaderRef &) noexcept = default;
+  constexpr HeaderRef &operator=(HeaderRef &&) noexcept = default;
+
+  constexpr bool operator==(const HeaderRef &other) const noexcept {
     return name == other.name && value == other.value;
   }
 
-  bool operator<(const HeaderRef &rhs) const {
-    return name < rhs.name || (name == rhs.name && value < rhs.value);
+  constexpr std::strong_ordering
+  operator<=>(const HeaderRef &other) const noexcept {
+    if (auto cmp = name <=> other.name; cmp != 0) {
+      return cmp;
+    }
+
+    return value <=> other.value;
   }
 
   std::string_view name;
   std::string_view value;
-  int32_t token;
-  bool no_index;
+  int32_t token{-1};
+  bool no_index{};
 };
 
 using Headers = std::vector<Header>;
