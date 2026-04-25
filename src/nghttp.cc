@@ -1703,13 +1703,9 @@ void check_response_header(nghttp2_session *session, Request *req) {
     return;
   }
 
-  auto status = http2::parse_http_status_code(status_hd->value);
-  if (status == -1) {
-    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, req->stream_id,
-                              NGHTTP2_PROTOCOL_ERROR);
-    return;
-  }
-
+  // libnghttp2 guarantees that http2::parse_http_status_code
+  // succeeds.
+  auto status = *http2::parse_http_status_code(status_hd->value);
   req->status = status;
 
   for (auto &nv : req->res_nva) {

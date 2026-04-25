@@ -33,6 +33,7 @@
 #include <vector>
 #include <array>
 #include <compare>
+#include <expected>
 
 #include <nghttp2/nghttp2.h>
 
@@ -43,6 +44,7 @@
 #include "template.h"
 #include "allocator.h"
 #include "base64.h"
+#include "errors.h"
 
 namespace nghttp2 {
 
@@ -283,8 +285,8 @@ std::string_view rewrite_location_uri(BlockAllocator &balloc,
                                       std::string_view request_authority,
                                       std::string_view upstream_scheme);
 
-// Returns parsed HTTP status code.  Returns -1 on failure.
-int parse_http_status_code(std::string_view src);
+// Returns parsed HTTP status code.
+std::expected<int, Error> parse_http_status_code(std::string_view src);
 
 // Header fields to be indexed, except HD_MAXIDX which is convenient
 // member to get maximum value.
@@ -408,15 +410,18 @@ std::string_view rewrite_clean_path(BlockAllocator &balloc,
 // fails.
 std::string_view get_pure_path_component(std::string_view uri);
 
-// Deduces scheme, authority and path from given |uri|, and stores
-// them in |scheme|, |authority|, and |path| respectively.  If |uri|
-// is relative path, path resolution takes place using path given in
-// |base| of length |baselen|.  This function returns 0 if it
-// succeeds, or -1.
-int construct_push_component(BlockAllocator &balloc, std::string_view &scheme,
-                             std::string_view &authority,
-                             std::string_view &path, std::string_view base,
-                             std::string_view uri);
+struct PushComponent {
+  std::string_view scheme;
+  std::string_view authority;
+  std::string_view path;
+};
+
+// Deduces scheme, authority and path from given |uri|.  If |uri| is
+// relative path, path resolution takes place using path given in
+// |base|.
+std::expected<PushComponent, Error>
+construct_push_component(BlockAllocator &balloc, std::string_view base,
+                         std::string_view uri);
 
 // Returns true if te header field value |s| contains "trailers".
 bool contains_trailers(std::string_view s);

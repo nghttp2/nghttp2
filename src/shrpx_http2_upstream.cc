@@ -2176,32 +2176,35 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
       continue;
     }
     for (auto &link : http2::parse_link_header(kv.value)) {
-      std::string_view scheme, authority, path;
-
-      rv = http2::construct_push_component(balloc, scheme, authority, path,
-                                           base, link.uri);
-      if (rv != 0) {
+      auto maybe_push_comp =
+        http2::construct_push_component(balloc, base, link.uri);
+      if (!maybe_push_comp) {
         continue;
       }
 
-      if (scheme.empty()) {
-        scheme = req.scheme;
+      auto push_comp = *maybe_push_comp;
+
+      if (push_comp.scheme.empty()) {
+        push_comp.scheme = req.scheme;
       }
 
-      if (authority.empty()) {
-        authority = req.authority;
+      if (push_comp.authority.empty()) {
+        push_comp.authority = req.authority;
       }
 
-      if (resp.is_resource_pushed(scheme, authority, path)) {
+      if (resp.is_resource_pushed(push_comp.scheme, push_comp.authority,
+                                  push_comp.path)) {
         continue;
       }
 
-      rv = submit_push_promise(scheme, authority, path, downstream);
+      rv = submit_push_promise(push_comp.scheme, push_comp.authority,
+                               push_comp.path, downstream);
       if (rv != 0) {
         return -1;
       }
 
-      resp.resource_pushed(scheme, authority, path);
+      resp.resource_pushed(push_comp.scheme, push_comp.authority,
+                           push_comp.path);
     }
   }
   return 0;
@@ -2292,35 +2295,36 @@ int Http2Upstream::initiate_push(Downstream *downstream, std::string_view uri) {
 
   auto &balloc = downstream->get_block_allocator();
 
-  std::string_view scheme, authority, path;
-
-  rv =
-    http2::construct_push_component(balloc, scheme, authority, path, base, uri);
-  if (rv != 0) {
+  auto maybe_push_comp = http2::construct_push_component(balloc, base, uri);
+  if (!maybe_push_comp) {
     return -1;
   }
 
-  if (scheme.empty()) {
-    scheme = req.scheme;
+  auto push_comp = *maybe_push_comp;
+
+  if (push_comp.scheme.empty()) {
+    push_comp.scheme = req.scheme;
   }
 
-  if (authority.empty()) {
-    authority = req.authority;
+  if (push_comp.authority.empty()) {
+    push_comp.authority = req.authority;
   }
 
   auto &resp = downstream->response();
 
-  if (resp.is_resource_pushed(scheme, authority, path)) {
+  if (resp.is_resource_pushed(push_comp.scheme, push_comp.authority,
+                              push_comp.path)) {
     return 0;
   }
 
-  rv = submit_push_promise(scheme, authority, path, downstream);
+  rv = submit_push_promise(push_comp.scheme, push_comp.authority,
+                           push_comp.path, downstream);
 
   if (rv != 0) {
     return -1;
   }
 
-  resp.resource_pushed(scheme, authority, path);
+  resp.resource_pushed(push_comp.scheme, push_comp.authority, push_comp.path);
 
   return 0;
 }
