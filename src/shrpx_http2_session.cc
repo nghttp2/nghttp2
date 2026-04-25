@@ -1091,7 +1091,7 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
   auto status = resp.fs.header(http2::HD__STATUS);
   // libnghttp2 guarantees this exists and can be parsed
   assert(status);
-  auto status_code = http2::parse_http_status_code(status->value);
+  auto status_code = *http2::parse_http_status_code(status->value);
 
   resp.http_status = as_unsigned(status_code);
   resp.http_major = 2;
