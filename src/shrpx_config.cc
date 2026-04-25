@@ -308,7 +308,7 @@ read_quic_secret_file(std::string_view path) {
     }
   }
 
-  if (f.bad() || (!f.eof() && f.fail())) {
+  if (util::stream_error(f)) {
     Log{ERROR}
       << "frontend-quic-secret-file: error occurred while reading file "
       << path;
@@ -4392,7 +4392,7 @@ int load_config(
     }
   }
 
-  if (in.bad() || (!in.eof() && in.fail())) {
+  if (util::stream_error(in)) {
     Log{ERROR} << "Could not read the configuration file " << filename;
     return -1;
   }
