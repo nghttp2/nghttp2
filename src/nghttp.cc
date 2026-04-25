@@ -44,7 +44,6 @@
 #include <cstring>
 #include <iostream>
 #include <iomanip>
-#include <sstream>
 #include <tuple>
 
 #include "ssl_compat.h"
@@ -1328,27 +1327,26 @@ void HttpClient::update_hostport() {
   }
   scheme =
     util::get_uri_field(reqvec[0]->uri.c_str(), reqvec[0]->u, URLPARSE_SCHEMA);
-  std::stringstream ss;
+  auto host =
+    util::get_uri_field(reqvec[0]->uri.c_str(), reqvec[0]->u, URLPARSE_HOST);
   if (reqvec[0]->is_ipv6_literal_addr()) {
     // we may have zone ID, which must start with "%25", or "%".  RFC
     // 6874 defines "%25" only, and just "%" is allowed for just
     // convenience to end-user input.
-    auto host =
-      util::get_uri_field(reqvec[0]->uri.c_str(), reqvec[0]->u, URLPARSE_HOST);
     auto end = std::ranges::find(host, '%');
-    ss << "[";
-    ss.write(host.data(), end - std::ranges::begin(host));
-    ss << "]";
+    hostport = '[';
+    hostport.append(std::ranges::begin(host), end);
+    hostport += ']';
   } else {
-    util::write_uri_field(ss, reqvec[0]->uri.c_str(), reqvec[0]->u,
-                          URLPARSE_HOST);
+    hostport = host;
   }
   if (util::has_uri_field(reqvec[0]->u, URLPARSE_PORT) &&
       reqvec[0]->u.port !=
         util::get_default_port(reqvec[0]->uri.c_str(), reqvec[0]->u)) {
-    ss << ":" << reqvec[0]->u.port;
+    hostport += ':';
+    hostport +=
+      util::get_uri_field(reqvec[0]->uri.c_str(), reqvec[0]->u, URLPARSE_PORT);
   }
-  hostport = ss.str();
 }
 
 bool HttpClient::add_request(const std::string &uri,

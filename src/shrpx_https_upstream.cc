@@ -25,7 +25,6 @@
 #include "shrpx_https_upstream.h"
 
 #include <cassert>
-#include <sstream>
 
 #include "shrpx_client_handler.h"
 #include "shrpx_downstream.h"
@@ -348,20 +347,33 @@ int htp_hdrs_completecb(llhttp_t *htp) {
   auto method = req.method;
 
   if (log_enabled(INFO)) {
-    std::stringstream ss;
-    ss << http2::to_method_string(method) << " "
-       << (method == HTTP_CONNECT ? req.authority : req.path) << " "
-       << "HTTP/" << req.http_major << "." << req.http_minor << "\n";
+    std::string ss;
+    ss += http2::to_method_string(method);
+    ss += ' ';
+    ss += method == HTTP_CONNECT ? req.authority : req.path;
+    ss += " HTTP/";
+    ss += util::utos(as_unsigned(req.http_major));
+    ss += '.';
+    ss += util::utos(as_unsigned(req.http_minor));
+    ss += '\n';
 
     for (const auto &kv : req.fs.headers()) {
       if (kv.name == "authorization"sv) {
-        ss << TTY_HTTP_HD << kv.name << TTY_RST << ": <redacted>\n";
+        ss += tty_http_hd();
+        ss += kv.name;
+        ss += tty_rst();
+        ss += ": <redacted>\n";
         continue;
       }
-      ss << TTY_HTTP_HD << kv.name << TTY_RST << ": " << kv.value << "\n";
+      ss += tty_http_hd();
+      ss += kv.name;
+      ss += tty_rst();
+      ss += ": ";
+      ss += kv.value;
+      ss += '\n';
     }
 
-    Log{INFO, upstream} << "HTTP request headers\n" << ss.str();
+    Log{INFO, upstream} << "HTTP request headers\n" << ss;
   }
 
   // set content-length if method is not CONNECT, and no

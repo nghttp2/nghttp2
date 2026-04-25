@@ -244,8 +244,13 @@ void hex(Log &log);
 void dec(Log &log);
 } // namespace log
 
-#define TTY_HTTP_HD (log_config()->errorlog_tty ? "\033[1;34m" : "")
-#define TTY_RST (log_config()->errorlog_tty ? "\033[0m" : "")
+[[nodiscard]] inline auto tty_http_hd() {
+  return log_config()->errorlog_tty ? "\033[1;34m"sv : ""sv;
+}
+
+[[nodiscard]] inline auto tty_rst() {
+  return log_config()->errorlog_tty ? "\033[0m"sv : ""sv;
+}
 
 enum class LogFragmentType {
   NONE,

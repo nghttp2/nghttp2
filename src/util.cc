@@ -60,6 +60,9 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#ifdef _WIN32
+#  include <spanstream>
+#endif // defined(_WIN32)
 
 #include "ssl_compat.h"
 
@@ -589,7 +592,7 @@ std::expected<time_t, Error> parse_http_date(std::string_view s) {
   tm tm{};
 #ifdef _WIN32
   // there is no strptime - use std::get_time
-  std::stringstream sstr(s.data());
+  std::ispanstream sstr{s};
   sstr >> std::get_time(&tm, "%a, %d %b %Y %H:%M:%S GMT");
   if (sstr.fail()) {
     return std::unexpected{Error::INVALID_ARGUMENT};
@@ -806,13 +809,6 @@ bool porteq(const char *uri1, const urlparse_url &u1, const char *uri2,
   port2 = util::has_uri_field(u2, URLPARSE_PORT) ? u2.port
                                                  : get_default_port(uri2, u2);
   return port1 == port2;
-}
-
-void write_uri_field(std::ostream &o, const char *uri, const urlparse_url &u,
-                     urlparse_url_fields field) {
-  if (util::has_uri_field(u, field)) {
-    o.write(uri + u.field_data[field].off, u.field_data[field].len);
-  }
 }
 
 bool numeric_host(const char *hostname) {

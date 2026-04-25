@@ -2383,12 +2383,6 @@ namespace {
 std::unique_ptr<Worker> create_worker(uint32_t id, SSL_CTX *ssl_ctx,
                                       size_t nreqs, size_t nclients,
                                       size_t rate, size_t max_samples) {
-  std::stringstream rate_report;
-  if (config.is_rate_mode() && nclients > rate) {
-    rate_report << "Up to " << rate << " client(s) will be created every "
-                << util::duration_str(config.rate_period) << " ";
-  }
-
   if (config.is_timing_based_mode()) {
     std::cout << "spawning thread #" << id << ": " << nclients
               << " total client(s). Timing-based test with "
@@ -2397,8 +2391,14 @@ std::unique_ptr<Worker> create_worker(uint32_t id, SSL_CTX *ssl_ctx,
               << std::endl;
   } else {
     std::cout << "spawning thread #" << id << ": " << nclients
-              << " total client(s). " << rate_report.str() << nreqs
-              << " total requests" << std::endl;
+              << " total client(s).";
+
+    if (config.is_rate_mode() && nclients > rate) {
+      std::cout << " Up to " << rate << " client(s) will be created every "
+                << util::duration_str(config.rate_period);
+    }
+
+    std::cout << " " << nreqs << " total requests" << std::endl;
   }
 
   if (config.is_rate_mode()) {

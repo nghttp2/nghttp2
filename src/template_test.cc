@@ -26,7 +26,9 @@
 
 #include <cstring>
 #include <iostream>
-#include <sstream>
+#ifndef __APPLE__
+#  include <spanstream>
+#endif // !defined(__APPLE__)
 
 #include "munitxx.h"
 
@@ -135,14 +137,17 @@ void test_template_immutable_string(void) {
     assert_true(c != b);
   }
 
+#ifndef __APPLE__
   // operator<<
   {
     ImmutableString a("foo");
-    std::stringstream ss;
+    std::array<char, 256> buf;
+    std::spanstream ss{buf};
     ss << a;
 
-    assert_stdstring_equal("foo", ss.str());
+    assert_stdsv_equal("foo", std::string_view{ss.span()});
   }
+#endif // !defined(__APPLE__)
 
   // operator +=(std::string &, const ImmutableString &)
   {
