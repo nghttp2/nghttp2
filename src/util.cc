@@ -1183,7 +1183,7 @@ int get_socket_error(int fd) {
   int error;
   socklen_t len = sizeof(error);
   if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (char *)&error, &len) != 0) {
-    return -1;
+    return errno;
   }
 
   return error;
