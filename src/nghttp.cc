@@ -437,6 +437,9 @@ submit_request(HttpClient *client, const Headers &headers, Request *req) {
     build_headers.emplace_back(kv.name, kv.value, kv.no_index);
   }
 
+  std::ranges::stable_partition(
+    build_headers, [](auto &&kv) { return kv.name.starts_with(":"); });
+
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(build_headers.size());
 
