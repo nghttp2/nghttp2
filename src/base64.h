@@ -145,7 +145,8 @@ constexpr O decode(I first, I last, O result) {
   for (; first != last;) {
     uint32_t n = 0;
     for (int i = 1; i <= 4; ++i, ++first) {
-      auto idx = B64_INDEX_TABLE[static_cast<size_t>(*first)];
+      auto idx =
+        B64_INDEX_TABLE[static_cast<size_t>(static_cast<uint8_t>(*first))];
       if (idx == -1) {
         if (i <= 2) {
           return result;
