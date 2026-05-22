@@ -3920,3 +3920,270 @@ func TestH2H1RequireHTTPSchemeUnknownSchemeWithEncryption(t *testing.T) {
 		t.Errorf("status = %v; want %v", got, want)
 	}
 }
+
+// TestH2H1CONNECTMethod verifies that CONNECT method to h1 backend
+// succeeds and data is forwarded.
+func TestH2H1CONNECTMethod(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			hj, ok := w.(http.Hijacker)
+			if !ok {
+				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
+				return
+			}
+			conn, bufrw, err := hj.Hijack()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			if _, err := bufrw.WriteString("HTTP/1.1 200 OK\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
+
+			bufrw.Flush()
+
+			s, err := bufrw.ReadString('\n')
+			if err != nil {
+				t.Fatalf("Error bufrw.ReadString() = %v", err)
+			}
+
+			if got, want := s, "this belongs to another protocol\n"; got != want {
+				t.Errorf("data: %v; want %v", got, want)
+			}
+
+			conn.Close()
+		},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:   "TestH2H1CONNECTMethod",
+		method: "CONNECT",
+		body:   []byte("this belongs to another protocol\n"),
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, http.StatusOK; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1CONNECTMethodReject verifies that CONNECT method to h1
+// backend fails and data is not forwarded.
+func TestH2H1CONNECTMethodReject(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			hj, ok := w.(http.Hijacker)
+			if !ok {
+				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
+				return
+			}
+			conn, bufrw, err := hj.Hijack()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			if _, err := bufrw.WriteString("HTTP/1.1 405 Method Not Allowed\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
+
+			bufrw.Flush()
+
+			go func() {
+				<-time.After(time.Second)
+				conn.Close()
+			}()
+
+			if _, err := bufrw.ReadString('\n'); err == nil {
+				t.Fatal("bufrw.ReadString() should fail")
+			}
+		},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:   "TestH2H1CONNECTMethodReject",
+		method: "CONNECT",
+		body:   []byte("this belongs to another protocol\n"),
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, http.StatusMethodNotAllowed; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1CONNECTMethodContentLength verifies that CONNECT method
+// with content-length must fail.
+func TestH2H1CONNECTMethodContentLength(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			t.Fatalf("request should not be forwarded")
+		},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:   "TestH2H1CONNECTMethodContentLength",
+		method: "CONNECT",
+		header: []hpack.HeaderField{
+			pair("content-length", "100"),
+		},
+		body: []byte("this belongs to another protocol\n"),
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, http.StatusBadRequest; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1ExtendedCONNECTMethod verifies that extended CONNECT method
+// to h1 backend succeeds and data is forwarded.
+func TestH2H1ExtendedCONNECTMethod(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			hj, ok := w.(http.Hijacker)
+			if !ok {
+				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
+				return
+			}
+			conn, bufrw, err := hj.Hijack()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			accept := makeWebSocketAcceptToken(r.Header.Get("sec-websocket-key"))
+
+			if _, err := bufrw.WriteString("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: upgrade\r\nSec-WebSocket-Accept: " + accept + "\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
+
+			bufrw.Flush()
+
+			s, err := bufrw.ReadString('\n')
+			if err != nil {
+				t.Fatalf("Error bufrw.ReadString() = %v", err)
+			}
+
+			if got, want := s, "this belongs to another protocol\n"; got != want {
+				t.Errorf("data: %v; want %v", got, want)
+			}
+
+			conn.Close()
+		},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:     "TestH2H1ExtendedCONNECTMethod",
+		method:   "CONNECT",
+		protocol: "websocket",
+		body:     []byte("this belongs to another protocol\n"),
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, http.StatusOK; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1ExtendedCONNECTMethodReject verifies that extended CONNECT
+// method to h1 backend fails and data is not forwarded.
+func TestH2H1ExtendedCONNECTMethodReject(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			hj, ok := w.(http.Hijacker)
+			if !ok {
+				http.Error(w, "Could not hijack the connection", http.StatusInternalServerError)
+				return
+			}
+			conn, bufrw, err := hj.Hijack()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			if _, err := bufrw.WriteString("HTTP/1.1 200 OK\r\n\r\n"); err != nil {
+				t.Fatalf("Error bufrw.WriteString() = %v", err)
+			}
+
+			bufrw.Flush()
+
+			go func() {
+				<-time.After(time.Second)
+				conn.Close()
+			}()
+
+			if _, err := bufrw.ReadString('\n'); err == nil {
+				t.Fatal("bufrw.ReadString() should fail")
+			}
+		},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:     "TestH2H1ExtendedCONNECTMethodReject",
+		method:   "CONNECT",
+		protocol: "websocket",
+		body:     []byte("this belongs to another protocol\n"),
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, http.StatusBadGateway; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1ExtendedCONNECTMethodContentLength verifies that CONNECT
+// method with content-length must fail.
+func TestH2H1ExtendedCONNECTMethodContentLength(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			t.Fatalf("request should not be forwarded")
+		},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:     "TestH2H1ExtendedCONNECTMethodContentLength",
+		method:   "CONNECT",
+		protocol: "websocket",
+		header: []hpack.HeaderField{
+			pair("content-length", "33"),
+		},
+		body: []byte("this belongs to another protocol\n"),
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, http.StatusBadRequest; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}

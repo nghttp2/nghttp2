@@ -5,7 +5,9 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"crypto/sha1"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -365,10 +367,11 @@ func (st *serverTester) readFrame() (http2.Frame, error) {
 }
 
 type requestParam struct {
-	name        string              // name for this request to identify the request in log easily
-	streamID    uint32              // stream ID, automatically assigned if 0
-	method      string              // method, defaults to GET
-	scheme      string              // scheme, defaults to http
+	name        string // name for this request to identify the request in log easily
+	streamID    uint32 // stream ID, automatically assigned if 0
+	method      string // method, defaults to GET
+	scheme      string // scheme, defaults to http
+	protocol    string
 	authority   string              // authority, defaults to backend server address
 	path        string              // path, defaults to /
 	header      []hpack.HeaderField // additional request header fields
@@ -567,13 +570,19 @@ func (st *serverTester) http2(rp requestParam) (*serverResponse, error) {
 
 		_ = st.enc.WriteField(pair(":method", method))
 
-		scheme := "http"
+		if method != "CONNECT" || rp.protocol != "" {
+			scheme := "http"
 
-		if rp.scheme != "" {
-			scheme = rp.scheme
+			if rp.scheme != "" {
+				scheme = rp.scheme
+			}
+
+			_ = st.enc.WriteField(pair(":scheme", scheme))
 		}
 
-		_ = st.enc.WriteField(pair(":scheme", scheme))
+		if rp.protocol != "" {
+			_ = st.enc.WriteField(pair(":protocol", rp.protocol))
+		}
 
 		authority := st.authority
 
@@ -583,13 +592,16 @@ func (st *serverTester) http2(rp requestParam) (*serverResponse, error) {
 
 		_ = st.enc.WriteField(pair(":authority", authority))
 
-		path := "/"
+		if method != "CONNECT" || rp.protocol != "" {
+			path := "/"
 
-		if rp.path != "" {
-			path = rp.path
+			if rp.path != "" {
+				path = rp.path
+			}
+
+			_ = st.enc.WriteField(pair(":path", path))
 		}
 
-		_ = st.enc.WriteField(pair(":path", path))
 		_ = st.enc.WriteField(pair("test-case", rp.name))
 
 		for _, h := range rp.header {
@@ -923,4 +935,9 @@ func writeProxyProtocolV2(w io.Writer, hdr proxyProtocolV2) error {
 	}
 
 	return nil
+}
+
+func makeWebSocketAcceptToken(key string) string {
+	hashed := sha1.Sum([]byte(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))
+	return base64.StdEncoding.EncodeToString(hashed[:])
 }
