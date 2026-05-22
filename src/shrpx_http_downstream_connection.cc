@@ -694,6 +694,34 @@ std::expected<void, Error> HttpDownstreamConnection::push_request_headers() {
   return {};
 }
 
+bool HttpDownstreamConnection::should_block_request_body() const {
+  const auto &req = downstream_->request();
+
+  return !downstream_->get_request_header_sent() ||
+         (req.upgrade_request && !downstream_->get_upgraded());
+}
+
+bool HttpDownstreamConnection::should_unblock_request_body_before_response()
+  const {
+  const auto &req = downstream_->request();
+
+  return !req.upgrade_request;
+}
+
+void HttpDownstreamConnection::process_blocked_request_buf_on_response() {
+  if (blocked_request_buf_processed_) {
+    return;
+  }
+
+  process_blocked_request_buf();
+
+  auto buf = downstream_->get_blocked_request_buf();
+  buf->reset();
+  blocked_request_buf_processed_ = true;
+
+  signal_write();
+}
+
 void HttpDownstreamConnection::process_blocked_request_buf() {
   auto src = downstream_->get_blocked_request_buf();
 
@@ -721,7 +749,7 @@ void HttpDownstreamConnection::process_blocked_request_buf() {
 
 std::expected<void, Error> HttpDownstreamConnection::push_upload_data_chunk(
   std::span<const uint8_t> data) {
-  if (!downstream_->get_request_header_sent()) {
+  if (should_block_request_body()) {
     auto output = downstream_->get_blocked_request_buf();
     auto &req = downstream_->request();
     output->append(data);
@@ -753,7 +781,7 @@ std::expected<void, Error> HttpDownstreamConnection::push_upload_data_chunk(
 }
 
 std::expected<void, Error> HttpDownstreamConnection::end_upload_data() {
-  if (!downstream_->get_request_header_sent()) {
+  if (should_block_request_body()) {
     downstream_->set_blocked_request_data_eof(true);
     if (request_header_written_) {
       signal_write();
@@ -952,6 +980,11 @@ int htp_hdrs_completecb(llhttp_t *htp) {
   // upgrade succeeded, 101 response is treated as final in nghttpx.
   downstream->check_upgrade_fulfilled_http1();
 
+  if (req.method == HTTP_CONNECT && resp.http_status / 100 == 2 &&
+      !downstream->get_upgraded()) {
+    resp.http_status = 502;
+  }
+
   if (downstream->get_non_final_response()) {
     // Reset content-length because we reuse same Downstream for the
     // next response.
@@ -971,7 +1004,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
   downstream->set_response_state(DownstreamState::HEADER_COMPLETE);
   downstream->inspect_http1_response();
 
-  if (htp->flags & F_CHUNKED) {
+  if (!downstream->get_upgraded() && (htp->flags & F_CHUNKED)) {
     downstream->set_chunked_response(true);
   }
 
@@ -986,13 +1019,22 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     resp.connection_close = true;
     // transfer-encoding not applied to upgraded connection
     downstream->set_chunked_response(false);
-  } else if (http2::legacy_http1(req.http_major, req.http_minor)) {
-    if (resp.fs.content_length == -1) {
+
+    static_cast<HttpDownstreamConnection *>(dconn)
+      ->process_blocked_request_buf_on_response();
+  } else {
+    if (req.upgrade_request) {
       resp.connection_close = true;
     }
-    downstream->set_chunked_response(false);
-  } else if (!downstream->expect_response_body()) {
-    downstream->set_chunked_response(false);
+
+    if (http2::legacy_http1(req.http_major, req.http_minor)) {
+      if (resp.fs.content_length == -1) {
+        resp.connection_close = true;
+      }
+      downstream->set_chunked_response(false);
+    } else if (!downstream->expect_response_body()) {
+      downstream->set_chunked_response(false);
+    }
   }
 
   if (loggingconf.access.write_early && downstream->accesslog_ready()) {
@@ -1179,7 +1221,10 @@ int htp_msg_completecb(llhttp_t *htp) {
 } // namespace
 
 std::expected<void, Error> HttpDownstreamConnection::write_first() {
-  process_blocked_request_buf();
+  auto should_unblock_req_body = should_unblock_request_body_before_response();
+  if (should_unblock_req_body) {
+    process_blocked_request_buf();
+  }
 
   if (auto rv = conn_.tls.ssl ? write_tls() : write_clear(); !rv) {
     return std::unexpected{Error::DCONN_RETRY};
@@ -1194,8 +1239,11 @@ std::expected<void, Error> HttpDownstreamConnection::write_first() {
   first_write_done_ = true;
   downstream_->set_request_header_sent(true);
 
-  auto buf = downstream_->get_blocked_request_buf();
-  buf->reset();
+  if (should_unblock_req_body) {
+    auto buf = downstream_->get_blocked_request_buf();
+    buf->reset();
+    blocked_request_buf_processed_ = true;
+  }
 
   // upstream->resume_read() might be called in
   // write_tls()/write_clear(), but before blocked_request_buf_ is

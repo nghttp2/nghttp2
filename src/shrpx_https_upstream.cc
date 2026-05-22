@@ -411,6 +411,17 @@ int htp_hdrs_completecb(llhttp_t *htp) {
 
   downstream->inspect_http1_request();
 
+  if ((req.upgrade_request || llhttp_get_upgrade(htp)) &&
+      (req.fs.header(http2::HD_TRANSFER_ENCODING) ||
+       req.fs.header(http2::HD_CONTENT_LENGTH))) {
+    if (log_enabled(INFO)) {
+      Log{INFO, upstream} << "transfer-encoding and content-length are not "
+                             "allowed in CONNECT or upgrade request";
+    }
+
+    return -1;
+  }
+
   if (htp->flags & F_CHUNKED) {
     downstream->set_chunked_request(true);
   }
@@ -561,6 +572,16 @@ namespace {
 int htp_bodycb(llhttp_t *htp, const char *data, size_t len) {
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
   auto downstream = upstream->get_downstream();
+  const auto &req = downstream->request();
+
+  if (req.upgrade_request || llhttp_get_upgrade(htp)) {
+    if (log_enabled(INFO)) {
+      Log{INFO, upstream} << "Request body for Upgrade request is not allowed";
+    }
+
+    return HPE_USER;
+  }
+
   if (!downstream->push_upload_data_chunk(
         as_uint8_span(std::span{data, len}))) {
     // Ignore error if response has been completed.  We will end up in
@@ -592,6 +613,7 @@ int htp_msg_completecb(llhttp_t *htp) {
   }
 
   downstream->set_request_state(DownstreamState::MSG_COMPLETE);
+  req.http1_msg_complete = true;
   if (!downstream->end_upload_data()) {
     if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
       // Here both response and request were completed.  One of the
@@ -631,7 +653,8 @@ std::expected<void, Error> HttpsUpstream::on_read() {
 
   // downstream can be nullptr here, because it is initialized in the
   // callback chain called by llhttp_execute()
-  if (downstream && downstream->get_upgraded()) {
+  if (downstream && downstream->request().http1_msg_complete &&
+      downstream->get_upgraded()) {
     if (auto rv = downstream->push_upload_data_chunk(rb->peek()); !rv) {
       return rv;
     }
@@ -702,9 +725,13 @@ std::expected<void, Error> HttpsUpstream::on_read() {
 
   if (htperr != HPE_OK) {
     if (log_enabled(INFO)) {
-      Log{INFO, this} << "HTTP parse failure: "
-                      << "(" << llhttp_errno_name(htperr) << ") "
-                      << llhttp_get_error_reason(&htp_);
+      if (htperr == HPE_USER) {
+        Log{INFO, this} << "HTTP callback error";
+      } else {
+        Log{INFO, this} << "HTTP parse failure: "
+                        << "(" << llhttp_errno_name(htperr) << ") "
+                        << llhttp_get_error_reason(&htp_);
+      }
     }
 
     if (downstream &&
