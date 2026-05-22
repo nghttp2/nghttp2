@@ -1125,7 +1125,8 @@ bool Downstream::can_detach_downstream_connection() const {
   // state, especially for HTTP/1.1
   return dconn_ && response_state_ == DownstreamState::MSG_COMPLETE &&
          request_state_ == DownstreamState::MSG_COMPLETE && !upgraded_ &&
-         !resp_.connection_close && request_buf_.rleft() == 0;
+         !resp_.connection_close && blocked_request_buf_.rleft() == 0 &&
+         request_buf_.rleft() == 0;
 }
 
 DefaultMemchunks Downstream::pop_response_buf() {

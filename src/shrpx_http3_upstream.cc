@@ -2197,6 +2197,14 @@ Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
     return error_reply(downstream, 501);
   }
 
+  if (method_token == HTTP_CONNECT && content_length) {
+    if (log_enabled(INFO)) {
+      Log{INFO, this} << "content-length are not allowed in CONNECT request";
+    }
+
+    return error_reply(downstream, 400);
+  }
+
   auto faddr = handler_->get_upstream_addr();
 
   auto config = get_config();

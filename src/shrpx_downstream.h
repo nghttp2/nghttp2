@@ -215,6 +215,10 @@ struct Request {
   // orig_authority and orig_path have the authority and path which
   // are used for the first backend selection.
   bool forwarded_once{};
+  // true if HTTP/1 request message has been completed.  This field is
+  // added because Downstream::get_request_state() might be altered
+  // from DownstreamState::MSG_COMPLETE.
+  bool http1_msg_complete{};
 };
 
 struct Response {

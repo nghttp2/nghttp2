@@ -94,6 +94,9 @@ public:
   void void_noop() {}
 
   void process_blocked_request_buf();
+  void process_blocked_request_buf_on_response();
+  bool should_unblock_request_body_before_response() const;
+  bool should_block_request_body() const;
 
 private:
   Connection conn_;
@@ -123,6 +126,8 @@ private:
   bool reusable_{true};
   // true if request header is written to request buffer.
   bool request_header_written_{};
+  // true if blocked request buffer has been processed.
+  bool blocked_request_buf_processed_{};
 };
 
 } // namespace shrpx
