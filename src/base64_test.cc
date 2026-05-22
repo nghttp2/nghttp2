@@ -114,6 +114,11 @@ void test_base64_decode(void) {
     auto in = "//79/A======"sv;
     assert_stdsv_equal(""sv, as_string_view(base64::decode(balloc, in)));
   }
+  {
+    // Chars with high bit set
+    auto in = "\xCA\xFE\xCA\xCE"sv;
+    assert_stdsv_equal(""sv, as_string_view(base64::decode(balloc, in)));
+  }
 }
 
 } // namespace nghttp2
