@@ -215,7 +215,7 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_hd_nv *nv,
         stream->http_extpri = nghttp2_extpri_to_uint8(&extpri);
         stream->http_flags |= NGHTTP2_HTTP_FLAG_PRIORITY;
       } else {
-        stream->http_flags &= (uint32_t)~NGHTTP2_HTTP_FLAG_PRIORITY;
+        stream->http_flags &= ~NGHTTP2_HTTP_FLAG_PRIORITY;
         stream->http_flags |= NGHTTP2_HTTP_FLAG_BAD_PRIORITY;
       }
     }
@@ -571,7 +571,7 @@ int nghttp2_http_on_response_headers(nghttp2_stream *stream) {
   }
 
   stream->http_flags =
-    stream->http_flags & (uint32_t)~NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE;
+    stream->http_flags & ~NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE;
 
   if (!expect_response_body(stream)) {
     stream->content_length = 0;
