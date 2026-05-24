@@ -54,7 +54,7 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
 
 void nghttp2_stream_free(nghttp2_stream *stream) { (void)stream; }
 
-void nghttp2_stream_shutdown(nghttp2_stream *stream, nghttp2_shut_flag flag) {
+void nghttp2_stream_shutdown(nghttp2_stream *stream, uint8_t flag) {
   stream->shut_flags = (uint8_t)(stream->shut_flags | flag);
 }
 
