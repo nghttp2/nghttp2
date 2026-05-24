@@ -437,10 +437,8 @@ const nghttp2_huff_sym huff_sym_table[] = {''')
     print()
 
     print('''\
-enum {{
-  NGHTTP2_HUFF_ACCEPTED = {},
-  NGHTTP2_HUFF_SYM = {},
-}} nghttp2_huff_decode_flag;
+#define NGHTTP2_HUFF_ACCEPTED 0x{:02x}U
+#define NGHTTP2_HUFF_SYM 0x{:02x}U
 '''.format(NGHTTP2_HUFF_ACCEPTED, NGHTTP2_HUFF_SYM))
 
     print('''\
