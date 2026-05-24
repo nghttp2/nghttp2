@@ -178,19 +178,18 @@ typedef struct {
   uint32_t no_rfc7540_priorities;
 } nghttp2_settings_storage;
 
-typedef enum {
-  NGHTTP2_GOAWAY_NONE = 0,
-  /* Flag means that connection should be terminated after sending GOAWAY. */
-  NGHTTP2_GOAWAY_TERM_ON_SEND = 0x1,
-  /* Flag means GOAWAY to terminate session has been sent */
-  NGHTTP2_GOAWAY_TERM_SENT = 0x2,
-  /* Flag means GOAWAY was sent */
-  NGHTTP2_GOAWAY_SENT = 0x4,
-  /* Flag means GOAWAY was received */
-  NGHTTP2_GOAWAY_RECV = 0x8,
-  /* Flag means GOAWAY has been submitted at least once */
-  NGHTTP2_GOAWAY_SUBMITTED = 0x10
-} nghttp2_goaway_flag;
+#define NGHTTP2_GOAWAY_NONE 0x00U
+/* Flag means that connection should be terminated after sending
+   GOAWAY. */
+#define NGHTTP2_GOAWAY_TERM_ON_SEND 0x01U
+/* Flag means GOAWAY to terminate session has been sent */
+#define NGHTTP2_GOAWAY_TERM_SENT 0x02U
+/* Flag means GOAWAY was sent */
+#define NGHTTP2_GOAWAY_SENT 0x04U
+/* Flag means GOAWAY was received */
+#define NGHTTP2_GOAWAY_RECV 0x08U
+/* Flag means GOAWAY has been submitted at least once */
+#define NGHTTP2_GOAWAY_SUBMITTED 0x10U
 
 /* nghttp2_inflight_settings stores the SETTINGS entries which local
    endpoint has sent to the remote endpoint, and has not received ACK
@@ -350,7 +349,7 @@ struct nghttp2_session {
   /* Nonzero if the session is server side. */
   uint8_t server;
   /* Flags indicating GOAWAY is sent and/or received. The flags are
-     composed by bitwise OR-ing nghttp2_goaway_flag. */
+     composed by bitwise OR-ing NGHTTP2_GOAWAY_* values. */
   uint8_t goaway_flags;
   /* This flag is used to reduce excessive queuing of WINDOW_UPDATE to
      this session.  The nonzero does not necessarily mean
