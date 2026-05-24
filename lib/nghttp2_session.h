@@ -50,13 +50,11 @@ extern nghttp2_stream nghttp2_stream_root;
 /*
  * Option flags.
  */
-typedef enum {
-  NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE = 1 << 0,
-  NGHTTP2_OPTMASK_NO_RECV_CLIENT_MAGIC = 1 << 1,
-  NGHTTP2_OPTMASK_NO_HTTP_MESSAGING = 1 << 2,
-  NGHTTP2_OPTMASK_NO_AUTO_PING_ACK = 1 << 3,
-  NGHTTP2_OPTMASK_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION = 1 << 6,
-} nghttp2_optmask;
+#define NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE 0x01U
+#define NGHTTP2_OPTMASK_NO_RECV_CLIENT_MAGIC 0x02U
+#define NGHTTP2_OPTMASK_NO_HTTP_MESSAGING 0x04U
+#define NGHTTP2_OPTMASK_NO_AUTO_PING_ACK 0x08U
+#define NGHTTP2_OPTMASK_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION 0x40U
 
 /*
  * bitmask for built-in type to enable the default handling for that
@@ -329,7 +327,8 @@ struct nghttp2_session {
   nghttp2_settings_storage remote_settings;
   /* Settings value of the local endpoint. */
   nghttp2_settings_storage local_settings;
-  /* Option flags. This is bitwise-OR of 0 or more of nghttp2_optmask. */
+  /* Option flags. This is bitwise-OR of 0 or more of
+     NGHTTP2_OPTMASK_* values. */
   uint32_t opt_flags;
   /* Unacked local SETTINGS_MAX_CONCURRENT_STREAMS value. We use this
      to refuse the incoming stream if it exceeds this value. */
