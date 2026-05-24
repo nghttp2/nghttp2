@@ -66,16 +66,14 @@ typedef enum {
   NGHTTP2_STREAM_IDLE
 } nghttp2_stream_state;
 
-typedef enum {
-  NGHTTP2_SHUT_NONE = 0,
-  /* Indicates further receptions will be disallowed. */
-  NGHTTP2_SHUT_RD = 0x01,
-  /* Indicates further transmissions will be disallowed. */
-  NGHTTP2_SHUT_WR = 0x02,
-  /* Indicates both further receptions and transmissions will be
-     disallowed. */
-  NGHTTP2_SHUT_RDWR = NGHTTP2_SHUT_RD | NGHTTP2_SHUT_WR
-} nghttp2_shut_flag;
+#define NGHTTP2_SHUT_NONE 0x00U
+/* Indicates further receptions will be disallowed. */
+#define NGHTTP2_SHUT_RD 0x01U
+/* Indicates further transmissions will be disallowed. */
+#define NGHTTP2_SHUT_WR 0x02U
+/* Indicates both further receptions and transmissions will be
+   disallowed. */
+#define NGHTTP2_SHUT_RDWR (NGHTTP2_SHUT_RD | NGHTTP2_SHUT_WR)
 
 typedef enum {
   NGHTTP2_STREAM_FLAG_NONE = 0,
@@ -187,7 +185,7 @@ struct nghttp2_stream {
   uint32_t http_flags;
   /* This is bitwise-OR of 0 or more of nghttp2_stream_flag. */
   uint8_t flags;
-  /* Bitwise OR of zero or more nghttp2_shut_flag values */
+  /* Bitwise OR of zero or more NGHTTP2_SHUT_* values. */
   uint8_t shut_flags;
   /* Nonzero if this stream has been queued to stream pointed by
      dep_prev.  We maintain the invariant that if a stream is queued,
@@ -216,9 +214,9 @@ void nghttp2_stream_free(nghttp2_stream *stream);
 
 /*
  * Disallow either further receptions or transmissions, or both.
- * |flag| is bitwise OR of one or more of nghttp2_shut_flag.
+ * |flag| is bitwise OR of one or more of NGHTTP2_SHUT_* values.
  */
-void nghttp2_stream_shutdown(nghttp2_stream *stream, nghttp2_shut_flag flag);
+void nghttp2_stream_shutdown(nghttp2_stream *stream, uint8_t flag);
 
 /*
  * Defer |stream->item|.  We won't call this function in the situation
