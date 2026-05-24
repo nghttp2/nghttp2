@@ -60,12 +60,10 @@ extern nghttp2_stream nghttp2_stream_root;
  * bitmask for built-in type to enable the default handling for that
  * type of the frame.
  */
-typedef enum {
-  NGHTTP2_TYPEMASK_NONE = 0,
-  NGHTTP2_TYPEMASK_ALTSVC = 1 << 0,
-  NGHTTP2_TYPEMASK_ORIGIN = 1 << 1,
-  NGHTTP2_TYPEMASK_PRIORITY_UPDATE = 1 << 2
-} nghttp2_typemask;
+#define NGHTTP2_TYPEMASK_NONE 0x00U
+#define NGHTTP2_TYPEMASK_ALTSVC 0x01U
+#define NGHTTP2_TYPEMASK_ORIGIN 0x02U
+#define NGHTTP2_TYPEMASK_PRIORITY_UPDATE 0x04U
 
 typedef enum {
   NGHTTP2_OB_POP_ITEM,
@@ -333,8 +331,9 @@ struct nghttp2_session {
   /* Unacked local SETTINGS_MAX_CONCURRENT_STREAMS value. We use this
      to refuse the incoming stream if it exceeds this value. */
   uint32_t pending_local_max_concurrent_stream;
-  /* The bitwise OR of zero or more of nghttp2_typemask to indicate
-     that the default handling of extension frame is enabled. */
+  /* The bitwise OR of zero or more of NGHTTP2_TYPEMASK_* values to
+     indicate that the default handling of extension frame is
+     enabled. */
   uint32_t builtin_recv_ext_types;
   /* Unacked local ENABLE_PUSH value.  We use this to refuse
      PUSH_PROMISE before SETTINGS ACK is received. */
