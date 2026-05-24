@@ -75,26 +75,25 @@ typedef enum {
    disallowed. */
 #define NGHTTP2_SHUT_RDWR (NGHTTP2_SHUT_RD | NGHTTP2_SHUT_WR)
 
-typedef enum {
-  NGHTTP2_STREAM_FLAG_NONE = 0,
-  /* Indicates that this stream is pushed stream and not opened
-     yet. */
-  NGHTTP2_STREAM_FLAG_PUSH = 0x01,
-  /* Indicates that this stream was closed */
-  NGHTTP2_STREAM_FLAG_CLOSED = 0x02,
-  /* Indicates the item is deferred due to flow control. */
-  NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL = 0x04,
-  /* Indicates the item is deferred by user callback */
-  NGHTTP2_STREAM_FLAG_DEFERRED_USER = 0x08,
-  /* bitwise OR of NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL and
-     NGHTTP2_STREAM_FLAG_DEFERRED_USER. */
-  NGHTTP2_STREAM_FLAG_DEFERRED_ALL = 0x0c,
-  /* Ignore client RFC 9218 priority signal. */
-  NGHTTP2_STREAM_FLAG_IGNORE_CLIENT_PRIORITIES = 0x20,
-  /* Indicates that RFC 9113 leading and trailing white spaces
-     validation against a field value is not performed. */
-  NGHTTP2_STREAM_FLAG_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION = 0x40,
-} nghttp2_stream_flag;
+#define NGHTTP2_STREAM_FLAG_NONE 0x00U
+/* Indicates that this stream is pushed stream and not opened yet. */
+#define NGHTTP2_STREAM_FLAG_PUSH 0x01U
+/* Indicates that this stream was closed */
+#define NGHTTP2_STREAM_FLAG_CLOSED 0x02U
+/* Indicates the item is deferred due to flow control. */
+#define NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL 0x04U
+/* Indicates the item is deferred by user callback */
+#define NGHTTP2_STREAM_FLAG_DEFERRED_USER 0x08U
+/* bitwise OR of NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL and
+   NGHTTP2_STREAM_FLAG_DEFERRED_USER. */
+#define NGHTTP2_STREAM_FLAG_DEFERRED_ALL                                       \
+  (NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL |                                 \
+   NGHTTP2_STREAM_FLAG_DEFERRED_USER)
+/* Ignore client RFC 9218 priority signal. */
+#define NGHTTP2_STREAM_FLAG_IGNORE_CLIENT_PRIORITIES 0x20U
+/* Indicates that RFC 9113 leading and trailing white spaces
+   validation against a field value is not performed. */
+#define NGHTTP2_STREAM_FLAG_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION 0x40U
 
 /* HTTP related flags to enforce HTTP semantics */
 #define NGHTTP2_HTTP_FLAG_NONE 0x00U
@@ -183,7 +182,8 @@ struct nghttp2_stream {
   int16_t status_code;
   /* Bitwise OR of zero or more NGHTTP2_HTTP_FLAG_* values */
   uint32_t http_flags;
-  /* This is bitwise-OR of 0 or more of nghttp2_stream_flag. */
+  /* This is bitwise-OR of 0 or more of NGHTTP2_STREAM_FLAG_*
+     values. */
   uint8_t flags;
   /* Bitwise OR of zero or more NGHTTP2_SHUT_* values. */
   uint8_t shut_flags;

@@ -510,11 +510,11 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
 /*
  * Creates new stream in |session| with stream ID |stream_id|,
  * priority |pri_spec| and flags |flags|.  The |flags| is bitwise OR
- * of nghttp2_stream_flag.  Since this function is called when initial
- * HEADERS is sent or received, these flags are taken from it.  The
- * state of stream is set to |initial_state|. The |stream_user_data|
- * is a pointer to the arbitrary user supplied data to be associated
- * to this stream.
+ * of NGHTTP2_STREAM_FLAG_* values.  Since this function is called
+ * when initial HEADERS is sent or received, these flags are taken
+ * from it.  The state of stream is set to |initial_state|. The
+ * |stream_user_data| is a pointer to the arbitrary user supplied data
+ * to be associated to this stream.
  *
  * If |initial_state| is NGHTTP2_STREAM_RESERVED, this function sets
  * NGHTTP2_STREAM_FLAG_PUSH flag set.
