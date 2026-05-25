@@ -112,7 +112,7 @@ static void output_to_json(nghttp2_hd_deflater *deflater, const uint8_t *buf,
                         dump_deflate_header_table(deflater));
   }
   json_dumpf(obj, stdout, JSON_PRESERVE_ORDER | JSON_INDENT(2));
-  std::println();
+  std::println("");
   json_decref(obj);
 }
 
