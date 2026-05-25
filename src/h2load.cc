@@ -3901,7 +3901,7 @@ int main(int argc, char **argv) {
                                   static_cast<double>(stats.bytes_head_decomp);
   }
 
-  std::println();
+  std::println("");
   std::println("finished in {}, {:.2f} req/s, {}B/s",
                util::format_duration(duration), rps,
                util::utos_funit(as_unsigned(bps)));

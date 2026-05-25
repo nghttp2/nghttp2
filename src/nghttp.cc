@@ -967,7 +967,7 @@ HttpClient::on_upgrade_read(std::span<const uint8_t> data) {
   }
 
   if (config.verbose) {
-    std::println();
+    std::println("");
   }
 
   if (upgrade_response_status_code != 101) {
