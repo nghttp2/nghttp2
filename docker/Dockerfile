@@ -1,16 +1,30 @@
-FROM debian:12 as build
+FROM debian:13 as build
 
 ARG NGHTTP2_BRANCH=master
 
 RUN <<EOF
 set -e
 
+# Enable backports to get libelf-dev that fixes static linking issue.
+#
+# - https://bugs-devel.debian.org/cgi-bin/bugreport.cgi?bug=1086675
+# - https://sourceware.org/bugzilla/show_bug.cgi?id=32293
+cat > /etc/apt/sources.list.d/debian-backports.sources <<'EOT'
+Types: deb deb-src
+URIs: http://deb.debian.org/debian
+Suites: trixie-backports
+Components: main
+Enabled: yes
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+EOT
+
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+apt-get install -y --no-install-recommends \
     git clang-19 make binutils autoconf automake autotools-dev libtool \
     pkg-config cmake cmake-data \
     zlib1g-dev libev-dev libjemalloc-dev ruby-dev libc-ares-dev bison \
-    libelf-dev libbrotli-dev
+    libbrotli-dev
+apt-get install -y --no-install-recommends -t trixie-backports libelf-dev
 
 git clone --recursive --shallow-submodules --depth 1 -b v1.72.0 \
     https://github.com/aws/aws-lc
@@ -70,7 +84,7 @@ autoreconf -i
     JEMALLOC_LIBS="-l:libjemalloc.a" \
     LIBCARES_LIBS="-l:libcares.a" \
     ZLIB_LIBS="-l:libz.a" \
-    LIBBPF_LIBS="-L/usr/local/lib64 -l:libbpf.a -l:libelf.a" \
+    LIBBPF_LIBS="-L/usr/local/lib64 -l:libbpf.a -l:libelf.a -l:libzstd.a" \
     LIBBROTLIENC_LIBS="-l:libbrotlienc.a -l:libbrotlicommon.a" \
     LIBBROTLIDEC_LIBS="-l:libbrotlidec.a -l:libbrotlicommon.a" \
     LDFLAGS="-static-libgcc -static-libstdc++" \
@@ -80,7 +94,7 @@ cd ..
 rm -rf nghttp2
 EOF
 
-FROM gcr.io/distroless/base-nossl-debian12
+FROM gcr.io/distroless/base-nossl-debian13
 
 COPY --from=build --link \
     /usr/local/bin/h2load \
