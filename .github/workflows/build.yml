@@ -639,6 +639,31 @@ jobs:
         cmake --build build
         cmake --build build --target check
 
+  build-cygwin:
+    runs-on: windows-latest
+
+    steps:
+    - run: git config --global core.autocrlf input
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        submodules: recursive
+    - uses: cygwin/cygwin-install-action@v6
+      with:
+        packages: |
+          automake
+          autoconf
+          libtool
+          pkg-config
+          gcc-core
+    - name: Build nghttp2
+      shell: bash -eo pipefail -o igncr {0}
+      run: |
+        autoreconf -i
+        ./configure --disable-dependency-tracking --enable-werror \
+          --enable-lib-only
+        make check
+
   release:
     if: github.ref_type == 'tag'
 
