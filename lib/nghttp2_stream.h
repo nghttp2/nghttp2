@@ -179,7 +179,7 @@ struct nghttp2_stream {
   /* This is unpaid penalty (offset) when calculating cycle. */
   uint32_t pending_penalty;
   /* status code from remote server */
-  int16_t status_code;
+  int32_t status_code;
   /* Bitwise OR of zero or more NGHTTP2_HTTP_FLAG_* values */
   uint32_t http_flags;
   /* This is bitwise-OR of 0 or more of NGHTTP2_STREAM_FLAG_*

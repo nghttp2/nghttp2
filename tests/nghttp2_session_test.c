@@ -10973,6 +10973,16 @@ void test_nghttp2_http_mandatory_headers(void) {
     MAKE_NV(":method", "CONNECT"),
     MAKE_NV(":authority", "localhost"),
   };
+  /* response header contains status code that includes the leading
+     zero. */
+  static const nghttp2_nv lzstatus_resnv[] = {
+    MAKE_NV(":status", "022"),
+  };
+  /* response header contains status code that consists of 2
+     digits. */
+  static const nghttp2_nv twodigstatus_resnv[] = {
+    MAKE_NV(":status", "20"),
+  };
   check_http_opts opts = {0};
 
   /* response header lacks :status */
@@ -11127,6 +11137,14 @@ void test_nghttp2_http_mandatory_headers(void) {
      SETTINGS_CONNECT_PROTOCOL */
   check_nghttp2_http_recv_headers_ok(opts, -1, regularconnect_reqnv,
                                      ARRLEN(regularconnect_reqnv));
+
+  /* HTTP status code with the leading zero is not permitted. */
+  check_nghttp2_http_recv_headers_fail(opts, -1, lzstatus_resnv,
+                                       ARRLEN(lzstatus_resnv));
+
+  /* HTTP status code consisting of 2 digits is not permitted. */
+  check_nghttp2_http_recv_headers_fail(opts, -1, twodigstatus_resnv,
+                                       ARRLEN(twodigstatus_resnv));
 }
 
 void test_nghttp2_http_content_length(void) {
@@ -11169,7 +11187,7 @@ void test_nghttp2_http_content_length(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
   assert_null(nghttp2_session_get_next_ob_item(session));
   assert_int64(9000000000LL, ==, stream->content_length);
-  assert_int16(200, ==, stream->status_code);
+  assert_int32(200, ==, stream->status_code);
 
   nghttp2_hd_deflate_free(&deflater);
 
@@ -12032,7 +12050,7 @@ void test_nghttp2_http_push_promise(void) {
 
   assert_null(nghttp2_session_get_next_ob_item(session));
 
-  assert_int16(200, ==, stream->status_code);
+  assert_int32(200, ==, stream->status_code);
 
   nghttp2_bufs_reset(&bufs);
 

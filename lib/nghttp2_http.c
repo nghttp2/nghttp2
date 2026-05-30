@@ -52,27 +52,39 @@ static int memieq(const void *a, const void *b, size_t n) {
 #define lstrieq(A, B, N)                                                       \
   (nghttp2_strlen_lit((A)) == (N) && memieq((A), (B), (N)))
 
+static int32_t parse_status_code(const uint8_t *s, size_t len) {
+  if (len != 3 || '1' > s[0] || s[0] > '9' || '0' > s[1] || s[1] > '9' ||
+      '0' > s[2] || s[2] > '9') {
+    return -1;
+  }
+
+  return (s[0] - '0') * 100 + (s[1] - '0') * 10 + (s[2] - '0');
+}
+
 static int64_t parse_uint(const uint8_t *s, size_t len) {
-  int64_t n = 0;
+  uint64_t n = 0;
+  uint32_t c;
   size_t i;
+
   if (len == 0) {
     return -1;
   }
+
   for (i = 0; i < len; ++i) {
-    if ('0' <= s[i] && s[i] <= '9') {
-      if (n > INT64_MAX / 10) {
-        return -1;
-      }
-      n *= 10;
-      if (n > INT64_MAX - (s[i] - '0')) {
-        return -1;
-      }
-      n += s[i] - '0';
-      continue;
+    if ('0' > s[i] || s[i] > '9') {
+      return -1;
     }
-    return -1;
+
+    c = s[i] - '0';
+
+    if (n > ((uint64_t)INT64_MAX - c) / 10) {
+      return -1;
+    }
+
+    n = n * 10 + c;
   }
-  return n;
+
+  return (int64_t)n;
 }
 
 static int check_pseudo_header(nghttp2_stream *stream, const nghttp2_hd_nv *nv,
@@ -247,10 +259,7 @@ static int http_response_on_header(nghttp2_stream *stream, nghttp2_hd_nv *nv,
     if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG__STATUS)) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
-    if (nv->value->len != 3) {
-      return NGHTTP2_ERR_HTTP_HEADER;
-    }
-    stream->status_code = (int16_t)parse_uint(nv->value->base, nv->value->len);
+    stream->status_code = parse_status_code(nv->value->base, nv->value->len);
     if (stream->status_code == -1 || stream->status_code == 101) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
