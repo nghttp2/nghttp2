@@ -220,8 +220,9 @@ Client::quic_extend_max_stream_data(int64_t stream_id) {
 }
 
 namespace {
-int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
-                          size_t cidlen, void *user_data) {
+int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid,
+                          ngtcp2_stateless_reset_token *token, size_t cidlen,
+                          void *user_data) {
   if (RAND_bytes(cid->data,
                  static_cast<nghttp2_ssl_rand_length_type>(cidlen)) != 1) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
@@ -229,7 +230,7 @@ int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
 
   cid->datalen = cidlen;
 
-  if (RAND_bytes(token, NGTCP2_STATELESS_RESET_TOKENLEN) != 1) {
+  if (RAND_bytes(token->data, sizeof(token->data)) != 1) {
     return NGTCP2_ERR_CALLBACK_FAILURE;
   }
 
@@ -238,14 +239,11 @@ int get_new_connection_id(ngtcp2_conn *conn, ngtcp2_cid *cid, uint8_t *token,
 } // namespace
 
 namespace {
-void debug_log_printf(void *user_data, const char *fmt, ...) {
-  va_list ap;
+void debug_log_write(void *user_data, char *msg, size_t len) {
+  msg[len] = '\n';
 
-  va_start(ap, fmt);
-  vfprintf(stderr, fmt, ap);
-  va_end(ap);
-
-  fprintf(stderr, "\n");
+  while (write(fileno(stderr), msg, len + 1) == -1 && errno == EINTR)
+    ;
 }
 } // namespace
 
@@ -387,15 +385,15 @@ std::expected<void, Error> Client::quic_init(const sockaddr *local_addr,
     .recv_retry = ngtcp2_crypto_recv_retry_cb,
     .extend_max_local_streams_bidi = h2load::extend_max_local_streams_bidi,
     .rand = h2load::rand,
-    .get_new_connection_id = get_new_connection_id,
     .update_key = ngtcp2_crypto_update_key_cb,
     .stream_reset = h2load::stream_reset,
     .extend_max_stream_data = h2load::extend_max_stream_data,
     .delete_crypto_aead_ctx = ngtcp2_crypto_delete_crypto_aead_ctx_cb,
     .delete_crypto_cipher_ctx = ngtcp2_crypto_delete_crypto_cipher_ctx_cb,
-    .get_path_challenge_data = ngtcp2_crypto_get_path_challenge_data_cb,
     .stream_stop_sending = h2load::stream_stop_sending,
     .recv_rx_key = h2load::recv_rx_key,
+    .get_new_connection_id2 = get_new_connection_id,
+    .get_path_challenge_data2 = ngtcp2_crypto_get_path_challenge_data2_cb,
   };
 
   auto maybe_scid = generate_cid();
@@ -410,7 +408,7 @@ std::expected<void, Error> Client::quic_init(const sockaddr *local_addr,
   ngtcp2_settings settings;
   ngtcp2_settings_default(&settings);
   if (config->verbose) {
-    settings.log_printf = debug_log_printf;
+    settings.log_write = debug_log_write;
   }
   settings.initial_ts = quic_timestamp();
   settings.rand_ctx.native_handle = &worker->randgen;
@@ -458,17 +456,9 @@ std::expected<void, Error> Client::quic_init(const sockaddr *local_addr,
 
   assert(config->alpn_list.size());
 
-  uint32_t quic_version;
-
-  if (config->alpn_list[0] == NGHTTP3_ALPN_H3) {
-    quic_version = NGTCP2_PROTO_VER_V1;
-  } else {
-    quic_version = NGTCP2_PROTO_VER_MIN;
-  }
-
   rv = ngtcp2_conn_client_new(&quic.conn, &*maybe_dcid, &*maybe_scid, &path,
-                              quic_version, &callbacks, &settings, &params,
-                              nullptr, this);
+                              NGTCP2_PROTO_VER_V1, &callbacks, &settings,
+                              &params, nullptr, this);
   if (rv != 0) {
     return std::unexpected{Error::QUIC};
   }
@@ -486,7 +476,7 @@ void Client::quic_free() {
   if (quic.conn) {
     ngtcp2_conn_info ci;
 
-    ngtcp2_conn_get_conn_info(quic.conn, &ci);
+    ngtcp2_conn_get_conn_info2(quic.conn, &ci);
 
     cstat.min_rtt = std::chrono::nanoseconds(ci.min_rtt);
     cstat.smoothed_rtt = std::chrono::nanoseconds(ci.smoothed_rtt);
@@ -555,7 +545,7 @@ std::expected<void, Error> Client::quic_pkt_timeout() {
 }
 
 void Client::quic_restart_pkt_timer() {
-  auto expiry = ngtcp2_conn_get_expiry(quic.conn);
+  auto expiry = ngtcp2_conn_get_expiry2(quic.conn);
   auto now = quic_timestamp();
   auto t =
     expiry > now ? static_cast<ev_tstamp>(expiry - now) / NGTCP2_SECONDS : 1e-9;
@@ -635,7 +625,7 @@ std::expected<void, Error> Client::read_quic() {
         if (!quic.last_error.error_code) {
           if (rv == NGTCP2_ERR_CRYPTO) {
             ngtcp2_ccerr_set_tls_alert(&quic.last_error,
-                                       ngtcp2_conn_get_tls_alert(quic.conn),
+                                       ngtcp2_conn_get_tls_alert2(quic.conn),
                                        nullptr, 0);
           } else {
             ngtcp2_ccerr_set_liberr(&quic.last_error, rv, nullptr, 0);
@@ -679,7 +669,7 @@ ngtcp2_ssize Client::write_quic_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
   for (;;) {
     Http3Session::WriteResult wres;
 
-    if (session && ngtcp2_conn_get_max_data_left(quic.conn)) {
+    if (session && ngtcp2_conn_get_max_data_left2(quic.conn)) {
       auto maybe_wres = s->write_stream(vec);
       if (!maybe_wres) {
         return NGTCP2_ERR_CALLBACK_FAILURE;

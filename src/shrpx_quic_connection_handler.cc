@@ -607,7 +607,7 @@ std::expected<void, Error> QUICConnectionHandler::send_stateless_reset(
     ev_timer_again(worker_->get_loop(), &stateless_reset_bucket_regen_timer_);
   }
 
-  std::array<uint8_t, NGTCP2_STATELESS_RESET_TOKENLEN> token;
+  ngtcp2_stateless_reset_token token;
   ngtcp2_cid cid;
 
   ngtcp2_cid_init(&cid, dcid.data(), dcid.size());
@@ -615,7 +615,8 @@ std::expected<void, Error> QUICConnectionHandler::send_stateless_reset(
   auto &qkms = worker_->get_quic_keying_materials();
   auto &qkm = qkms->keying_materials.front();
 
-  if (auto rv = generate_quic_stateless_reset_token(token, cid, qkm.secret);
+  if (auto rv =
+        generate_quic_stateless_reset_token(token.data, cid, qkm.secret);
       !rv) {
     return rv;
   }
@@ -643,8 +644,8 @@ std::expected<void, Error> QUICConnectionHandler::send_stateless_reset(
 
   std::array<uint8_t, NGTCP2_MAX_UDP_PAYLOAD_SIZE> buf;
 
-  auto nwrite = ngtcp2_pkt_write_stateless_reset(
-    buf.data(), buf.size(), token.data(), rand_bytes.data(), rand_byteslen);
+  auto nwrite = ngtcp2_pkt_write_stateless_reset2(
+    buf.data(), buf.size(), &token, rand_bytes.data(), rand_byteslen);
   if (nwrite < 0) {
     Log{ERROR} << "ngtcp2_pkt_write_stateless_reset: "
                << ngtcp2_strerror(static_cast<int>(nwrite));
