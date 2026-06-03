@@ -210,7 +210,7 @@ int begin_headers(nghttp3_conn *conn, int64_t stream_id, void *user_data,
 } // namespace
 
 void Http3Session::begin_headers(int64_t stream_id) {
-  auto payloadlen = nghttp3_conn_get_frame_payload_left(conn_, stream_id);
+  auto payloadlen = nghttp3_conn_get_frame_payload_left2(conn_, stream_id);
   assert(payloadlen > 0);
 
   client_->worker->stats.bytes_head += payloadlen;

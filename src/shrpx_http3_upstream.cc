@@ -775,7 +775,7 @@ std::expected<void, Error> Http3Upstream::on_write() {
     return rv;
   }
 
-  if (httpconn_ && nghttp3_conn_is_drained(httpconn_)) {
+  if (httpconn_ && nghttp3_conn_is_drained2(httpconn_)) {
     return std::unexpected{Error::DONE};
   }
 
@@ -1359,8 +1359,8 @@ Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
   if (priority) {
     nghttp3_pri pri;
 
-    if (nghttp3_conn_get_stream_priority(httpconn_, &pri,
-                                         downstream->get_stream_id()) == 0 &&
+    if (nghttp3_conn_get_stream_priority2(httpconn_, &pri,
+                                          downstream->get_stream_id()) == 0 &&
         nghttp3_pri_parse_priority(
           &pri, reinterpret_cast<const uint8_t *>(priority->value.data()),
           priority->value.size()) == 0) {
