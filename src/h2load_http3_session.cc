@@ -153,7 +153,7 @@ void Http3Session::stream_close(int64_t stream_id, uint64_t app_error_code) {
     return;
   }
 
-  if (!ngtcp2_conn_is_local_stream(client_->quic.conn, stream_id)) {
+  if (!ngtcp2_conn_is_local_stream2(client_->quic.conn, stream_id)) {
     ngtcp2_conn_extend_max_streams_uni(client_->quic.conn, 1);
   }
 }
@@ -210,7 +210,7 @@ int begin_headers(nghttp3_conn *conn, int64_t stream_id, void *user_data,
 } // namespace
 
 void Http3Session::begin_headers(int64_t stream_id) {
-  auto payloadlen = nghttp3_conn_get_frame_payload_left(conn_, stream_id);
+  auto payloadlen = nghttp3_conn_get_frame_payload_left2(conn_, stream_id);
   assert(payloadlen > 0);
 
   client_->worker->stats.bytes_head += payloadlen;
@@ -286,7 +286,7 @@ std::expected<void, Error> Http3Session::close_stream(int64_t stream_id,
   if (rv != 0) {
     if (rv == NGHTTP3_ERR_STREAM_NOT_FOUND) {
       if (!ngtcp2_is_bidi_stream(stream_id)) {
-        assert(!ngtcp2_conn_is_local_stream(client_->quic.conn, stream_id));
+        assert(!ngtcp2_conn_is_local_stream2(client_->quic.conn, stream_id));
         ngtcp2_conn_extend_max_streams_uni(client_->quic.conn, 1);
       }
 
@@ -344,7 +344,7 @@ std::expected<void, Error> Http3Session::init_conn() {
 
   assert(conn_ == nullptr);
 
-  if (ngtcp2_conn_get_streams_uni_left(client_->quic.conn) < 3) {
+  if (ngtcp2_conn_get_streams_uni_left2(client_->quic.conn) < 3) {
     return std::unexpected{Error::INTERNAL};
   }
 
