@@ -26,7 +26,7 @@ apt-get install -y --no-install-recommends \
     libbrotli-dev
 apt-get install -y --no-install-recommends -t trixie-backports libelf-dev
 
-git clone --recursive --shallow-submodules --depth 1 -b v1.72.0 \
+git clone --recursive --shallow-submodules --depth 1 -b v1.73.0 \
     https://github.com/aws/aws-lc
 cd aws-lc
 export CC=clang-19 CXX=clang++-19
@@ -36,7 +36,7 @@ cmake --install build
 cd ..
 rm -rf aws-lc
 
-git clone --recursive --shallow-submodules --depth 1 -b v1.15.0 \
+git clone --recursive --shallow-submodules --depth 1 -b v1.16.0 \
     https://github.com/ngtcp2/nghttp3
 cd nghttp3
 autoreconf -i
@@ -47,7 +47,7 @@ make install-strip
 cd ..
 rm -rf nghttp3
 
-git clone --recursive --shallow-submodules --depth 1 -b v1.22.1 \
+git clone --recursive --shallow-submodules --depth 1 -b v1.23.0 \
     https://github.com/ngtcp2/ngtcp2
 cd ngtcp2
 autoreconf -i
