@@ -33,16 +33,17 @@
 #include "nghttp2_extpri.h"
 #include "sfparse.h"
 
-static uint8_t downcase(uint8_t c) {
-  return 'A' <= c && c <= 'Z' ? (uint8_t)(c - 'A' + 'a') : c;
-}
-
+/*
+ * memieq returns nonzero if the data pointed by |a| of length |n|
+ * equals to |b| of the same length in case-insensitive manner.  The
+ * data pointed by |a| must not include upper cased letters (A-Z).
+ */
 static int memieq(const void *a, const void *b, size_t n) {
   size_t i;
   const uint8_t *aa = a, *bb = b;
 
   for (i = 0; i < n; ++i) {
-    if (downcase(aa[i]) != downcase(bb[i])) {
+    if (aa[i] != nghttp2_downcase_byte(bb[i])) {
       return 0;
     }
   }
