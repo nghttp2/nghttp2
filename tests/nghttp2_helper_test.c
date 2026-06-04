@@ -35,6 +35,7 @@ static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_check_header_name),
   munit_void_test(test_nghttp2_check_header_value),
   munit_void_test(test_nghttp2_check_header_value_rfc9113),
+  munit_void_test(test_nghttp2_downcase_byte),
   munit_test_end(),
 };
 
@@ -204,4 +205,17 @@ void test_nghttp2_check_header_value_rfc9113(void) {
   assert_true(check_header_value_rfc9113(""));
   assert_false(check_header_value_rfc9113(" "));
   assert_false(check_header_value_rfc9113("\t"));
+}
+
+void test_nghttp2_downcase_byte(void) {
+  size_t i;
+
+  for (i = 0; i < 256; ++i) {
+    if ('A' <= i && i <= 'Z') {
+      assert_uint8((uint8_t)(i - 'A' + 'a'), ==,
+                   nghttp2_downcase_byte((uint8_t)i));
+    } else {
+      assert_uint8((uint8_t)i, ==, nghttp2_downcase_byte((uint8_t)i));
+    }
+  }
 }

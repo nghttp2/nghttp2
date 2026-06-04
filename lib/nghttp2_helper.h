@@ -100,6 +100,16 @@ uint32_t nghttp2_get_uint32(const uint8_t *data);
 
 void nghttp2_downcase(uint8_t *s, size_t len);
 
+extern const uint8_t nghttp2_downcase_tbl[];
+
+/*
+ * nghttp2_downcase_byte returns the lower case version of |c| if 'A'
+ * <= |c| && |c| <= 'Z'.  Otherwise, it returns |c|.
+ */
+static inline uint8_t nghttp2_downcase_byte(uint8_t c) {
+  return nghttp2_downcase_tbl[c];
+}
+
 /*
  * Adjusts |*local_window_size_ptr|, |*recv_window_size_ptr|,
  * |*recv_reduction_ptr| with |*delta_ptr| which is the
