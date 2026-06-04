@@ -160,4 +160,12 @@ int nghttp2_should_send_window_update(int32_t local_window_size,
  */
 uint8_t *nghttp2_cpymem(uint8_t *dest, const void *src, size_t len);
 
+/*
+ * nghttp2_check_nonempty_header_name validates regular header name
+ * pointed by |name| of length |len|.  |len| must be greater than
+ * zero.  This function returns 1 if it succeeds, or 2 if the name
+ * contains a character in [A-Z], otherwise 0.
+ */
+int nghttp2_check_nonempty_header_name(const uint8_t *name, size_t len);
+
 #endif /* !defined(NGHTTP2_HELPER_H) */
