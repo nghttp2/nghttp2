@@ -891,19 +891,19 @@ void test_util_localtime_date(void) {
 void test_util_get_uint64(void) {
   {
     auto v = std::to_array<unsigned char>(
-      {0x01, 0x12, 0x34, 0x56, 0xff, 0x9a, 0xab, 0xbc});
+      {0x01, 0x12, 0x34, 0x56, 0xFF, 0x9A, 0xAB, 0xBC});
 
     auto n = util::get_uint64(v.data());
 
-    assert_uint64(0x01123456ff9aabbcULL, ==, n);
+    assert_uint64(0x01123456FF9AABBCULL, ==, n);
   }
   {
     auto v = std::to_array<unsigned char>(
-      {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff});
+      {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF});
 
     auto n = util::get_uint64(v.data());
 
-    assert_uint64(0xffffffffffffffffULL, ==, n);
+    assert_uint64(0xFFFFFFFFFFFFFFFFULL, ==, n);
   }
 }
 
@@ -997,7 +997,7 @@ void test_util_format_hex(void) {
                                                std::ranges::begin(buf))}));
   assert_stdsv_equal(
     "ec"sv, (std::string_view{std::ranges::begin(buf),
-                              util::format_hex(static_cast<uint8_t>(0xecu),
+                              util::format_hex(static_cast<uint8_t>(0xECU),
                                                std::ranges::begin(buf))}));
   assert_stdsv_equal(
     "00000000"sv,
@@ -1006,12 +1006,12 @@ void test_util_format_hex(void) {
   assert_stdsv_equal(
     "0000ab01"sv,
     (std::string_view{std::ranges::begin(buf),
-                      util::format_hex(0xab01u, std::ranges::begin(buf))}));
+                      util::format_hex(0xAB01U, std::ranges::begin(buf))}));
   assert_stdsv_equal(
     "deadbeefbaadf00d"sv,
     (std::string_view{
       std::ranges::begin(buf),
-      util::format_hex(0xdeadbeefbaadf00du, std::ranges::begin(buf))}));
+      util::format_hex(0xDEADBEEFBAADF00DU, std::ranges::begin(buf))}));
   assert_stdsv_equal(
     "ffffffffffffffff"sv,
     (std::string_view{std::ranges::begin(buf),
@@ -1019,14 +1019,14 @@ void test_util_format_hex(void) {
                                        std::ranges::begin(buf))}));
 
   std::vector<char> char_vec;
-  util::format_hex(0xdeadbeef, std::back_inserter(char_vec));
+  util::format_hex(0xDEADBEEF, std::back_inserter(char_vec));
 
   assert_stdsv_equal("deadbeef"sv,
                      (std::string_view{std::ranges::begin(char_vec),
                                        std::ranges::end(char_vec)}));
 
   std::vector<uint8_t> uint8_vec;
-  util::format_hex(0xdeadbeef, std::back_inserter(uint8_vec));
+  util::format_hex(0xDEADBEEF, std::back_inserter(uint8_vec));
 
   assert_stdsv_equal(
     "deadbeef"sv,
@@ -1043,19 +1043,19 @@ void test_util_format_upper_hex_uint8(void) {
   assert_stdsv_equal(
     "0A"sv, (std::string_view{
               std::ranges::begin(buf),
-              util::format_upper_hex_uint8(0xa, std::ranges::begin(buf))}));
+              util::format_upper_hex_uint8(0xA, std::ranges::begin(buf))}));
   assert_stdsv_equal(
     "7C"sv, (std::string_view{
               std::ranges::begin(buf),
-              util::format_upper_hex_uint8(0x07c, std::ranges::begin(buf))}));
+              util::format_upper_hex_uint8(0x07C, std::ranges::begin(buf))}));
   assert_stdsv_equal(
     "EB"sv, (std::string_view{
               std::ranges::begin(buf),
-              util::format_upper_hex_uint8(0xeb, std::ranges::begin(buf))}));
+              util::format_upper_hex_uint8(0xEB, std::ranges::begin(buf))}));
   assert_stdsv_equal(
     "FF"sv, (std::string_view{
               std::ranges::begin(buf),
-              util::format_upper_hex_uint8(0xff, std::ranges::begin(buf))}));
+              util::format_upper_hex_uint8(0xFF, std::ranges::begin(buf))}));
 }
 
 void test_util_is_hex_string(void) {

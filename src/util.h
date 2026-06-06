@@ -386,7 +386,7 @@ constexpr O format_hex_uint8(uint8_t b, O result) {
 #  pragma GCC diagnostic ignored "-Wsign-conversion"
 #endif // __GNUC__
   *result++ = LOWER_XDIGITS[b >> 4];
-  *result++ = LOWER_XDIGITS[b & 0xf];
+  *result++ = LOWER_XDIGITS[b & 0xF];
 #ifdef __GNUC__
 #  pragma GCC diagnostic pop
 #endif // __GNUC__
@@ -486,7 +486,7 @@ constexpr O format_upper_hex_uint8(uint8_t b, O result) {
 #  pragma GCC diagnostic ignored "-Wsign-conversion"
 #endif // __GNUC__
   *result++ = UPPER_XDIGITS[b >> 4];
-  *result++ = UPPER_XDIGITS[b & 0xf];
+  *result++ = UPPER_XDIGITS[b & 0xF];
 #ifdef __GNUC__
 #  pragma GCC diagnostic pop
 #endif // __GNUC__
@@ -884,7 +884,7 @@ struct CompactHexFormatter {
       assert(p != end);
 
       if (*(p - 1) < 16) {
-        *result++ = static_cast<result_type>(UPPER_XDIGITS[(*--p) & 0xf]);
+        *result++ = static_cast<result_type>(UPPER_XDIGITS[(*--p) & 0xF]);
       }
 
       for (; p != end; --p) {
@@ -898,7 +898,7 @@ struct CompactHexFormatter {
         ;
 
       if (*p < 16) {
-        *result++ = static_cast<result_type>(UPPER_XDIGITS[(*p++) & 0xf]);
+        *result++ = static_cast<result_type>(UPPER_XDIGITS[(*p++) & 0xF]);
       }
 
       for (; p != end; ++p) {

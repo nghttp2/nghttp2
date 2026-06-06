@@ -995,7 +995,7 @@ InputIt skip_to_right_dquote(InputIt first, InputIt last) {
       case ' ':
         break;
       default:
-        if ((0x21 <= *first && *first <= 0x7e) /* VCHAR */ ||
+        if ((0x21 <= *first && *first <= 0x7E) /* VCHAR */ ||
             0x80 <= *first /* obs-text */) {
           break;
         }
@@ -1010,8 +1010,8 @@ InputIt skip_to_right_dquote(InputIt first, InputIt last) {
     case '!':
       break;
     default:
-      if ((0x23 <= *first && *first <= 0x5b) ||
-          (0x5d <= *first && *first <= 0x7e)) {
+      if ((0x23 <= *first && *first <= 0x5B) ||
+          (0x5D <= *first && *first <= 0x7E)) {
         break;
       }
 
