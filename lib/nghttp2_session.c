@@ -5990,7 +5990,7 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
             iframe->frame.ext.payload = &iframe->ext_frame_payload.origin;
 
             if (session->server || iframe->frame.hd.stream_id ||
-                (iframe->frame.hd.flags & 0xf0)) {
+                (iframe->frame.hd.flags & 0xF0)) {
               /* Receiving too frequent invalid frames is
                  suspicious. */
               rv = session_update_glitch_ratelim(session);

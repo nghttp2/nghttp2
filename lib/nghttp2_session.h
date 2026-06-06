@@ -96,7 +96,7 @@ typedef struct {
 #define NGHTTP2_DEFAULT_MAX_OBQ_FLOOD_ITEM 1000
 
 /* The default value of maximum number of concurrent streams. */
-#define NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS 0xffffffffu
+#define NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS 0xFFFFFFFFU
 
 /* The default values for stream reset rate limiter. */
 #define NGHTTP2_DEFAULT_STREAM_RESET_BURST 1000
