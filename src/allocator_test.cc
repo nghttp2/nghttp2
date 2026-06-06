@@ -55,7 +55,7 @@ namespace {
 auto data = []() {
   std::array<uint8_t, 4096> data;
 
-  std::ranges::fill(data, 0xfe);
+  std::ranges::fill(data, 0xFE);
 
   return data;
 }();

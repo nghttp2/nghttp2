@@ -108,21 +108,21 @@ void test_shrpx_http_create_affinity_cookie(void) {
   BlockAllocator balloc(1024, 1024);
   std::string_view c;
 
-  c = http::create_affinity_cookie(balloc, "cookie-val"sv, 0xf1e2d3c4u, ""sv,
+  c = http::create_affinity_cookie(balloc, "cookie-val"sv, 0xF1E2D3C4U, ""sv,
                                    false);
 
   assert_stdsv_equal("cookie-val=f1e2d3c4"sv, c);
 
-  c = http::create_affinity_cookie(balloc, "alpha"sv, 0x00000000u, ""sv, true);
+  c = http::create_affinity_cookie(balloc, "alpha"sv, 0x00000000U, ""sv, true);
 
   assert_stdsv_equal("alpha=00000000; Secure"sv, c);
 
-  c = http::create_affinity_cookie(balloc, "bravo"sv, 0x01111111u, "bar"sv,
+  c = http::create_affinity_cookie(balloc, "bravo"sv, 0x01111111U, "bar"sv,
                                    false);
 
   assert_stdsv_equal("bravo=01111111; Path=bar"sv, c);
 
-  c = http::create_affinity_cookie(balloc, "charlie"sv, 0x01111111u, "bar"sv,
+  c = http::create_affinity_cookie(balloc, "charlie"sv, 0x01111111U, "bar"sv,
                                    true);
 
   assert_stdsv_equal("charlie=01111111; Path=bar; Secure"sv, c);

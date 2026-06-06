@@ -94,7 +94,7 @@ inline constexpr size_t SHRPX_QUIC_STATELESS_RESET_BURST = 100;
 inline constexpr size_t SHRPX_QUIC_SECRET_RESERVEDLEN = 4;
 inline constexpr size_t SHRPX_QUIC_SECRETLEN = 32;
 inline constexpr size_t SHRPX_QUIC_SALTLEN = 32;
-inline constexpr uint8_t SHRPX_QUIC_DCID_KM_ID_MASK = 0xe0;
+inline constexpr uint8_t SHRPX_QUIC_DCID_KM_ID_MASK = 0xE0;
 
 struct WorkerID {
   uint32_t server;

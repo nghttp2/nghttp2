@@ -1278,7 +1278,7 @@ std::expected<void, Error> ClientHandler::proxy_protocol_read() {
   auto first = rb_.pos();
 
   if (rb_.rleft() >= PROXY_PROTO_V2_HDLEN &&
-      (*(first + str_size(PROXY_PROTO_V2_SIG)) & 0xf0) == 0x20) {
+      (*(first + str_size(PROXY_PROTO_V2_SIG)) & 0xF0) == 0x20) {
     if (log_enabled(INFO)) {
       Log{INFO, this} << "PROXY-protocol: Detected v2 header signature";
     }
@@ -1474,11 +1474,11 @@ std::expected<void, Error> ClientHandler::proxy_protocol_v2_read() {
 
   auto p = rb_.pos() + str_size(PROXY_PROTO_V2_SIG);
 
-  assert(((*p) & 0xf0) == 0x20);
+  assert(((*p) & 0xF0) == 0x20);
 
   enum { LOCAL, PROXY } cmd;
 
-  auto cmd_bits = (*p++) & 0xf;
+  auto cmd_bits = (*p++) & 0xF;
   switch (cmd_bits) {
   case 0x0:
     cmd = LOCAL;

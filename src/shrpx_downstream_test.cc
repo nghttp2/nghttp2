@@ -205,11 +205,11 @@ void test_downstream_find_affinity_cookie(void) {
 
   aff = d.find_affinity_cookie("lb"sv);
 
-  assert_uint32(0xdeadbeef, ==, aff);
+  assert_uint32(0xDEADBEEF, ==, aff);
 
   aff = d.find_affinity_cookie("LB"sv);
 
-  assert_uint32(0xf1f2f3f4, ==, aff);
+  assert_uint32(0xF1F2F3F4, ==, aff);
 
   aff = d.find_affinity_cookie("short"sv);
 

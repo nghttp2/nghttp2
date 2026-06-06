@@ -456,7 +456,7 @@ uint32_t generate_reserved_version(const Address &addr, uint32_t version) {
 
   for (; p != ep; ++p) {
     h ^= *p;
-    h *= 0x01000193u;
+    h *= 0x01000193U;
   }
 
   version = htonl(version);
@@ -465,11 +465,11 @@ uint32_t generate_reserved_version(const Address &addr, uint32_t version) {
 
   for (; p != ep; ++p) {
     h ^= *p;
-    h *= 0x01000193u;
+    h *= 0x01000193U;
   }
 
-  h &= 0xf0f0f0f0u;
-  h |= 0x0a0a0a0au;
+  h &= 0xF0F0F0F0U;
+  h |= 0x0A0A0A0AU;
 
   return h;
 }

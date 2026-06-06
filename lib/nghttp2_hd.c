@@ -854,7 +854,7 @@ static size_t encode_length(uint8_t *buf, size_t n, size_t prefix) {
   n -= k;
 
   for (; n >= 128; n >>= 7) {
-    *buf++ = (uint8_t)((1 << 7) | (n & 0x7f));
+    *buf++ = (uint8_t)((1 << 7) | (n & 0x7F));
   }
 
   *buf++ = (uint8_t)n;
@@ -906,7 +906,7 @@ static nghttp2_ssize decode_length(uint32_t *res, size_t *shift_ptr, int *fin,
   }
 
   for (; in != last; ++in, shift += 7) {
-    uint32_t add = *in & 0x7f;
+    uint32_t add = *in & 0x7F;
 
     if (shift >= 32) {
       DEBUGF("inflate: shift exponent overflow\n");
@@ -960,7 +960,7 @@ static int emit_table_size(nghttp2_bufs *bufs, size_t table_size) {
 
   bufp = sb;
 
-  *bufp = 0x20u;
+  *bufp = 0x20U;
 
   encode_length(bufp, table_size, 5);
 
@@ -987,7 +987,7 @@ static int emit_indexed_block(nghttp2_bufs *bufs, size_t idx) {
   }
 
   bufp = sb;
-  *bufp = 0x80u;
+  *bufp = 0x80U;
   encode_length(bufp, idx + 1, 7);
 
   rv = nghttp2_bufs_add(bufs, sb, blocklen);
@@ -1046,11 +1046,11 @@ static int emit_string(nghttp2_bufs *bufs, const uint8_t *str, size_t len) {
 static uint8_t pack_first_byte(int indexing_mode) {
   switch (indexing_mode) {
   case NGHTTP2_HD_WITH_INDEXING:
-    return 0x40u;
+    return 0x40U;
   case NGHTTP2_HD_WITHOUT_INDEXING:
     return 0;
   case NGHTTP2_HD_NEVER_INDEXING:
-    return 0x10u;
+    return 0x10U;
   default:
     assert(0);
   }
@@ -1940,7 +1940,7 @@ nghttp2_ssize nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
     busy = 0;
     switch (inflater->state) {
     case NGHTTP2_HD_STATE_EXPECT_TABLE_SIZE:
-      if ((*in & 0xe0u) != 0x20u) {
+      if ((*in & 0xE0U) != 0x20U) {
         DEBUGF("inflatehd: header table size change was expected, but saw "
                "0x%02x as first byte",
                *in);
@@ -1950,7 +1950,7 @@ nghttp2_ssize nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
     /* fall through */
     case NGHTTP2_HD_STATE_INFLATE_START:
     case NGHTTP2_HD_STATE_OPCODE:
-      if ((*in & 0xe0u) == 0x20u) {
+      if ((*in & 0xE0U) == 0x20U) {
         DEBUGF("inflatehd: header table size change\n");
         if (inflater->state == NGHTTP2_HD_STATE_OPCODE) {
           DEBUGF("inflatehd: header table size change must appear at the head "
@@ -1960,12 +1960,12 @@ nghttp2_ssize nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
         }
         inflater->opcode = NGHTTP2_HD_OPCODE_INDEXED;
         inflater->state = NGHTTP2_HD_STATE_READ_TABLE_SIZE;
-      } else if (*in & 0x80u) {
+      } else if (*in & 0x80U) {
         DEBUGF("inflatehd: indexed repr\n");
         inflater->opcode = NGHTTP2_HD_OPCODE_INDEXED;
         inflater->state = NGHTTP2_HD_STATE_READ_INDEX;
       } else {
-        if (*in == 0x40u || *in == 0 || *in == 0x10u) {
+        if (*in == 0x40U || *in == 0 || *in == 0x10U) {
           DEBUGF("inflatehd: literal header repr - new name\n");
           inflater->opcode = NGHTTP2_HD_OPCODE_NEWNAME;
           inflater->state = NGHTTP2_HD_STATE_NEWNAME_CHECK_NAMELEN;
@@ -1975,7 +1975,7 @@ nghttp2_ssize nghttp2_hd_inflate_hd_nv(nghttp2_hd_inflater *inflater,
           inflater->state = NGHTTP2_HD_STATE_READ_INDEX;
         }
         inflater->index_required = (*in & 0x40) != 0;
-        inflater->no_index = (*in & 0xf0u) == 0x10u;
+        inflater->no_index = (*in & 0xF0U) == 0x10U;
         DEBUGF("inflatehd: indexing required=%d, no_index=%d\n",
                inflater->index_required, inflater->no_index);
         if (inflater->opcode == NGHTTP2_HD_OPCODE_NEWNAME) {

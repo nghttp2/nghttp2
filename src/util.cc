@@ -894,7 +894,7 @@ std::string ascii_dump(const uint8_t *data, size_t len) {
   for (size_t i = 0; i < len; ++i) {
     auto c = data[i];
 
-    if (c >= 0x20 && c < 0x7f) {
+    if (c >= 0x20 && c < 0x7F) {
       res += static_cast<char>(c);
     } else {
       res += '.';
@@ -1400,7 +1400,7 @@ uint8_t *hexdump_ascii(uint8_t *dest, const uint8_t *data, size_t datalen) {
   *dest++ = '|';
 
   for (size_t i = 0; i < datalen; ++i) {
-    if (0x20 <= data[i] && data[i] <= 0x7e) {
+    if (0x20 <= data[i] && data[i] <= 0x7E) {
       *dest++ = data[i];
     } else {
       *dest++ = '.';

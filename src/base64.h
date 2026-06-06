@@ -68,9 +68,9 @@ constexpr O encode(I first, I last, O result) {
     n += static_cast<uint32_t>(static_cast<uint8_t>(*first++) << 8);
     n += static_cast<uint8_t>(*first++);
     *p++ = static_cast<result_type>(B64_CHARS[n >> 18]);
-    *p++ = static_cast<result_type>(B64_CHARS[(n >> 12) & 0x3fu]);
-    *p++ = static_cast<result_type>(B64_CHARS[(n >> 6) & 0x3fu]);
-    *p++ = static_cast<result_type>(B64_CHARS[n & 0x3fu]);
+    *p++ = static_cast<result_type>(B64_CHARS[(n >> 12) & 0x3FU]);
+    *p++ = static_cast<result_type>(B64_CHARS[(n >> 6) & 0x3FU]);
+    *p++ = static_cast<result_type>(B64_CHARS[n & 0x3FU]);
   }
 
   switch (len) {
@@ -78,15 +78,15 @@ constexpr O encode(I first, I last, O result) {
     auto n = static_cast<uint32_t>(static_cast<uint8_t>(*first++) << 16);
     n += static_cast<uint32_t>(static_cast<uint8_t>(*first++) << 8);
     *p++ = static_cast<result_type>(B64_CHARS[n >> 18]);
-    *p++ = static_cast<result_type>(B64_CHARS[(n >> 12) & 0x3fu]);
-    *p++ = static_cast<result_type>(B64_CHARS[(n >> 6) & 0x3fu]);
+    *p++ = static_cast<result_type>(B64_CHARS[(n >> 12) & 0x3FU]);
+    *p++ = static_cast<result_type>(B64_CHARS[(n >> 6) & 0x3FU]);
     *p++ = '=';
     break;
   }
   case 1: {
     auto n = static_cast<uint32_t>(static_cast<uint8_t>(*first++) << 16);
     *p++ = static_cast<result_type>(B64_CHARS[n >> 18]);
-    *p++ = static_cast<result_type>(B64_CHARS[(n >> 12) & 0x3fu]);
+    *p++ = static_cast<result_type>(B64_CHARS[(n >> 12) & 0x3FU]);
     *p++ = '=';
     *p++ = '=';
     break;
@@ -161,7 +161,7 @@ constexpr O decode(I first, I last, O result) {
         }
         if (*first == '=' && std::ranges::next(first, 1) == last) {
           *p++ = static_cast<result_type>(n >> 16);
-          *p++ = n >> 8 & 0xffu;
+          *p++ = n >> 8 & 0xFFU;
           return p;
         }
         return result;
@@ -171,8 +171,8 @@ constexpr O decode(I first, I last, O result) {
     }
 
     *p++ = static_cast<result_type>(n >> 16);
-    *p++ = n >> 8 & 0xffu;
-    *p++ = n & 0xffu;
+    *p++ = n >> 8 & 0xFFU;
+    *p++ = n & 0xFFU;
   }
 
   return p;

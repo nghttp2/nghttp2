@@ -73,7 +73,7 @@ static void to_hex(char *dest, const uint8_t *src, size_t len) {
   size_t i;
   for (i = 0; i < len; ++i) {
     *dest++ = to_hex_digit(src[i] >> 4);
-    *dest++ = to_hex_digit(src[i] & 0xf);
+    *dest++ = to_hex_digit(src[i] & 0xF);
   }
 }
 
