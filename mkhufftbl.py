@@ -381,7 +381,7 @@ def _print_transition_table(node):
                 flags |= NGHTTP2_HUFF_ACCEPTED
             elif nd.accept:
                 flags |= NGHTTP2_HUFF_ACCEPTED
-        print('  {{0x{:02x}, {}, {}}},'.format(id, flags, out))
+        print('  {{0x{:02X}, {}, {}}},'.format(id, flags, out))
     print('},')
     _print_transition_table(node.left)
     _print_transition_table(node.right)
@@ -431,14 +431,14 @@ const nghttp2_huff_sym huff_sym_table[] = {''')
         k = int(symbol_tbl[i][1], 16)
         k = k << (32 - nbits)
         print('''\
-  {{ {}, 0x{}u }}{}\
-'''.format(symbol_tbl[i][0], hex(k)[2:], ',' if i < 256 else ''))
+  {{ {}, 0x{}U }}{}\
+'''.format(symbol_tbl[i][0], hex(k)[2:].upper(), ',' if i < 256 else ''))
     print('};')
     print()
 
     print('''\
-#define NGHTTP2_HUFF_ACCEPTED 0x{:02x}U
-#define NGHTTP2_HUFF_SYM 0x{:02x}U
+#define NGHTTP2_HUFF_ACCEPTED 0x{:02X}U
+#define NGHTTP2_HUFF_SYM 0x{:02X}U
 '''.format(NGHTTP2_HUFF_ACCEPTED, NGHTTP2_HUFF_SYM))
 
     print('''\
