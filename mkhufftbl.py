@@ -381,7 +381,7 @@ def _print_transition_table(node):
                 flags |= NGHTTP2_HUFF_ACCEPTED
             elif nd.accept:
                 flags |= NGHTTP2_HUFF_ACCEPTED
-        print('  {{0x{:02X}, {}, {}}},'.format(id, flags, out))
+        print('  {{0x{:02X}, 0x{:02X}, 0x{:02X}}},'.format(id, flags, out))
     print('},')
     _print_transition_table(node.left)
     _print_transition_table(node.right)
@@ -392,7 +392,7 @@ def huffman_tree_print_transition_table(ctx):
     print('{')
 
     for _ in range(16):
-        print('  {0x100, 0, 0},')
+        print('  {0x100, 0x00, 0x00},')
 
     print('},')
 
