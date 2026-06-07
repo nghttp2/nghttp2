@@ -1460,7 +1460,10 @@ nghttp2_ssize downstream_data_read_callback(nghttp2_session *session,
   }
 
   if (nread == 0 && ((*data_flags) & NGHTTP2_DATA_FLAG_EOF) == 0) {
-    downstream->disable_upstream_wtimer();
+    if (body->rleft() == 0) {
+      downstream->disable_upstream_wtimer();
+    }
+
     return NGHTTP2_ERR_DEFERRED;
   }
 
