@@ -784,7 +784,7 @@ ngtcp2_ssize Http3Upstream::write_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
                                       uint8_t *dest, size_t destlen,
                                       ngtcp2_tstamp ts) {
   std::array<nghttp3_vec, 16> vec;
-  int rv;
+  size_t total_datalen = 0;
 
   for (;;) {
     int64_t stream_id = -1;
@@ -828,19 +828,18 @@ ngtcp2_ssize Http3Upstream::write_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
         assert(ndatalen == -1);
         nghttp3_conn_shutdown_stream_write(httpconn_, stream_id);
         continue;
-      case NGTCP2_ERR_WRITE_MORE:
+      case NGTCP2_ERR_WRITE_MORE: {
         assert(ndatalen >= 0);
-        rv = nghttp3_conn_add_write_offset(httpconn_, stream_id,
-                                           as_unsigned(ndatalen));
-        if (rv != 0) {
-          Log{ERROR, this} << "nghttp3_conn_add_write_offset: "
-                           << nghttp3_strerror(rv);
-          ngtcp2_ccerr_set_application_error(
-            &last_error_, nghttp3_err_infer_quic_app_error_code(rv), nullptr,
-            0);
+
+        auto maybe_datalen = on_stream_write(stream_id, as_unsigned(ndatalen));
+        if (!maybe_datalen) {
           return NGTCP2_ERR_CALLBACK_FAILURE;
         }
+
+        total_datalen += *maybe_datalen;
+
         continue;
+      }
       }
 
       assert(ndatalen == -1);
@@ -855,19 +854,49 @@ ngtcp2_ssize Http3Upstream::write_pkt(ngtcp2_path *path, ngtcp2_pkt_info *pi,
     }
 
     if (ndatalen >= 0) {
-      rv = nghttp3_conn_add_write_offset(httpconn_, stream_id,
-                                         as_unsigned(ndatalen));
-      if (rv != 0) {
-        Log{ERROR, this} << "nghttp3_conn_add_write_offset: "
-                         << nghttp3_strerror(rv);
-        ngtcp2_ccerr_set_application_error(
-          &last_error_, nghttp3_err_infer_quic_app_error_code(rv), nullptr, 0);
+      auto maybe_datalen = on_stream_write(stream_id, as_unsigned(ndatalen));
+      if (!maybe_datalen) {
         return NGTCP2_ERR_CALLBACK_FAILURE;
       }
+
+      total_datalen += *maybe_datalen;
     }
+
+    handler_->extend_write_rate_timer(total_datalen);
 
     return nwrite;
   }
+}
+
+std::expected<size_t, Error> Http3Upstream::on_stream_write(int64_t stream_id,
+                                                            size_t datalen) {
+  auto rv = nghttp3_conn_add_write_offset(httpconn_, stream_id, datalen);
+  if (rv != 0) {
+    Log{ERROR, this} << "nghttp3_conn_add_write_offset: "
+                     << nghttp3_strerror(rv);
+    ngtcp2_ccerr_set_application_error(
+      &last_error_, nghttp3_err_infer_quic_app_error_code(rv), nullptr, 0);
+    return std::unexpected{Error::HTTP3};
+  }
+
+  auto downstream = static_cast<Downstream *>(
+    nghttp3_conn_get_stream_user_data(httpconn_, stream_id));
+  if (!downstream) {
+    return 0;
+  }
+
+  downstream->reset_upstream_wtimer();
+
+  auto body = downstream->get_response_buf();
+  if (body->rleft_mark() == 0 &&
+      nghttp3_conn_is_stream_flushed(httpconn_, stream_id)) {
+    // All data has been written to QUIC stack, that means all
+    // data have passed flow control limitation.
+    downstream->disable_upstream_wtimer();
+    downstream->unregister_upstream_write_rate_timer();
+  }
+
+  return datalen;
 }
 
 std::expected<void, Error> Http3Upstream::write_streams() {
@@ -1149,11 +1178,8 @@ nghttp3_ssize downstream_read_data_callback(nghttp3_conn *conn,
 
   if (downstream->get_response_state() != DownstreamState::MSG_COMPLETE &&
       body->rleft_mark() == 0) {
-    downstream->disable_upstream_wtimer();
     return NGHTTP3_ERR_WOULDBLOCK;
   }
-
-  downstream->reset_upstream_wtimer();
 
   auto iov = body->riovec_mark({reinterpret_cast<struct iovec *>(vec), veccnt});
 
@@ -1379,13 +1405,16 @@ Http3Upstream::on_downstream_header_complete(Downstream *downstream) {
     return std::unexpected{Error::HTTP3};
   }
 
-  if (data_readptr) {
-    downstream->reset_upstream_wtimer();
-  } else if (auto rv = shutdown_stream_read(downstream->get_stream_id(),
-                                            NGHTTP3_H3_NO_ERROR);
-             !rv) {
-    return rv;
+  if (!data_readptr) {
+    if (auto rv = shutdown_stream_read(downstream->get_stream_id(),
+                                       NGHTTP3_H3_NO_ERROR);
+        !rv) {
+      return rv;
+    }
   }
+
+  downstream->reset_upstream_wtimer();
+  downstream->register_upstream_write_rate_timer();
 
   return {};
 }
@@ -1400,6 +1429,7 @@ Http3Upstream::on_downstream_body(Downstream *downstream,
     nghttp3_conn_resume_stream(httpconn_, downstream->get_stream_id());
 
     downstream->ensure_upstream_wtimer();
+    downstream->register_upstream_write_rate_timer();
   }
 
   return {};
@@ -1439,6 +1469,7 @@ Http3Upstream::on_downstream_body_complete(Downstream *downstream) {
 
   nghttp3_conn_resume_stream(httpconn_, downstream->get_stream_id());
   downstream->ensure_upstream_wtimer();
+  downstream->register_upstream_write_rate_timer();
 
   return {};
 }
@@ -1661,10 +1692,8 @@ Http3Upstream::send_reply(Downstream *downstream,
   }
 
   downstream->set_response_state(DownstreamState::MSG_COMPLETE);
-
-  if (data_read_ptr) {
-    downstream->reset_upstream_wtimer();
-  }
+  downstream->reset_upstream_wtimer();
+  downstream->register_upstream_write_rate_timer();
 
   return shutdown_stream_read(downstream->get_stream_id(), NGHTTP3_H3_NO_ERROR);
 }
@@ -2663,6 +2692,7 @@ Http3Upstream::error_reply(Downstream *downstream, unsigned int status_code) {
   }
 
   downstream->reset_upstream_wtimer();
+  downstream->register_upstream_write_rate_timer();
 
   return shutdown_stream_read(downstream->get_stream_id(), NGHTTP3_H3_NO_ERROR);
 }

@@ -197,6 +197,9 @@ public:
 
   std::expected<void, Error> send_new_token(const ngtcp2_addr *remote_addr);
 
+  std::expected<size_t, Error> on_stream_write(int64_t stream_id,
+                                               size_t datalen);
+
 private:
   ClientHandler *handler_;
   ev_timer timer_;
