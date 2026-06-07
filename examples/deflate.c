@@ -136,13 +136,13 @@ static void deflate(nghttp2_hd_deflater *deflater,
          sum == 0 ? 0 : (double)outlen / (double)sum);
 
   for (i = 0; i < outlen; ++i) {
-    if ((i & 0x0fu) == 0) {
+    if ((i & 0x0FU) == 0) {
       printf("%08zX: ", i);
     }
 
     printf("%02X ", buf[i]);
 
-    if (((i + 1) & 0x0fu) == 0) {
+    if (((i + 1) & 0x0FU) == 0) {
       printf("\n");
     }
   }
