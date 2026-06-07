@@ -508,6 +508,10 @@ public:
   bool get_stop_reading() const;
   void set_stop_reading(bool f);
 
+  size_t get_buffered_request_body_length() const {
+    return blocked_request_buf_.rleft() + request_buf_.rleft();
+  }
+
   enum {
     EVENT_ERROR = 0x1,
     EVENT_TIMEOUT = 0x2,

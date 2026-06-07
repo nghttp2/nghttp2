@@ -218,7 +218,9 @@ nghttp2_ssize http2_data_read_callback(nghttp2_session *session,
   }
 
   if (nread == 0 && (*data_flags & NGHTTP2_DATA_FLAG_EOF) == 0) {
-    downstream->disable_downstream_wtimer();
+    if (input->rleft() == 0) {
+      downstream->disable_downstream_wtimer();
+    }
 
     return NGHTTP2_ERR_DEFERRED;
   }
@@ -503,7 +505,7 @@ std::expected<void, Error> Http2DownstreamConnection::push_request_headers() {
     return rv;
   }
 
-  if (data_prdptr) {
+  if (downstream_->get_buffered_request_body_length()) {
     downstream_->reset_downstream_wtimer();
   }
 
