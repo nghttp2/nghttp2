@@ -1528,7 +1528,7 @@ static size_t encode_length(uint8_t *buf, uint64_t n, size_t prefix) {
   do {
     ++len;
     if (n >= 128) {
-      *buf = (uint8_t)((1 << 7) | (n & 0x7f));
+      *buf = (uint8_t)((1 << 7) | (n & 0x7F));
       ++buf;
       n >>= 7;
     } else {
@@ -1633,7 +1633,7 @@ void test_nghttp2_hd_huff_encode(void) {
 }
 
 void test_nghttp2_hd_huff_decode(void) {
-  static const uint8_t e[] = {0x1f, 0xff, 0xff, 0xff, 0xff, 0xff};
+  static const uint8_t e[] = {0x1F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
   nghttp2_hd_huff_decode_context ctx;
   nghttp2_buf outbuf;
   uint8_t b[256];

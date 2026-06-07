@@ -824,7 +824,7 @@ static int cancel_unpack_extension_callback(nghttp2_session *session,
 }
 
 static void rand_callback(uint8_t *data, size_t datalen) {
-  memset(data, 0xfe, datalen);
+  memset(data, 0xFE, datalen);
 }
 
 static nghttp2_settings_entry *dup_iv(const nghttp2_settings_entry *iv,
@@ -2668,7 +2668,7 @@ void test_nghttp2_session_recv_extension(void) {
   nghttp2_buf_init2(&ud.scratchbuf, 4096, mem);
   nghttp2_buf_init2(&buf, 4096, mem);
 
-  nghttp2_frame_hd_init(&hd, sizeof(data), 111, 0xab, 1000000007);
+  nghttp2_frame_hd_init(&hd, sizeof(data), 111, 0xAB, 1000000007);
   nghttp2_frame_pack_frame_hd(buf.last, &hd);
   buf.last += NGHTTP2_FRAME_HDLEN;
   buf.last = nghttp2_cpymem(buf.last, data, sizeof(data));
@@ -2680,7 +2680,7 @@ void test_nghttp2_session_recv_extension(void) {
 
   assert_size(NGHTTP2_FRAME_HDLEN + hd.length, ==, (size_t)rv);
   assert_uint8(111, ==, ud.recv_frame_hd.type);
-  assert_uint8(0xab, ==, ud.recv_frame_hd.flags);
+  assert_uint8(0xAB, ==, ud.recv_frame_hd.flags);
   assert_int32(1000000007, ==, ud.recv_frame_hd.stream_id);
   assert_memory_equal(sizeof(data), data, ud.scratchbuf.pos);
 
@@ -3071,7 +3071,7 @@ void test_nghttp2_session_recv_origin(void) {
   nghttp2_session_client_new2(&session, &callbacks, &ud, option);
 
   nghttp2_frame_origin_init(&frame, &ov, 1);
-  frame.hd.flags = 0xf0;
+  frame.hd.flags = 0xF0;
   rv = nghttp2_frame_pack_origin(&bufs, &frame);
 
   assert_ptrdiff(0, ==, rv);
@@ -10366,7 +10366,7 @@ void test_nghttp2_session_verify_iframe_state(void) {
   nghttp2_buf_init2(&ud.scratchbuf, 4096, mem);
   nghttp2_buf_init2(&udbuf, 4096, mem);
 
-  nghttp2_frame_hd_init(&hd, nghttp2_strlen_lit(uddata), 111, 0xab, 1000000007);
+  nghttp2_frame_hd_init(&hd, nghttp2_strlen_lit(uddata), 111, 0xAB, 1000000007);
   nghttp2_frame_pack_frame_hd(udbuf.last, &hd);
   udbuf.last += NGHTTP2_FRAME_HDLEN;
   udbuf.last = nghttp2_cpymem(udbuf.last, uddata, nghttp2_strlen_lit(uddata));

@@ -44,7 +44,7 @@ const MunitSuite map_suite = {
   .tests = tests,
 };
 
-#define NGHTTP2_TEST_MAP_SEED 0xfefefefefefefefellu
+#define NGHTTP2_TEST_MAP_SEED 0xFEFEFEFEFEFEFEFEULL
 
 typedef struct strentry {
   nghttp2_map_key_type key;

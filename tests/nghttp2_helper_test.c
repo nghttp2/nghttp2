@@ -172,10 +172,10 @@ void test_nghttp2_check_header_name(void) {
   nghttp2_check_header_value((const uint8_t *)S, nghttp2_strlen_lit(S))
 
 void test_nghttp2_check_header_value(void) {
-  static const uint8_t goodval[] = {'a', 'b',  0x80u, 'c',  0xffu,
-                                    'd', '\t', ' ',   0x00u};
-  static const uint8_t badval1[] = {'a', 0x1fu, 'b', 0x00u};
-  static const uint8_t badval2[] = {'a', 0x7fu, 'b', 0x00u};
+  static const uint8_t goodval[] = {'a', 'b',  0x80U, 'c',  0xFFU,
+                                    'd', '\t', ' ',   0x00U};
+  static const uint8_t badval1[] = {'a', 0x1FU, 'b', 0x00U};
+  static const uint8_t badval2[] = {'a', 0x7FU, 'b', 0x00U};
 
   assert_true(check_header_value(" !|}~"));
   assert_true(check_header_value(goodval));
@@ -190,9 +190,9 @@ void test_nghttp2_check_header_value(void) {
   nghttp2_check_header_value_rfc9113((const uint8_t *)S, nghttp2_strlen_lit(S))
 
 void test_nghttp2_check_header_value_rfc9113(void) {
-  static const uint8_t goodval[] = {'a', 'b', 0x80u, 'c', 0xffu, 'd', 0x00u};
-  static const uint8_t badval1[] = {'a', 0x1fu, 'b', 0x00u};
-  static const uint8_t badval2[] = {'a', 0x7fu, 'b', 0x00u};
+  static const uint8_t goodval[] = {'a', 'b', 0x80U, 'c', 0xFFU, 'd', 0x00U};
+  static const uint8_t badval1[] = {'a', 0x1FU, 'b', 0x00U};
+  static const uint8_t badval2[] = {'a', 0x7FU, 'b', 0x00U};
 
   assert_true(check_header_value_rfc9113("!|}~"));
   assert_false(check_header_value_rfc9113(" !|}~"));
