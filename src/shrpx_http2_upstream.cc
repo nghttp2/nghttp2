@@ -1887,10 +1887,6 @@ Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     return std::unexpected{Error::HTTP2};
   }
 
-  if (data_prdptr) {
-    downstream->reset_upstream_wtimer();
-  }
-
   return {};
 }
 
