@@ -505,7 +505,7 @@ std::expected<void, Error> Http2DownstreamConnection::push_request_headers() {
     return rv;
   }
 
-  if (data_prdptr) {
+  if (downstream_->get_buffered_request_body_length()) {
     downstream_->reset_downstream_wtimer();
   }
 
