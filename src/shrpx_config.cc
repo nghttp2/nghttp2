@@ -2643,6 +2643,9 @@ int option_lookup_token(std::string_view name) {
       }
       break;
     case 't':
+      if (util::strieq("backend-stream-read-timeou"sv, name.substr(0, 26))) {
+        return SHRPX_OPTID_BACKEND_STREAM_READ_TIMEOUT;
+      }
       if (util::strieq("frontend-http2-idle-timeou"sv, name.substr(0, 26))) {
         return SHRPX_OPTID_FRONTEND_HTTP2_IDLE_TIMEOUT;
       }
@@ -2689,6 +2692,21 @@ int option_lookup_token(std::string_view name) {
     case 't':
       if (util::strieq("backend-connections-per-hos"sv, name.substr(0, 27))) {
         return SHRPX_OPTID_BACKEND_CONNECTIONS_PER_HOST;
+      }
+      if (util::strieq("backend-stream-write-timeou"sv, name.substr(0, 27))) {
+        return SHRPX_OPTID_BACKEND_STREAM_WRITE_TIMEOUT;
+      }
+      if (util::strieq("frontend-stream-read-timeou"sv, name.substr(0, 27))) {
+        return SHRPX_OPTID_FRONTEND_STREAM_READ_TIMEOUT;
+      }
+      break;
+    }
+    break;
+  case 29:
+    switch (name[28]) {
+    case 't':
+      if (util::strieq("frontend-stream-write-timeou"sv, name.substr(0, 28))) {
+        return SHRPX_OPTID_FRONTEND_STREAM_WRITE_TIMEOUT;
       }
       break;
     }
@@ -3231,12 +3249,22 @@ std::expected<void, Error> parse_config(
       config->conn.downstream->timeout.connect = r;
     });
   case SHRPX_OPTID_STREAM_READ_TIMEOUT:
+    Log{WARN} << opt
+              << ": deprecated.  Use --frontend-stream-read-timeout and "
+                 "--backend-stream-read-timeout";
+
     return parse_duration(opt, optarg).transform([config](auto &&r) {
-      config->http2.timeout.stream_read = r;
+      config->http.upstream.timeout.stream_read = r;
+      config->http.downstream.timeout.stream_read = r;
     });
   case SHRPX_OPTID_STREAM_WRITE_TIMEOUT:
+    Log{WARN} << opt
+              << ": deprecated.  Use --frontend-stream-write-timeout and "
+                 "--backend-stream-write-timeout";
+
     return parse_duration(opt, optarg).transform([config](auto &&r) {
-      config->http2.timeout.stream_write = r;
+      config->http.upstream.timeout.stream_write = r;
+      config->http.downstream.timeout.stream_write = r;
     });
   case SHRPX_OPTID_ACCESSLOG_FILE:
     config->logging.access.file = make_string_ref(config->balloc, optarg);
@@ -4352,6 +4380,22 @@ std::expected<void, Error> parse_config(
     return read_ech_config_file(config, opt, optarg);
   case SHRPX_OPTID_ECH_RETRY_CONFIG_FILE:
     return read_ech_config_file(config, opt, optarg, /* retry = */ true);
+  case SHRPX_OPTID_FRONTEND_STREAM_READ_TIMEOUT:
+    return parse_duration(opt, optarg).transform([config](auto &&r) {
+      config->http.upstream.timeout.stream_read = r;
+    });
+  case SHRPX_OPTID_FRONTEND_STREAM_WRITE_TIMEOUT:
+    return parse_duration(opt, optarg).transform([config](auto &&r) {
+      config->http.upstream.timeout.stream_write = r;
+    });
+  case SHRPX_OPTID_BACKEND_STREAM_READ_TIMEOUT:
+    return parse_duration(opt, optarg).transform([config](auto &&r) {
+      config->http.downstream.timeout.stream_read = r;
+    });
+  case SHRPX_OPTID_BACKEND_STREAM_WRITE_TIMEOUT:
+    return parse_duration(opt, optarg).transform([config](auto &&r) {
+      config->http.downstream.timeout.stream_write = r;
+    });
   case SHRPX_OPTID_CONF:
     Log{WARN} << "conf: ignored";
 
