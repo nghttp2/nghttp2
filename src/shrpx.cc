@@ -1689,6 +1689,8 @@ void fill_default_config(Config *config) {
   httpconf.xfp.strip_incoming = true;
   httpconf.early_data.strip_incoming = true;
   httpconf.timeout.header = 1_min;
+  httpconf.upstream.timeout.stream_write = 1_min;
+  httpconf.downstream.timeout.stream_write = 1_min;
 
   auto &http2conf = config->http2;
   {
@@ -1727,8 +1729,6 @@ void fill_default_config(Config *config) {
     nghttp2_option_set_max_deflate_dynamic_table_size(
       upstreamconf.alt_mode_option, upstreamconf.encoder_dynamic_table_size);
   }
-
-  http2conf.timeout.stream_write = 1_min;
 
   {
     auto &downstreamconf = http2conf.downstream;
@@ -2353,16 +2353,26 @@ Timeout:
               itself is left intact.
               Default: )"
       << util::duration_str(config->http.timeout.header) << R"(
-  --stream-read-timeout=<DURATION>
-              Specify  read timeout  for HTTP/2  streams.  0  means no
-              timeout.
+  --frontend-stream-read-timeout=<DURATION>
+              Specify read  timeout for  HTTP/2 and HTTP/3  streams in
+              the frontend connection.  0 means no timeout.
               Default: )"
-      << util::duration_str(config->http2.timeout.stream_read) << R"(
-  --stream-write-timeout=<DURATION>
-              Specify write  timeout for  HTTP/2 streams.  0  means no
-              timeout.
+      << util::duration_str(config->http.upstream.timeout.stream_read) << R"(
+  --frontend-stream-write-timeout=<DURATION>
+              Specify write  timeout for HTTP/2 and  HTTP/3 streams in
+              the frontend connection.  0 means no timeout.
               Default: )"
-      << util::duration_str(config->http2.timeout.stream_write) << R"(
+      << util::duration_str(config->http.upstream.timeout.stream_write) << R"(
+  --backend-stream-read-timeout=<DURATION>
+              Specify read  timeout for HTTP/2 streams  in the backend
+              connection.  0 means no timeout.
+              Default: )"
+      << util::duration_str(config->http.downstream.timeout.stream_read) << R"(
+  --backend-stream-write-timeout=<DURATION>
+              Specify write timeout for  HTTP/2 streams in the backend
+              connection.  0 means no timeout.
+              Default: )"
+      << util::duration_str(config->http.downstream.timeout.stream_write) << R"(
   --backend-read-timeout=<DURATION>
               Specify read timeout for backend connection.
               Default: )"
@@ -3993,6 +4003,14 @@ int main(int argc, char **argv) {
       {SHRPX_OPT_GROUPS.data(), required_argument, &flag, 197},
       {SHRPX_OPT_ECH_CONFIG_FILE.data(), required_argument, &flag, 198},
       {SHRPX_OPT_ECH_RETRY_CONFIG_FILE.data(), required_argument, &flag, 199},
+      {SHRPX_OPT_FRONTEND_STREAM_READ_TIMEOUT.data(), required_argument, &flag,
+       200},
+      {SHRPX_OPT_FRONTEND_STREAM_WRITE_TIMEOUT.data(), required_argument, &flag,
+       201},
+      {SHRPX_OPT_BACKEND_STREAM_READ_TIMEOUT.data(), required_argument, &flag,
+       202},
+      {SHRPX_OPT_BACKEND_STREAM_WRITE_TIMEOUT.data(), required_argument, &flag,
+       203},
       {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -4930,6 +4948,26 @@ int main(int argc, char **argv) {
       case 199:
         // --ech-retry-config-file
         cmdcfgs.emplace_back(SHRPX_OPT_ECH_RETRY_CONFIG_FILE,
+                             std::string_view{optarg});
+        break;
+      case 200:
+        // --frontend-stream-read-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_STREAM_READ_TIMEOUT,
+                             std::string_view{optarg});
+        break;
+      case 201:
+        // --frontend-stream-write-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_STREAM_WRITE_TIMEOUT,
+                             std::string_view{optarg});
+        break;
+      case 202:
+        // --backend-stream-read-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_STREAM_READ_TIMEOUT,
+                             std::string_view{optarg});
+        break;
+      case 203:
+        // --backend-stream-write-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_STREAM_WRITE_TIMEOUT,
                              std::string_view{optarg});
         break;
       default:

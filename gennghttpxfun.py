@@ -207,6 +207,10 @@ OPTIONS = [
     "groups",
     "ech-config-file",
     "ech-retry-config-file",
+    "frontend-stream-read-timeout",
+    "frontend-stream-write-timeout",
+    "backend-stream-read-timeout",
+    "backend-stream-write-timeout",
 ]
 
 LOGVARS = [

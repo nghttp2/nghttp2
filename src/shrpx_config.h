@@ -388,6 +388,14 @@ inline constexpr auto SHRPX_OPT_GROUPS = "groups"sv;
 inline constexpr auto SHRPX_OPT_ECH_CONFIG_FILE = "ech-config-file"sv;
 inline constexpr auto SHRPX_OPT_ECH_RETRY_CONFIG_FILE =
   "ech-retry-config-file"sv;
+inline constexpr auto SHRPX_OPT_FRONTEND_STREAM_READ_TIMEOUT =
+  "frontend-stream-read-timeout"sv;
+inline constexpr auto SHRPX_OPT_FRONTEND_STREAM_WRITE_TIMEOUT =
+  "frontend-stream-write-timeout"sv;
+inline constexpr auto SHRPX_OPT_BACKEND_STREAM_READ_TIMEOUT =
+  "backend-stream-read-timeout"sv;
+inline constexpr auto SHRPX_OPT_BACKEND_STREAM_WRITE_TIMEOUT =
+  "backend-stream-write-timeout"sv;
 
 inline constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -851,6 +859,18 @@ struct HttpConfig {
   struct {
     ev_tstamp header;
   } timeout;
+  struct {
+    struct {
+      ev_tstamp stream_read;
+      ev_tstamp stream_write;
+    } timeout;
+  } upstream;
+  struct {
+    struct {
+      ev_tstamp stream_read;
+      ev_tstamp stream_write;
+    } timeout;
+  } downstream;
   std::vector<AltSvc> altsvcs;
   // altsvcs serialized in a wire format.
   std::string_view altsvc_header_value;
@@ -913,10 +933,6 @@ struct Http2Config {
     int32_t connection_window_size;
     size_t max_concurrent_streams;
   } downstream;
-  struct {
-    ev_tstamp stream_read;
-    ev_tstamp stream_write;
-  } timeout;
   bool no_cookie_crumbling;
   bool no_server_push;
 };
@@ -1166,6 +1182,8 @@ enum {
   SHRPX_OPTID_BACKEND_READ_TIMEOUT,
   SHRPX_OPTID_BACKEND_REQUEST_BUFFER,
   SHRPX_OPTID_BACKEND_RESPONSE_BUFFER,
+  SHRPX_OPTID_BACKEND_STREAM_READ_TIMEOUT,
+  SHRPX_OPTID_BACKEND_STREAM_WRITE_TIMEOUT,
   SHRPX_OPTID_BACKEND_TLS,
   SHRPX_OPTID_BACKEND_TLS_SNI_FIELD,
   SHRPX_OPTID_BACKEND_WRITE_TIMEOUT,
@@ -1233,6 +1251,8 @@ enum {
   SHRPX_OPTID_FRONTEND_QUIC_REQUIRE_TOKEN,
   SHRPX_OPTID_FRONTEND_QUIC_SECRET_FILE,
   SHRPX_OPTID_FRONTEND_READ_TIMEOUT,
+  SHRPX_OPTID_FRONTEND_STREAM_READ_TIMEOUT,
+  SHRPX_OPTID_FRONTEND_STREAM_WRITE_TIMEOUT,
   SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT,
   SHRPX_OPTID_GROUPS,
   SHRPX_OPTID_HEADER_FIELD_BUFFER,

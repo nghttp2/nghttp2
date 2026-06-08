@@ -145,16 +145,14 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
 
   ev_timer_init(&header_timer_, header_timeoutcb, 0., httpconf.timeout.header);
 
-  auto &timeoutconf = config->http2.timeout;
-
   ev_timer_init(&upstream_rtimer_, &upstream_rtimeoutcb, 0.,
-                timeoutconf.stream_read);
+                httpconf.upstream.timeout.stream_read);
   ev_timer_init(&upstream_wtimer_, &upstream_wtimeoutcb, 0.,
-                timeoutconf.stream_write);
+                httpconf.upstream.timeout.stream_write);
   ev_timer_init(&downstream_rtimer_, &downstream_rtimeoutcb, 0.,
-                timeoutconf.stream_read);
+                httpconf.downstream.timeout.stream_read);
   ev_timer_init(&downstream_wtimer_, &downstream_wtimeoutcb, 0.,
-                timeoutconf.stream_write);
+                httpconf.downstream.timeout.stream_write);
 
   header_timer_.data = this;
   upstream_rtimer_.data = this;
@@ -986,7 +984,7 @@ void disable_timer(struct ev_loop *loop, ev_timer *w) {
 } // namespace
 
 void Downstream::reset_upstream_rtimer() {
-  if (get_config()->http2.timeout.stream_read == 0.) {
+  if (get_config()->http.upstream.timeout.stream_read == 0.) {
     return;
   }
   auto loop = upstream_->get_client_handler()->get_loop();
@@ -995,7 +993,7 @@ void Downstream::reset_upstream_rtimer() {
 
 void Downstream::reset_upstream_wtimer() {
   auto loop = upstream_->get_client_handler()->get_loop();
-  auto &timeoutconf = get_config()->http2.timeout;
+  const auto &timeoutconf = get_config()->http.upstream.timeout;
 
   if (timeoutconf.stream_write != 0.) {
     reset_timer(loop, &upstream_wtimer_);
@@ -1006,7 +1004,7 @@ void Downstream::reset_upstream_wtimer() {
 }
 
 void Downstream::ensure_upstream_wtimer() {
-  if (get_config()->http2.timeout.stream_write == 0.) {
+  if (get_config()->http.upstream.timeout.stream_write == 0.) {
     return;
   }
   auto loop = upstream_->get_client_handler()->get_loop();
@@ -1014,7 +1012,7 @@ void Downstream::ensure_upstream_wtimer() {
 }
 
 void Downstream::disable_upstream_rtimer() {
-  if (get_config()->http2.timeout.stream_read == 0.) {
+  if (get_config()->http.upstream.timeout.stream_read == 0.) {
     return;
   }
   auto loop = upstream_->get_client_handler()->get_loop();
@@ -1022,7 +1020,7 @@ void Downstream::disable_upstream_rtimer() {
 }
 
 void Downstream::disable_upstream_wtimer() {
-  if (get_config()->http2.timeout.stream_write == 0.) {
+  if (get_config()->http.upstream.timeout.stream_write == 0.) {
     return;
   }
   auto loop = upstream_->get_client_handler()->get_loop();
@@ -1030,7 +1028,7 @@ void Downstream::disable_upstream_wtimer() {
 }
 
 void Downstream::reset_downstream_rtimer() {
-  if (get_config()->http2.timeout.stream_read == 0.) {
+  if (get_config()->http.downstream.timeout.stream_read == 0.) {
     return;
   }
   auto loop = upstream_->get_client_handler()->get_loop();
@@ -1039,7 +1037,7 @@ void Downstream::reset_downstream_rtimer() {
 
 void Downstream::reset_downstream_wtimer() {
   auto loop = upstream_->get_client_handler()->get_loop();
-  auto &timeoutconf = get_config()->http2.timeout;
+  const auto &timeoutconf = get_config()->http.downstream.timeout;
 
   if (timeoutconf.stream_write != 0.) {
     reset_timer(loop, &downstream_wtimer_);
@@ -1050,7 +1048,7 @@ void Downstream::reset_downstream_wtimer() {
 }
 
 void Downstream::ensure_downstream_wtimer() {
-  if (get_config()->http2.timeout.stream_write == 0.) {
+  if (get_config()->http.downstream.timeout.stream_write == 0.) {
     return;
   }
   auto loop = upstream_->get_client_handler()->get_loop();
@@ -1058,7 +1056,7 @@ void Downstream::ensure_downstream_wtimer() {
 }
 
 void Downstream::disable_downstream_rtimer() {
-  if (get_config()->http2.timeout.stream_read == 0.) {
+  if (get_config()->http.downstream.timeout.stream_read == 0.) {
     return;
   }
   auto loop = upstream_->get_client_handler()->get_loop();
@@ -1066,7 +1064,7 @@ void Downstream::disable_downstream_rtimer() {
 }
 
 void Downstream::disable_downstream_wtimer() {
-  if (get_config()->http2.timeout.stream_write == 0.) {
+  if (get_config()->http.downstream.timeout.stream_write == 0.) {
     return;
   }
   auto loop = upstream_->get_client_handler()->get_loop();
