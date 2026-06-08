@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/bradfitz/gomemcache v0.0.0-20230905024940-24af94b03874
-	github.com/quic-go/quic-go v0.59.1
+	github.com/quic-go/quic-go v0.60.0
 	github.com/tatsuhiro-t/go-nghttp2 v0.0.0-20240121064059-46ccb0a462a8
 	golang.org/x/net v0.55.0
 )
