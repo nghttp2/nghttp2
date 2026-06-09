@@ -455,6 +455,9 @@ public:
   void disable_downstream_rtimer();
   void disable_downstream_wtimer();
 
+  void register_upstream_write_rate_timer();
+  void unregister_upstream_write_rate_timer();
+
   // Returns true if accesslog can be written for this downstream.
   bool accesslog_ready() const;
 
@@ -510,6 +513,14 @@ public:
 
   size_t get_buffered_request_body_length() const {
     return blocked_request_buf_.rleft() + request_buf_.rleft();
+  }
+
+  void set_upstream_write_rate_member(bool b) {
+    upstream_write_rate_member_ = b;
+  }
+
+  bool is_upstream_write_rate_member() const {
+    return upstream_write_rate_member_;
   }
 
   enum {
@@ -611,6 +622,7 @@ private:
   // true if request contains "expect: 100-continue" header field.
   bool expect_100_continue_{};
   bool stop_reading_{};
+  bool upstream_write_rate_member_{};
 };
 
 } // namespace shrpx

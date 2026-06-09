@@ -90,6 +90,16 @@ void shutdowncb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 namespace {
+void write_ratecb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto handler = static_cast<ClientHandler *>(w->data);
+
+  if (!handler->on_write_rate_timeout()) {
+    delete handler;
+  }
+}
+} // namespace
+
+namespace {
 void readcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto handler = static_cast<ClientHandler *>(conn->data);
@@ -452,6 +462,10 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
 
   reneg_shutdown_timer_.data = this;
 
+  ev_timer_init(&write_rate_timer_, write_ratecb, 0., 0.);
+
+  write_rate_timer_.data = this;
+
   if (!faddr->quic) {
     conn_.rlimit.startw();
   }
@@ -558,6 +572,7 @@ ClientHandler::~ClientHandler() {
     worker_->schedule_clear_mcpool();
   }
 
+  ev_timer_stop(conn_.loop, &write_rate_timer_);
   ev_timer_stop(conn_.loop, &reneg_shutdown_timer_);
 
   // TODO If backend is http/2, and it is in CONNECTED state, signal
@@ -1675,6 +1690,83 @@ void ClientHandler::set_local_hostport(const sockaddr *addr,
   }
 
   local_hostport_ = util::make_hostport(balloc_, host.data(), faddr_->port);
+}
+
+void ClientHandler::register_write_rate_timer(Downstream *downstream) {
+  if (get_config()->http.upstream.min_write_rate == 0 ||
+      downstream->is_upstream_write_rate_member()) {
+    return;
+  }
+
+  ++write_rate_member_count_;
+  downstream->set_upstream_write_rate_member(true);
+
+  auto config = get_config();
+  const auto &timeoutconf = config->http.upstream.timeout;
+
+  if (write_rate_member_count_ > 1 ||
+      (ev_is_active(&write_rate_timer_) &&
+       std::max(ev_timer_remaining(conn_.loop, &write_rate_timer_), 0.) >=
+         static_cast<double>(timeoutconf.initial_write_rate))) {
+    return;
+  }
+
+  write_rate_timer_.repeat = timeoutconf.initial_write_rate;
+  ev_timer_again(conn_.loop, &write_rate_timer_);
+}
+
+void ClientHandler::unregister_write_rate_timer(Downstream *downstream) {
+  if (get_config()->http.upstream.min_write_rate == 0 ||
+      !downstream->is_upstream_write_rate_member()) {
+    return;
+  }
+
+  downstream->set_upstream_write_rate_member(false);
+
+  assert(write_rate_member_count_);
+
+  if (--write_rate_member_count_) {
+    return;
+  }
+
+  // Keep timer running.  When it fires and there is no member, stop
+  // timer.  Frequently starting and stopping timer could bring
+  // performance penalty.
+}
+
+void ClientHandler::extend_write_rate_timer(size_t datalen) {
+  auto config = get_config();
+  const auto &httpconf = config->http;
+
+  if (httpconf.upstream.min_write_rate == 0) {
+    return;
+  }
+
+  auto repeat =
+    ev_is_active(&write_rate_timer_)
+      ? std::max(ev_timer_remaining(conn_.loop, &write_rate_timer_), 0.)
+      : httpconf.upstream.timeout.initial_write_rate;
+
+  repeat += static_cast<double>(datalen) /
+            static_cast<double>(httpconf.upstream.min_write_rate);
+
+  write_rate_timer_.repeat =
+    std::min(httpconf.upstream.timeout.max_write_rate, repeat);
+
+  ev_timer_again(conn_.loop, &write_rate_timer_);
+}
+
+std::expected<void, Error> ClientHandler::on_write_rate_timeout() {
+  if (write_rate_member_count_ == 0) {
+    ev_timer_stop(conn_.loop, &write_rate_timer_);
+    return {};
+  }
+
+  if (log_enabled(INFO)) {
+    Log{INFO, this} << "Close connection due to low write rate";
+  }
+
+  return std::unexpected{Error::NETWORK};
 }
 
 } // namespace shrpx

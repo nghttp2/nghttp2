@@ -211,6 +211,9 @@ OPTIONS = [
     "frontend-stream-write-timeout",
     "backend-stream-read-timeout",
     "backend-stream-write-timeout",
+    "frontend-min-write-rate",
+    "frontend-initial-write-rate-timeout",
+    "frontend-max-write-rate-timeout",
 ]
 
 LOGVARS = [

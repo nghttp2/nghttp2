@@ -173,7 +173,11 @@ Downstream::~Downstream() {
 
   // check nullptr for unittest
   if (upstream_) {
-    auto loop = upstream_->get_client_handler()->get_loop();
+    auto handler = upstream_->get_client_handler();
+
+    handler->unregister_write_rate_timer(this);
+
+    auto loop = handler->get_loop();
 
     ev_timer_stop(loop, &upstream_rtimer_);
     ev_timer_stop(loop, &upstream_wtimer_);
@@ -182,7 +186,6 @@ Downstream::~Downstream() {
     ev_timer_stop(loop, &header_timer_);
 
 #ifdef HAVE_MRUBY
-    auto handler = upstream_->get_client_handler();
     auto worker = handler->get_worker();
     auto mruby_ctx = worker->get_mruby_context();
 
@@ -1069,6 +1072,14 @@ void Downstream::disable_downstream_wtimer() {
   }
   auto loop = upstream_->get_client_handler()->get_loop();
   disable_timer(loop, &downstream_wtimer_);
+}
+
+void Downstream::register_upstream_write_rate_timer() {
+  upstream_->get_client_handler()->register_write_rate_timer(this);
+}
+
+void Downstream::unregister_upstream_write_rate_timer() {
+  upstream_->get_client_handler()->unregister_write_rate_timer(this);
 }
 
 bool Downstream::accesslog_ready() const {
