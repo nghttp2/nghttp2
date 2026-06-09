@@ -2492,6 +2492,9 @@ int option_lookup_token(std::string_view name) {
       if (util::strieq("client-private-key-fil"sv, name.substr(0, 22))) {
         return SHRPX_OPTID_CLIENT_PRIVATE_KEY_FILE;
       }
+      if (util::strieq("frontend-min-write-rat"sv, name.substr(0, 22))) {
+        return SHRPX_OPTID_FRONTEND_MIN_WRITE_RATE;
+      }
       if (util::strieq("private-key-passwd-fil"sv, name.substr(0, 22))) {
         return SHRPX_OPTID_PRIVATE_KEY_PASSWD_FILE;
       }
@@ -2751,6 +2754,10 @@ int option_lookup_token(std::string_view name) {
                        name.substr(0, 30))) {
         return SHRPX_OPTID_FRONTEND_HTTP2_SETTINGS_TIMEOUT;
       }
+      if (util::strieq("frontend-max-write-rate-timeou"sv,
+                       name.substr(0, 30))) {
+        return SHRPX_OPTID_FRONTEND_MAX_WRITE_RATE_TIMEOUT;
+      }
       break;
     }
     break;
@@ -2838,6 +2845,12 @@ int option_lookup_token(std::string_view name) {
       if (util::strieq("frontend-quic-congestion-controlle"sv,
                        name.substr(0, 34))) {
         return SHRPX_OPTID_FRONTEND_QUIC_CONGESTION_CONTROLLER;
+      }
+      break;
+    case 't':
+      if (util::strieq("frontend-initial-write-rate-timeou"sv,
+                       name.substr(0, 34))) {
+        return SHRPX_OPTID_FRONTEND_INITIAL_WRITE_RATE_TIMEOUT;
       }
       break;
     }
@@ -4395,6 +4408,18 @@ std::expected<void, Error> parse_config(
   case SHRPX_OPTID_BACKEND_STREAM_WRITE_TIMEOUT:
     return parse_duration(opt, optarg).transform([config](auto &&r) {
       config->http.downstream.timeout.stream_write = r;
+    });
+  case SHRPX_OPTID_FRONTEND_MIN_WRITE_RATE:
+    return parse_uint_with_unit<size_t>(opt, optarg)
+      .transform(
+        [config](auto &&r) { config->http.upstream.min_write_rate = r; });
+  case SHRPX_OPTID_FRONTEND_INITIAL_WRITE_RATE_TIMEOUT:
+    return parse_duration(opt, optarg).transform([config](auto &&r) {
+      config->http.upstream.timeout.initial_write_rate = r;
+    });
+  case SHRPX_OPTID_FRONTEND_MAX_WRITE_RATE_TIMEOUT:
+    return parse_duration(opt, optarg).transform([config](auto &&r) {
+      config->http.upstream.timeout.max_write_rate = r;
     });
   case SHRPX_OPTID_CONF:
     Log{WARN} << "conf: ignored";

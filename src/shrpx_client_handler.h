@@ -206,6 +206,11 @@ public:
 
   void set_local_hostport(const sockaddr *addr, socklen_t addrlen);
 
+  void register_write_rate_timer(Downstream *downstream);
+  void unregister_write_rate_timer(Downstream *downstream);
+  void extend_write_rate_timer(size_t nwrite);
+  std::expected<void, Error> on_write_rate_timeout();
+
 private:
   // Allocator to allocate memory for connection-wide objects.  Make
   // sure that the allocations must be bounded, and not proportional
@@ -221,6 +226,7 @@ private:
   DefaultMemchunkBuffer rb_;
   Connection conn_;
   ev_timer reneg_shutdown_timer_;
+  ev_timer write_rate_timer_;
   std::unique_ptr<Upstream> upstream_;
   // IP address of client.  If UNIX domain socket is used, this is
   // "localhost".
@@ -251,6 +257,8 @@ private:
   bool should_close_after_write_{};
   // true if affinity_hash_ is computed
   bool affinity_hash_computed_{};
+  // the number of Downstreams participating to the write rate group.
+  size_t write_rate_member_count_{};
 };
 
 } // namespace shrpx

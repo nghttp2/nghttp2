@@ -1688,6 +1688,8 @@ void fill_default_config(Config *config) {
   httpconf.early_data.strip_incoming = true;
   httpconf.timeout.header = 1_min;
   httpconf.upstream.timeout.stream_write = 1_min;
+  httpconf.upstream.timeout.initial_write_rate = 10_s;
+  httpconf.upstream.timeout.max_write_rate = 1_min;
   httpconf.downstream.timeout.stream_write = 1_min;
 
   auto &http2conf = config->http2;
@@ -2464,6 +2466,33 @@ Options:
               option caps its maximum value.
               Default: {})",
     util::duration_str(config->conn.downstream->timeout.max_backoff));
+
+  std::println(out, R"(  --frontend-min-write-rate=<SIZE>
+              Set the  minimum rate  of stream  data that  client must
+              read from frontend connection.  The <SIZE> specifies the
+              number of bytes per second.  If client is unable to read
+              at least the given rate,  the connection is closed.  The
+              implementation extends the timeout by the stream data to
+              send.    Use  --frontend-initial-write-rate-timeout   to
+              specify       the       initial      timeout.        Use
+              --frontend-max-write-rate-timeout  to  set  the  maximum
+              timeout.  Setting 0 disables this feature.
+              Default: {})",
+               util::utos_unit(config->http.upstream.min_write_rate));
+
+  std::println(
+    out, R"(  --frontend-initial-write-rate-timeout=<DURATION>
+              Set the initial timeout set by --frontend-min-write-rate
+              feature.
+              Default: {})",
+    util::duration_str(config->http.upstream.timeout.initial_write_rate));
+
+  std::println(
+    out, R"(  --frontend-max-write-rate-timeout=<DURATION>
+              Set the maximum timeout set by --frontend-min-write-rate
+              feature.
+              Default: {})",
+    util::duration_str(config->http.upstream.timeout.max_write_rate));
 
   std::println(out, "");
   std::println(out, "SSL/TLS:");
@@ -4189,6 +4218,11 @@ int main(int argc, char **argv) {
        202},
       {SHRPX_OPT_BACKEND_STREAM_WRITE_TIMEOUT.data(), required_argument, &flag,
        203},
+      {SHRPX_OPT_FRONTEND_MIN_WRITE_RATE.data(), required_argument, &flag, 204},
+      {SHRPX_OPT_FRONTEND_INITIAL_WRITE_RATE_TIMEOUT.data(), required_argument,
+       &flag, 205},
+      {SHRPX_OPT_FRONTEND_MAX_WRITE_RATE_TIMEOUT.data(), required_argument,
+       &flag, 206},
       {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -5146,6 +5180,21 @@ int main(int argc, char **argv) {
       case 203:
         // --backend-stream-write-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_STREAM_WRITE_TIMEOUT,
+                             std::string_view{optarg});
+        break;
+      case 204:
+        // --frontend-min-write-rate
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_MIN_WRITE_RATE,
+                             std::string_view{optarg});
+        break;
+      case 205:
+        // --frontend-initial-write-rate-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_INITIAL_WRITE_RATE_TIMEOUT,
+                             std::string_view{optarg});
+        break;
+      case 206:
+        // --frontend-max-write-rate-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_MAX_WRITE_RATE_TIMEOUT,
                              std::string_view{optarg});
         break;
       default:
