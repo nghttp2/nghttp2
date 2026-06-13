@@ -65,8 +65,6 @@
 #include <cinttypes>
 #include <limits>
 #include <cstdlib>
-#include <iostream>
-#include <fstream>
 #include <vector>
 #include <initializer_list>
 #include <random>
@@ -1875,19 +1873,18 @@ void print_version() {
 } // namespace
 
 namespace {
-void print_usage(std::ostream &out) {
-  out << R"(Usage: nghttpx [OPTIONS]... [<PRIVATE_KEY> <CERT>]
-A reverse proxy for HTTP/3, HTTP/2, and HTTP/1.)"
-      << std::endl;
+void print_usage(FILE *out) {
+  std::println(out, R"(Usage: nghttpx [OPTIONS]... [<PRIVATE_KEY> <CERT>]
+A reverse proxy for HTTP/3, HTTP/2, and HTTP/1.)");
 }
 } // namespace
 
 namespace {
-void print_help(std::ostream &out) {
+void print_help(FILE *out) {
   auto config = get_config();
 
   print_usage(out);
-  out << R"(
+  std::println(out, R"(
   <PRIVATE_KEY>
               Set  path  to  server's private  key.   Required  unless
               "no-tls" parameter is used in --frontend option.
@@ -1895,11 +1892,14 @@ void print_help(std::ostream &out) {
               "no-tls"  parameter is  used in  --frontend option.
 
 Options:
-  The options are categorized into several groups.
+  The options are categorized into several groups.)");
 
-Connections:
-  -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][[;<PARAM>]...]
+  std::println(out, "");
+  std::println(out, "Connections:");
 
+  std::println(
+    out,
+    R"(  -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][[;<PARAM>]...]
               Set  backend  host  and   port.   The  multiple  backend
               addresses are  accepted by repeating this  option.  UNIX
               domain socket  can be  specified by prefixing  path name
@@ -2146,9 +2146,11 @@ Connections:
               special  meaning  in shell,  the  option  value must  be
               quoted.
 
-              Default: )"
-      << DEFAULT_DOWNSTREAM_HOST << "," << DEFAULT_DOWNSTREAM_PORT << R"(
-  -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)[[;<PARAM>]...]
+              Default: {},{})",
+    DEFAULT_DOWNSTREAM_HOST, DEFAULT_DOWNSTREAM_PORT);
+
+  std::println(out,
+               R"(  -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)[[;<PARAM>]...]
               Set  frontend  host and  port.   If  <HOST> is  '*',  it
               assumes  all addresses  including  both  IPv4 and  IPv6.
               UNIX domain  socket can  be specified by  prefixing path
@@ -2190,18 +2192,21 @@ Connections:
               "healthmon"  parameters  cannot   be  used  with  "quic"
               parameter.
 
-              Default: *,3000
-  --backlog=<N>
+              Default: *,3000)");
+
+  std::println(out, R"(  --backlog=<N>
               Set listen backlog size.
-              Default: )"
-      << config->conn.listener.backlog << R"(
-  --backend-address-family=(auto|IPv4|IPv6)
+              Default: {})",
+               config->conn.listener.backlog);
+
+  std::println(out, R"(  --backend-address-family=(auto|IPv4|IPv6)
               Specify  address  family  of  backend  connections.   If
               "auto" is given, both IPv4  and IPv6 are considered.  If
               "IPv4" is  given, only  IPv4 address is  considered.  If
               "IPv6" is given, only IPv6 address is considered.
-              Default: auto
-  --backend-http-proxy-uri=<URI>
+              Default: auto)");
+
+  std::println(out, R"(  --backend-http-proxy-uri=<URI>
               Specify      proxy       URI      in       the      form
               http://[<USER>:<PASS>@]<PROXY>:<PORT>.    If   a   proxy
               requires  authentication,  specify  <USER>  and  <PASS>.
@@ -2213,67 +2218,79 @@ Connections:
               handshake with  the downstream through the  tunnel.  The
               timeouts when connecting and  making CONNECT request can
               be     specified    by     --backend-read-timeout    and
-              --backend-write-timeout options.
+              --backend-write-timeout options.)");
 
-Performance:
-  -n, --workers=<N>
+  std::println(out, "");
+  std::println(out, "Performance:");
+
+  std::println(out, R"(  -n, --workers=<N>
               Set the number of worker threads.
-              Default: )"
-      << config->num_worker << R"(
-  --single-thread
+              Default: {})",
+               config->num_worker);
+
+  std::println(out, R"(  --single-thread
               Run everything in one  thread inside the worker process.
               This   feature   is   provided  for   better   debugging
               experience,  or  for  the platforms  which  lack  thread
               support.   If  threading  is disabled,  this  option  is
-              always enabled.
-  --read-rate=<SIZE>
+              always enabled.)");
+
+  std::println(out, R"(  --read-rate=<SIZE>
               Set maximum  average read  rate on  frontend connection.
               Setting 0 to this option means read rate is unlimited.
-              Default: )"
-      << config->conn.upstream.ratelimit.read.rate << R"(
-  --read-burst=<SIZE>
+              Default: {})",
+               config->conn.upstream.ratelimit.read.rate);
+
+  std::println(out, R"(  --read-burst=<SIZE>
               Set  maximum read  burst  size  on frontend  connection.
               Setting  0  to this  option  means  read burst  size  is
               unlimited.
-              Default: )"
-      << config->conn.upstream.ratelimit.read.burst << R"(
-  --write-rate=<SIZE>
+              Default: {})",
+               config->conn.upstream.ratelimit.read.burst);
+
+  std::println(out, R"(  --write-rate=<SIZE>
               Set maximum  average write rate on  frontend connection.
               Setting 0 to this option means write rate is unlimited.
-              Default: )"
-      << config->conn.upstream.ratelimit.write.rate << R"(
-  --write-burst=<SIZE>
+              Default: {})",
+               config->conn.upstream.ratelimit.write.rate);
+  std::println(out, R"(  --write-burst=<SIZE>
               Set  maximum write  burst size  on frontend  connection.
               Setting  0 to  this  option means  write  burst size  is
               unlimited.
-              Default: )"
-      << config->conn.upstream.ratelimit.write.burst << R"(
-  --worker-read-rate=<SIZE>
+              Default: {})",
+               config->conn.upstream.ratelimit.write.burst);
+
+  std::println(out, R"(  --worker-read-rate=<SIZE>
               Set maximum average read rate on frontend connection per
               worker.  Setting  0 to  this option  means read  rate is
               unlimited.  Not implemented yet.
-              Default: 0
-  --worker-read-burst=<SIZE>
+              Default: 0)");
+
+  std::println(out, R"(  --worker-read-burst=<SIZE>
               Set maximum  read burst size on  frontend connection per
               worker.  Setting 0 to this  option means read burst size
               is unlimited.  Not implemented yet.
-              Default: 0
-  --worker-write-rate=<SIZE>
+              Default: 0)");
+
+  std::println(out, R"(  --worker-write-rate=<SIZE>
               Set maximum  average write  rate on  frontend connection
               per worker.  Setting  0 to this option  means write rate
               is unlimited.  Not implemented yet.
-              Default: 0
-  --worker-write-burst=<SIZE>
+              Default: 0)");
+
+  std::println(out, R"(  --worker-write-burst=<SIZE>
               Set maximum write burst  size on frontend connection per
               worker.  Setting 0 to this option means write burst size
               is unlimited.  Not implemented yet.
-              Default: 0
-  --worker-frontend-connections=<N>
+              Default: 0)");
+
+  std::println(out, R"(  --worker-frontend-connections=<N>
               Set maximum number  of simultaneous connections frontend
               accepts.  Setting 0 means unlimited.
-              Default: )"
-      << config->conn.upstream.worker_connections << R"(
-  --backend-connections-per-host=<N>
+              Default: {})",
+               config->conn.upstream.worker_connections);
+
+  std::println(out, R"(  --backend-connections-per-host=<N>
               Set  maximum number  of  backend concurrent  connections
               (and/or  streams in  case  of HTTP/2)  per origin  host.
               This option  is meaningful when --http2-proxy  option is
@@ -2282,132 +2299,161 @@ Performance:
               HTTP/2).   To  limit  the   number  of  connections  per
               frontend        for       default        mode,       use
               --backend-connections-per-frontend.
-              Default: )"
-      << config->conn.downstream->connections_per_host << R"(
-  --backend-connections-per-frontend=<N>
+              Default: {})",
+               config->conn.downstream->connections_per_host);
+
+  std::println(out, R"(  --backend-connections-per-frontend=<N>
               Set  maximum number  of  backend concurrent  connections
               (and/or streams  in case of HTTP/2)  per frontend.  This
               option  is   only  used  for  default   mode.   0  means
               unlimited.  To limit the  number of connections per host
               with          --http2-proxy         option,          use
               --backend-connections-per-host.
-              Default: )"
-      << config->conn.downstream->connections_per_frontend << R"(
-  --rlimit-nofile=<N>
+              Default: {})",
+               config->conn.downstream->connections_per_frontend);
+
+  std::println(out, R"(  --rlimit-nofile=<N>
               Set maximum number of open files (RLIMIT_NOFILE) to <N>.
               If 0 is given, nghttpx does not set the limit.
-              Default: )"
-      << config->rlimit_nofile << R"(
-  --rlimit-memlock=<N>
+              Default: {})",
+               config->rlimit_nofile);
+
+  std::println(out, R"(  --rlimit-memlock=<N>
               Set maximum number of bytes of memory that may be locked
               into  RAM.  If  0 is  given,  nghttpx does  not set  the
               limit.
-              Default: )"
-      << config->rlimit_memlock << R"(
-  --backend-request-buffer=<SIZE>
+              Default: {})",
+               config->rlimit_memlock);
+
+  std::println(out, R"(  --backend-request-buffer=<SIZE>
               Set buffer size used to store backend request.
-              Default: )"
-      << util::utos_unit(config->conn.downstream->request_buffer_size) << R"(
-  --backend-response-buffer=<SIZE>
+              Default: {})",
+               util::utos_unit(config->conn.downstream->request_buffer_size));
+
+  std::println(out, R"(  --backend-response-buffer=<SIZE>
               Set buffer size used to store backend response.
-              Default: )"
-      << util::utos_unit(config->conn.downstream->response_buffer_size) << R"(
-  --fastopen=<N>
+              Default: {})",
+               util::utos_unit(config->conn.downstream->response_buffer_size));
+
+  std::println(out, R"(  --fastopen=<N>
               Enables  "TCP Fast  Open" for  the listening  socket and
               limits the  maximum length for the  queue of connections
               that have not yet completed the three-way handshake.  If
               value is 0 then fast open is disabled.
-              Default: )"
-      << config->conn.listener.fastopen << R"(
-  --no-kqueue Don't use  kqueue.  This  option is only  applicable for
-              the platforms  which have kqueue.  For  other platforms,
-              this option will be simply ignored.
+              Default: {})",
+               config->conn.listener.fastopen);
 
-Timeout:
-  --frontend-http2-idle-timeout=<DURATION>
+  std::println(out,
+               R"(  --no-kqueue
+              Don't use  kqueue.  This  option is only  applicable for
+              the platforms  which have kqueue.  For  other platforms,
+              this option will be simply ignored.)");
+
+  std::println(out, "");
+  std::println(out, "Timeout:");
+
+  std::println(out, R"(  --frontend-http2-idle-timeout=<DURATION>
               Specify idle timeout for HTTP/2 frontend connection.  If
               no active streams exist for this duration, connection is
               closed.
-              Default: )"
-      << util::duration_str(config->conn.upstream.timeout.http2_idle) << R"(
-  --frontend-http3-idle-timeout=<DURATION>
+              Default: {})",
+               util::duration_str(config->conn.upstream.timeout.http2_idle));
+
+  std::println(out, R"(  --frontend-http3-idle-timeout=<DURATION>
               Specify idle timeout for HTTP/3 frontend connection.  If
               no active streams exist for this duration, connection is
               closed.
-              Default: )"
-      << util::duration_str(config->conn.upstream.timeout.http3_idle) << R"(
-  --frontend-write-timeout=<DURATION>
+              Default: {})",
+               util::duration_str(config->conn.upstream.timeout.http3_idle));
+
+  std::println(out, R"(  --frontend-write-timeout=<DURATION>
               Specify write timeout for all frontend connections.
-              Default: )"
-      << util::duration_str(config->conn.upstream.timeout.write) << R"(
-  --frontend-keep-alive-timeout=<DURATION>
+              Default: {})",
+               util::duration_str(config->conn.upstream.timeout.write));
+
+  std::println(out, R"(  --frontend-keep-alive-timeout=<DURATION>
               Specify   keep-alive   timeout   for   frontend   HTTP/1
               connection.
-              Default: )"
-      << util::duration_str(config->conn.upstream.timeout.idle) << R"(
-  --frontend-header-timeout=<DURATION>
+              Default: {})",
+               util::duration_str(config->conn.upstream.timeout.idle));
+
+  std::println(out, R"(  --frontend-header-timeout=<DURATION>
               Specify  duration  that the  server  waits  for an  HTTP
               request  header fields  to be  received completely.   On
               timeout, HTTP/1 and HTTP/2  connections are closed.  For
               HTTP/3,  the  stream  is shutdown,  and  the  connection
               itself is left intact.
-              Default: )"
-      << util::duration_str(config->http.timeout.header) << R"(
-  --frontend-stream-read-timeout=<DURATION>
+              Default: {})",
+               util::duration_str(config->http.timeout.header));
+
+  std::println(out, R"(  --frontend-stream-read-timeout=<DURATION>
               Specify read  timeout for  HTTP/2 and HTTP/3  streams in
               the frontend connection.  0 means no timeout.
-              Default: )"
-      << util::duration_str(config->http.upstream.timeout.stream_read) << R"(
-  --frontend-stream-write-timeout=<DURATION>
+              Default: {})",
+               util::duration_str(config->http.upstream.timeout.stream_read));
+
+  std::println(out, R"(  --frontend-stream-write-timeout=<DURATION>
               Specify write  timeout for HTTP/2 and  HTTP/3 streams in
               the frontend connection.  0 means no timeout.
-              Default: )"
-      << util::duration_str(config->http.upstream.timeout.stream_write) << R"(
-  --backend-stream-read-timeout=<DURATION>
+              Default: {})",
+               util::duration_str(config->http.upstream.timeout.stream_write));
+
+  std::println(out, R"(  --backend-stream-read-timeout=<DURATION>
               Specify read  timeout for HTTP/2 streams  in the backend
               connection.  0 means no timeout.
-              Default: )"
-      << util::duration_str(config->http.downstream.timeout.stream_read) << R"(
-  --backend-stream-write-timeout=<DURATION>
+              Default: {})",
+               util::duration_str(config->http.downstream.timeout.stream_read));
+
+  std::println(
+    out, R"(  --backend-stream-write-timeout=<DURATION>
               Specify write timeout for  HTTP/2 streams in the backend
               connection.  0 means no timeout.
-              Default: )"
-      << util::duration_str(config->http.downstream.timeout.stream_write) << R"(
-  --backend-read-timeout=<DURATION>
+              Default: {})",
+    util::duration_str(config->http.downstream.timeout.stream_write));
+
+  std::println(out, R"(  --backend-read-timeout=<DURATION>
               Specify read timeout for backend connection.
-              Default: )"
-      << util::duration_str(config->conn.downstream->timeout.read) << R"(
-  --backend-write-timeout=<DURATION>
+              Default: {})",
+               util::duration_str(config->conn.downstream->timeout.read));
+
+  std::println(out, R"(  --backend-write-timeout=<DURATION>
               Specify write timeout for backend connection.
-              Default: )"
-      << util::duration_str(config->conn.downstream->timeout.write) << R"(
-  --backend-connect-timeout=<DURATION>
+              Default: {})",
+               util::duration_str(config->conn.downstream->timeout.write));
+
+  std::println(out, R"(  --backend-connect-timeout=<DURATION>
               Specify  timeout before  establishing TCP  connection to
               backend.
-              Default: )"
-      << util::duration_str(config->conn.downstream->timeout.connect) << R"(
-  --backend-keep-alive-timeout=<DURATION>
+              Default: {})",
+               util::duration_str(config->conn.downstream->timeout.connect));
+
+  std::println(out, R"(  --backend-keep-alive-timeout=<DURATION>
               Specify   keep-alive   timeout    for   backend   HTTP/1
               connection.
-              Default: )"
-      << util::duration_str(config->conn.downstream->timeout.idle_read) << R"(
-  --listener-disable-timeout=<DURATION>
+              Default: {})",
+               util::duration_str(config->conn.downstream->timeout.idle_read));
+
+  std::println(out, R"(  --listener-disable-timeout=<DURATION>
               After accepting  connection failed,  connection listener
               is disabled  for a given  amount of time.   Specifying 0
               disables this feature.
-              Default: )"
-      << util::duration_str(config->conn.listener.timeout.sleep) << R"(
-  --frontend-http2-setting-timeout=<DURATION>
+              Default: {})",
+               util::duration_str(config->conn.listener.timeout.sleep));
+
+  std::println(out, R"(  --frontend-http2-setting-timeout=<DURATION>
               Specify  timeout before  SETTINGS ACK  is received  from
               client.
-              Default: )"
-      << util::duration_str(config->http2.upstream.timeout.settings) << R"(
-  --backend-http2-settings-timeout=<DURATION>
+              Default: {})",
+               util::duration_str(config->http2.upstream.timeout.settings));
+
+  std::println(out, R"(  --backend-http2-settings-timeout=<DURATION>
               Specify  timeout before  SETTINGS ACK  is received  from
               backend server.
-              Default: )"
-      << util::duration_str(config->http2.downstream.timeout.settings) << R"(
-  --backend-max-backoff=<DURATION>
+              Default: {})",
+               util::duration_str(config->http2.downstream.timeout.settings));
+
+  std::println(
+    out, R"(  --backend-max-backoff=<DURATION>
               Specify  maximum backoff  interval.  This  is used  when
               doing health  check against offline backend  (see "fail"
               parameter  in --backend  option).   It is  also used  to
@@ -2416,61 +2462,71 @@ Timeout:
               intervals are calculated  using exponential backoff, and
               consecutive failed attempts increase the interval.  This
               option caps its maximum value.
-              Default: )"
-      << util::duration_str(config->conn.downstream->timeout.max_backoff) << R"(
+              Default: {})",
+    util::duration_str(config->conn.downstream->timeout.max_backoff));
 
-SSL/TLS:
-  --ciphers=<SUITE>
+  std::println(out, "");
+  std::println(out, "SSL/TLS:");
+
+  std::println(out, R"(  --ciphers=<SUITE>
               Set allowed  cipher list  for frontend  connection.  The
               format of the string is described in OpenSSL ciphers(1).
               This  option  sets  cipher   suites  for  TLSv1.2.   Use
               --tls13-ciphers for TLSv1.3.
-              Default: )"
-      << config->tls.ciphers << R"(
-  --tls13-ciphers=<SUITE>
+              Default: {})",
+               config->tls.ciphers);
+
+  std::println(out, R"(  --tls13-ciphers=<SUITE>
               Set allowed  cipher list  for frontend  connection.  The
               format of the string is described in OpenSSL ciphers(1).
               This  option  sets  cipher   suites  for  TLSv1.3.   Use
               --ciphers for TLSv1.2.
-              Default: )"
-      << config->tls.tls13_ciphers << R"(
-  --client-ciphers=<SUITE>
+              Default: {})",
+               config->tls.tls13_ciphers);
+
+  std::println(out, R"(  --client-ciphers=<SUITE>
               Set  allowed cipher  list for  backend connection.   The
               format of the string is described in OpenSSL ciphers(1).
               This  option  sets  cipher   suites  for  TLSv1.2.   Use
               --tls13-client-ciphers for TLSv1.3.
-              Default: )"
-      << config->tls.client.ciphers << R"(
-  --tls13-client-ciphers=<SUITE>
+              Default: {})",
+               config->tls.client.ciphers);
+
+  std::println(out, R"(  --tls13-client-ciphers=<SUITE>
               Set  allowed cipher  list for  backend connection.   The
               format of the string is described in OpenSSL ciphers(1).
               This  option  sets  cipher   suites  for  TLSv1.3.   Use
               --client-ciphers for TLSv1.2.
-              Default: )"
-      << config->tls.client.tls13_ciphers << R"(
-  --groups=<LIST>
+              Default: {})",
+               config->tls.client.tls13_ciphers);
+
+  std::println(out, R"(  --groups=<LIST>
               Set the  supported group list for  frontend connections.
               <LIST> is a  colon separated list of group  NID or names
               in the preference order.  The supported curves depend on
               the  linked  OpenSSL  library.  This  function  requires
               OpenSSL >= 1.0.2.
-              Default: )"
-      << config->tls.groups << R"(
-  -k, --insecure
+              Default: {})",
+               config->tls.groups);
+
+  std::println(out, R"(  -k, --insecure
               Don't  verify backend  server's  certificate  if TLS  is
-              enabled for backend connections.
-  --cacert=<PATH>
+              enabled for backend connections.)");
+
+  std::println(out, R"(  --cacert=<PATH>
               Set path to trusted CA  certificate file.  It is used in
               backend  TLS connections  to verify  peer's certificate.
               The file must be in PEM format.  It can contain multiple
               certificates.  If  the linked  OpenSSL is  configured to
               load  system  wide  certificates,  they  are  loaded  at
-              startup regardless of this option.
-  --private-key-passwd-file=<PATH>
+              startup regardless of this option.)");
+
+  std::println(out, R"(  --private-key-passwd-file=<PATH>
               Path  to file  that contains  password for  the server's
               private key.   If none is  given and the private  key is
-              password protected it'll be requested interactively.
-  --subcert=<KEYPATH>:<CERTPATH>[[;<PARAM>]...]
+              password protected it'll be requested interactively.)");
+
+  std::println(out, R"(  --subcert=<KEYPATH>:<CERTPATH>[[;<PARAM>]...]
               Specify  additional certificate  and  private key  file.
               nghttpx will  choose certificates based on  the hostname
               indicated by client using TLS SNI extension.  If nghttpx
@@ -2488,38 +2544,46 @@ SSL/TLS:
               contains        *.sct        files        for        TLS
               signed_certificate_timestamp extension (RFC 6962).  This
               feature   requires   OpenSSL   >=   1.0.2.    See   also
-              --tls-sct-dir option.
-  --dh-param-file=<PATH>
+              --tls-sct-dir option.)");
+
+  std::println(out, R"(  --dh-param-file=<PATH>
               Path to file that contains  DH parameters in PEM format.
               Without  this   option,  DHE   cipher  suites   are  not
-              available.
-  --alpn-list=<LIST>
+              available.)");
+
+  std::println(out, R"(  --alpn-list=<LIST>
               Comma delimited list of  ALPN protocol identifier sorted
               in the  order of preference.  That  means most desirable
               protocol comes  first.  The parameter must  be delimited
               by a single comma only  and any white spaces are treated
               as a part of protocol string.
-              Default: )"
-      << DEFAULT_ALPN_LIST
-      << R"(
-  --verify-client
-              Require and verify client certificate.
-  --verify-client-cacert=<PATH>
+              Default: {})",
+               DEFAULT_ALPN_LIST);
+
+  std::println(out, R"(  --verify-client
+              Require and verify client certificate.)");
+
+  std::println(out, R"(  --verify-client-cacert=<PATH>
               Path  to file  that contains  CA certificates  to verify
               client certificate.  The file must be in PEM format.  It
-              can contain multiple certificates.
-  --verify-client-tolerate-expired
+              can contain multiple certificates.)");
+
+  std::println(out, R"(  --verify-client-tolerate-expired
               Accept  expired  client  certificate.   Operator  should
               handle  the expired  client  certificate  by some  means
               (e.g.,  mruby  script).   Otherwise, this  option  might
-              cause a security risk.
-  --client-private-key-file=<PATH>
+              cause a security risk.)");
+
+  std::println(out, R"(  --client-private-key-file=<PATH>
               Path to  file that contains  client private key  used in
-              backend client authentication.
-  --client-cert-file=<PATH>
+              backend client authentication.)");
+
+  std::println(out, R"(  --client-cert-file=<PATH>
               Path to  file that  contains client certificate  used in
-              backend client authentication.
-  --tls-min-proto-version=<VER>
+              backend client authentication.)");
+
+  std::println(out,
+               R"(  --tls-min-proto-version=<VER>
               Specify minimum SSL/TLS protocol.   The name matching is
               done in  case-insensitive manner.  The  versions between
               --tls-min-proto-version and  --tls-max-proto-version are
@@ -2528,14 +2592,15 @@ SSL/TLS:
               message "unknown protocol".  The available versions are:
               )"
 #ifdef TLS1_3_VERSION
-         "TLSv1.3 and "
+               "TLSv1.3 and "
 #endif // TLS1_3_VERSION
-         "TLSv1.2"
-         R"(
-              Default: )"
-      << DEFAULT_TLS_MIN_PROTO_VERSION
-      << R"(
-  --tls-max-proto-version=<VER>
+               "TLSv1.2"
+               R"(
+              Default: {})",
+               DEFAULT_TLS_MIN_PROTO_VERSION);
+
+  std::println(out,
+               R"(  --tls-max-proto-version=<VER>
               Specify maximum SSL/TLS protocol.   The name matching is
               done in  case-insensitive manner.  The  versions between
               --tls-min-proto-version and  --tls-max-proto-version are
@@ -2544,13 +2609,14 @@ SSL/TLS:
               message "unknown protocol".  The available versions are:
               )"
 #ifdef TLS1_3_VERSION
-         "TLSv1.3 and "
+               "TLSv1.3 and "
 #endif // TLS1_3_VERSION
-         "TLSv1.2"
-         R"(
-              Default: )"
-      << DEFAULT_TLS_MAX_PROTO_VERSION << R"(
-  --tls-ticket-key-file=<PATH>
+               "TLSv1.2"
+               R"(
+              Default: {})",
+               DEFAULT_TLS_MAX_PROTO_VERSION);
+
+  std::println(out, R"(  --tls-ticket-key-file=<PATH>
               Path to file that contains  random data to construct TLS
               session ticket  parameters.  If aes-128-cbc is  given in
               --tls-ticket-key-cipher, the  file must  contain exactly
@@ -2571,8 +2637,9 @@ SSL/TLS:
               a file,  key is  generated every  1 hour  internally and
               they are  valid for  12 hours.   This is  recommended if
               ticket  key sharing  between  nghttpx  instances is  not
-              required.
-  --tls-ticket-key-memcached=<HOST>,<PORT>[;tls]
+              required.)");
+
+  std::println(out, R"(  --tls-ticket-key-memcached=<HOST>,<PORT>[;tls]
               Specify address  of memcached  server to get  TLS ticket
               keys for  session resumption.   This enables  shared TLS
               ticket key between  multiple nghttpx instances.  nghttpx
@@ -2584,43 +2651,52 @@ SSL/TLS:
               "TLS SESSION  TICKET RESUMPTION" section in  manual page
               to know the data format in memcached entry.  Optionally,
               memcached  connection  can  be  encrypted  with  TLS  by
-              specifying "tls" parameter.
-  --tls-ticket-key-memcached-address-family=(auto|IPv4|IPv6)
+              specifying "tls" parameter.)");
+
+  std::println(out,
+               R"(  --tls-ticket-key-memcached-address-family=(auto|IPv4|IPv6)
               Specify address  family of memcached connections  to get
               TLS ticket keys.  If "auto" is given, both IPv4 and IPv6
               are considered.   If "IPv4" is given,  only IPv4 address
               is considered.  If "IPv6" is given, only IPv6 address is
               considered.
-              Default: auto
-  --tls-ticket-key-memcached-interval=<DURATION>
+              Default: auto)");
+
+  std::println(out, R"(  --tls-ticket-key-memcached-interval=<DURATION>
               Set interval to get TLS ticket keys from memcached.
-              Default: )"
-      << util::duration_str(config->tls.ticket.memcached.interval) << R"(
-  --tls-ticket-key-memcached-max-retry=<N>
+              Default: {})",
+               util::duration_str(config->tls.ticket.memcached.interval));
+
+  std::println(out, R"(  --tls-ticket-key-memcached-max-retry=<N>
               Set  maximum   number  of  consecutive   retries  before
               abandoning TLS ticket key  retrieval.  If this number is
               reached,  the  attempt  is considered  as  failure,  and
               "failure" count  is incremented by 1,  which contributed
               to            the            value            controlled
               --tls-ticket-key-memcached-max-fail option.
-              Default: )"
-      << config->tls.ticket.memcached.max_retry << R"(
-  --tls-ticket-key-memcached-max-fail=<N>
+              Default: {})",
+               config->tls.ticket.memcached.max_retry);
+
+  std::println(out, R"(  --tls-ticket-key-memcached-max-fail=<N>
               Set  maximum   number  of  consecutive   failure  before
               disabling TLS ticket until next scheduled key retrieval.
-              Default: )"
-      << config->tls.ticket.memcached.max_fail << R"(
-  --tls-ticket-key-cipher=<CIPHER>
+              Default: {})",
+               config->tls.ticket.memcached.max_fail);
+
+  std::println(out, R"(  --tls-ticket-key-cipher=<CIPHER>
               Specify cipher  to encrypt TLS session  ticket.  Specify
               either   aes-128-cbc   or  aes-256-cbc.    By   default,
-              aes-128-cbc is used.
-  --tls-ticket-key-memcached-cert-file=<PATH>
+              aes-128-cbc is used.)");
+
+  std::println(out, R"(  --tls-ticket-key-memcached-cert-file=<PATH>
               Path to client certificate  for memcached connections to
-              get TLS ticket keys.
-  --tls-ticket-key-memcached-private-key-file=<PATH>
+              get TLS ticket keys.)");
+
+  std::println(out, R"(  --tls-ticket-key-memcached-private-key-file=<PATH>
               Path to client private  key for memcached connections to
-              get TLS ticket keys.
-  --tls-dyn-rec-warmup-threshold=<SIZE>
+              get TLS ticket keys.)");
+
+  std::println(out, R"(  --tls-dyn-rec-warmup-threshold=<SIZE>
               Specify the  threshold size for TLS  dynamic record size
               behaviour.  During  a TLS  session, after  the threshold
               number of bytes  have been written, the  TLS record size
@@ -2631,26 +2707,29 @@ SSL/TLS:
               always use  the maximum record size,  regardless of idle
               period.   This  behaviour  applies   to  all  TLS  based
               frontends, and TLS HTTP/2 backends.
-              Default: )"
-      << util::utos_unit(config->tls.dyn_rec.warmup_threshold) << R"(
-  --tls-dyn-rec-idle-timeout=<DURATION>
+              Default: {})",
+               util::utos_unit(config->tls.dyn_rec.warmup_threshold));
+  std::println(out, R"(  --tls-dyn-rec-idle-timeout=<DURATION>
               Specify TLS dynamic record  size behaviour timeout.  See
               --tls-dyn-rec-warmup-threshold  for   more  information.
               This behaviour  applies to all TLS  based frontends, and
               TLS HTTP/2 backends.
-              Default: )"
-      << util::duration_str(config->tls.dyn_rec.idle_timeout) << R"(
-  --no-http2-cipher-block-list
+              Default: {})",
+               util::duration_str(config->tls.dyn_rec.idle_timeout));
+
+  std::println(out, R"(  --no-http2-cipher-block-list
               Allow  block  listed  cipher suite  on  frontend  HTTP/2
               connection.                                          See
               https://tools.ietf.org/html/rfc7540#appendix-A  for  the
-              complete HTTP/2 cipher suites block list.
-  --client-no-http2-cipher-block-list
+              complete HTTP/2 cipher suites block list.)");
+
+  std::println(out, R"(  --client-no-http2-cipher-block-list
               Allow  block  listed  cipher  suite  on  backend  HTTP/2
               connection.                                          See
               https://tools.ietf.org/html/rfc7540#appendix-A  for  the
-              complete HTTP/2 cipher suites block list.
-  --tls-sct-dir=<DIR>
+              complete HTTP/2 cipher suites block list.)");
+
+  std::println(out, R"(  --tls-sct-dir=<DIR>
               Specifies the  directory where  *.sct files  exist.  All
               *.sct   files   in  <DIR>   are   read,   and  sent   as
               extension_data of  TLS signed_certificate_timestamp (RFC
@@ -2658,8 +2737,9 @@ SSL/TLS:
               certificate   specified   in   positional   command-line
               argument <CERT>, or  certificate option in configuration
               file.   For   additional  certificates,   use  --subcert
-              option.  This option requires OpenSSL >= 1.0.2.
-  --psk-secrets=<PATH>
+              option.  This option requires OpenSSL >= 1.0.2.)");
+
+  std::println(out, R"(  --psk-secrets=<PATH>
               Read list of PSK identity and secrets from <PATH>.  This
               is used for frontend connection.  The each line of input
               file  is  formatted  as  <identity>:<hex-secret>,  where
@@ -2671,8 +2751,9 @@ SSL/TLS:
               The  desired PSK  cipher suite  may be  block listed  by
               HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
               consider  to  use  --no-http2-cipher-block-list  option.
-              But be aware its implications.
-  --client-psk-secrets=<PATH>
+              But be aware its implications.)");
+
+  std::println(out, R"(  --client-psk-secrets=<PATH>
               Read PSK identity and secrets from <PATH>.  This is used
               for backend connection.  The each  line of input file is
               formatted  as <identity>:<hex-secret>,  where <identity>
@@ -2685,25 +2766,31 @@ SSL/TLS:
               The  desired PSK  cipher suite  may be  block listed  by
               HTTP/2.   To  use  those   cipher  suites  with  HTTP/2,
               consider   to  use   --client-no-http2-cipher-block-list
-              option.  But be aware its implications.
-  --tls-no-postpone-early-data
+              option.  But be aware its implications.)");
+
+  std::println(out, R"(  --tls-no-postpone-early-data
               By  default,   except  for  QUIC   connections,  nghttpx
               postpones forwarding  HTTP requests sent in  early data,
               including  those  sent in  partially  in  it, until  TLS
               handshake  finishes.  If  all backend  server recognizes
               "Early-Data"  header  field,  using  this  option  makes
               nghttpx  not postpone  forwarding request  and get  full
-              potential of 0-RTT data.
-  --tls-max-early-data=<SIZE>
+              potential of 0-RTT data.)");
+
+  std::println(out, R"(  --tls-max-early-data=<SIZE>
               Sets  the  maximum  amount  of 0-RTT  data  that  server
               accepts.
-              Default: )"
-      << util::utos_unit(config->tls.max_early_data) << R"(
-  --tls-ktls  Enable ktls.
-  --ech-config-file=<PATH>
+              Default: {})",
+               util::utos_unit(config->tls.max_early_data));
+
+  std::println(out, R"(  --tls-ktls
+              Enable ktls.)");
+
+  std::println(out, R"(  --ech-config-file=<PATH>
               Read Encrypted  Client Hello (ECH)  server configuration
-              from <PATH>.  See --ech-retry-config-file for details.
-  --ech-retry-config-file=<PATH>
+              from <PATH>.  See --ech-retry-config-file for details.)");
+
+  std::println(out, R"(  --ech-retry-config-file=<PATH>
               This option and  --ech-config-file option read Encrypted
               Client Hello (ECH) server configuration from <PATH>.  If
               --ech-retry-config-file is used,  the configurations are
@@ -2711,64 +2798,76 @@ SSL/TLS:
               must  be PEM  ECH  file described  in  RFC 9934.   These
               options can  be used repeatedly to  read multiple files.
               --ech-retry-config-file must be used  at least once when
-              enabling ECH.
+              enabling ECH.)");
 
-HTTP/2:
-  -c, --frontend-http2-max-concurrent-streams=<N>
+  std::println(out, "");
+  std::println(out, "HTTP/2:");
+
+  std::println(out, R"(  -c, --frontend-http2-max-concurrent-streams=<N>
               Set the maximum number of  the concurrent streams in one
               frontend HTTP/2 session.
-              Default: )"
-      << config->http2.upstream.max_concurrent_streams << R"(
-  --backend-http2-max-concurrent-streams=<N>
+              Default: {})",
+               config->http2.upstream.max_concurrent_streams);
+
+  std::println(out, R"(  --backend-http2-max-concurrent-streams=<N>
               Set the maximum number of  the concurrent streams in one
               backend  HTTP/2 session.   This sets  maximum number  of
               concurrent opened pushed streams.  The maximum number of
               concurrent requests are set by a remote server.
-              Default: )"
-      << config->http2.downstream.max_concurrent_streams << R"(
-  --frontend-http2-window-size=<SIZE>
+              Default: {})",
+               config->http2.downstream.max_concurrent_streams);
+
+  std::println(out, R"(  --frontend-http2-window-size=<SIZE>
               Sets  the  per-stream  initial  window  size  of  HTTP/2
               frontend connection.
-              Default: )"
-      << config->http2.upstream.window_size << R"(
-  --frontend-http2-connection-window-size=<SIZE>
+              Default: {})",
+               config->http2.upstream.window_size);
+
+  std::println(out, R"(  --frontend-http2-connection-window-size=<SIZE>
               Sets the  per-connection window size of  HTTP/2 frontend
               connection.
-              Default: )"
-      << config->http2.upstream.connection_window_size << R"(
-  --backend-http2-window-size=<SIZE>
+              Default: {})",
+               config->http2.upstream.connection_window_size);
+
+  std::println(out, R"(  --backend-http2-window-size=<SIZE>
               Sets  the   initial  window   size  of   HTTP/2  backend
               connection.
-              Default: )"
-      << config->http2.downstream.window_size << R"(
-  --backend-http2-connection-window-size=<SIZE>
+              Default: {})",
+               config->http2.downstream.window_size);
+
+  std::println(out, R"(  --backend-http2-connection-window-size=<SIZE>
               Sets the  per-connection window  size of  HTTP/2 backend
               connection.
-              Default: )"
-      << config->http2.downstream.connection_window_size << R"(
-  --http2-no-cookie-crumbling
-              Don't crumble cookie header field.
-  --padding=<N>
+              Default: {})",
+               config->http2.downstream.connection_window_size);
+
+  std::println(out, R"(  --http2-no-cookie-crumbling
+              Don't crumble cookie header field.)");
+
+  std::println(out, R"(  --padding=<N>
               Add  at most  <N> bytes  to  a HTTP/2  frame payload  as
               padding.  Specify 0 to  disable padding.  This option is
               meant for debugging purpose  and not intended to enhance
-              protocol security.
-  --no-server-push
+              protocol security.)");
+
+  std::println(out, R"(  --no-server-push
               Disable HTTP/2 server push.  Server push is supported by
               default mode and HTTP/2  frontend via Link header field.
               It is  also supported if  both frontend and  backend are
               HTTP/2 in default mode.  In  this case, server push from
               backend session is relayed  to frontend, and server push
-              via Link header field is also supported.
-  --frontend-http2-optimize-write-buffer-size
+              via Link header field is also supported.)");
+
+  std::println(out, R"(  --frontend-http2-optimize-write-buffer-size
               (Experimental) Enable write  buffer size optimization in
               frontend HTTP/2 TLS  connection.  This optimization aims
               to reduce  write buffer  size so  that it  only contains
               bytes  which can  send immediately.   This makes  server
               more responsive to prioritized HTTP/2 stream because the
               buffering  of lower  priority stream  is reduced.   This
-              option is only effective on recent Linux platform.
-  --frontend-http2-optimize-window-size
+              option is only effective on recent Linux platform.)");
+
+  std::println(out, R"(  --frontend-http2-optimize-window-size
               (Experimental)   Automatically  tune   connection  level
               window size of frontend  HTTP/2 TLS connection.  If this
               feature is  enabled, connection window size  starts with
@@ -2780,61 +2879,73 @@ HTTP/2:
               stream is subject to stream level window size, it should
               be adjusted using --frontend-http2-window-size option as
               well.   This option  is only  effective on  recent Linux
-              platform.
-  --frontend-http2-encoder-dynamic-table-size=<SIZE>
+              platform.)");
+
+  std::println(
+    out, R"(  --frontend-http2-encoder-dynamic-table-size=<SIZE>
               Specify the maximum dynamic  table size of HPACK encoder
               in the frontend HTTP/2 connection.  The decoder (client)
               specifies  the maximum  dynamic table  size it  accepts.
               Then the negotiated dynamic table size is the minimum of
               this option value and the value which client specified.
-              Default: )"
-      << util::utos_unit(config->http2.upstream.encoder_dynamic_table_size)
-      << R"(
-  --frontend-http2-decoder-dynamic-table-size=<SIZE>
+              Default: {})",
+    util::utos_unit(config->http2.upstream.encoder_dynamic_table_size));
+
+  std::println(
+    out, R"(  --frontend-http2-decoder-dynamic-table-size=<SIZE>
               Specify the maximum dynamic  table size of HPACK decoder
               in the frontend HTTP/2 connection.
-              Default: )"
-      << util::utos_unit(config->http2.upstream.decoder_dynamic_table_size)
-      << R"(
-  --backend-http2-encoder-dynamic-table-size=<SIZE>
+              Default: {})",
+    util::utos_unit(config->http2.upstream.decoder_dynamic_table_size));
+
+  std::println(
+    out, R"(  --backend-http2-encoder-dynamic-table-size=<SIZE>
               Specify the maximum dynamic  table size of HPACK encoder
               in the backend HTTP/2 connection.  The decoder (backend)
               specifies  the maximum  dynamic table  size it  accepts.
               Then the negotiated dynamic table size is the minimum of
               this option value and the value which backend specified.
-              Default: )"
-      << util::utos_unit(config->http2.downstream.encoder_dynamic_table_size)
-      << R"(
-  --backend-http2-decoder-dynamic-table-size=<SIZE>
+              Default: {})",
+    util::utos_unit(config->http2.downstream.encoder_dynamic_table_size));
+
+  std::println(
+    out, R"(  --backend-http2-decoder-dynamic-table-size=<SIZE>
               Specify the maximum dynamic  table size of HPACK decoder
               in the backend HTTP/2 connection.
-              Default: )"
-      << util::utos_unit(config->http2.downstream.decoder_dynamic_table_size)
-      << R"(
+              Default: {})",
+    util::utos_unit(config->http2.downstream.decoder_dynamic_table_size));
 
-Mode:
-  (default mode)
+  std::println(out, "");
+  std::println(out, "Mode:");
+
+  std::println(out, R"(  (default mode)
               Accept  HTTP/2,  and  HTTP/1.1 over  SSL/TLS.   "no-tls"
               parameter is  used in  --frontend option,  accept HTTP/2
               and HTTP/1.1 over cleartext  TCP.  The incoming HTTP/1.1
               connection  can  be  upgraded  to  HTTP/2  through  HTTP
-              Upgrade.
-  -s, --http2-proxy
-              Like default mode, but enable forward proxy.  This is so
-              called HTTP/2 proxy mode.
+              Upgrade.)");
 
-Logging:
-  -L, --log-level=<LEVEL>
+  std::println(out, R"(  -s, --http2-proxy
+              Like default mode, but enable forward proxy.  This is so
+              called HTTP/2 proxy mode.)");
+
+  std::println(out, "");
+  std::println(out, "Logging:");
+
+  std::println(out, R"(  -L, --log-level=<LEVEL>
               Set the severity  level of log output.   <LEVEL> must be
               one of INFO, NOTICE, WARN, ERROR and FATAL.
-              Default: NOTICE
-  --accesslog-file=<PATH>
+              Default: NOTICE)");
+
+  std::println(out, R"(  --accesslog-file=<PATH>
               Set path to write access log.  To reopen file, send USR1
-              signal to nghttpx.
-  --accesslog-syslog
+              signal to nghttpx.)");
+
+  std::println(out, R"(  --accesslog-syslog
               Send  access log  to syslog.   If this  option is  used,
-              --accesslog-file option is ignored.
-  --accesslog-format=<FORMAT>
+              --accesslog-file option is ignored.)");
+
+  std::println(out, R"(  --accesslog-format=<FORMAT>
               Specify  format  string  for access  log.   The  default
               format is combined format.   The following variables are
               available:
@@ -2887,46 +2998,56 @@ Logging:
               * $protocol_version:   HTTP  version   (e.g.,  HTTP/1.1,
                 HTTP/2)
 
-              The  variable  can  be  enclosed  by  "{"  and  "}"  for
-              disambiguation (e.g., ${remote_addr}).
+              The  variable  can  be  enclosed  by  "{{"  and  "}}"  for
+              disambiguation (e.g., ${{remote_addr}}).
 
-              Default: )"
-      << DEFAULT_ACCESSLOG_FORMAT << R"(
-  --accesslog-write-early
+              Default: {})",
+               DEFAULT_ACCESSLOG_FORMAT);
+
+  std::println(out, R"(  --accesslog-write-early
               Write  access  log  when   response  header  fields  are
               received   from  backend   rather   than  when   request
-              transaction finishes.
-  --errorlog-file=<PATH>
+              transaction finishes.)");
+
+  std::println(out, R"(  --errorlog-file=<PATH>
               Set path to write error  log.  To reopen file, send USR1
               signal  to nghttpx.   stderr will  be redirected  to the
               error log file unless --errorlog-syslog is used.
-              Default: )"
-      << config->logging.error.file << R"(
-  --errorlog-syslog
-              Send  error log  to  syslog.  If  this  option is  used,
-              --errorlog-file option is ignored.
-  --syslog-facility=<FACILITY>
-              Set syslog facility to <FACILITY>.
-              Default: )"
-      << str_syslog_facility(config->logging.syslog_facility) << R"(
+              Default: {})",
+               config->logging.error.file);
 
-HTTP:
-  --add-x-forwarded-for
+  std::println(out, R"(  --errorlog-syslog
+              Send  error log  to  syslog.  If  this  option is  used,
+              --errorlog-file option is ignored.)");
+
+  std::println(out, R"(  --syslog-facility=<FACILITY>
+              Set syslog facility to <FACILITY>.
+              Default: {})",
+               str_syslog_facility(config->logging.syslog_facility));
+
+  std::println(out, "");
+  std::println(out, "HTTP:");
+
+  std::println(out, R"(  --add-x-forwarded-for
               Append  X-Forwarded-For header  field to  the downstream
-              request.
-  --strip-incoming-x-forwarded-for
+              request.)");
+
+  std::println(out, R"(  --strip-incoming-x-forwarded-for
               Strip X-Forwarded-For  header field from  inbound client
-              requests.
-  --no-add-x-forwarded-proto
+              requests.)");
+
+  std::println(out, R"(  --no-add-x-forwarded-proto
               Don't append  additional X-Forwarded-Proto  header field
               to  the   backend  request.   If  inbound   client  sets
               X-Forwarded-Proto,                                   and
               --no-strip-incoming-x-forwarded-proto  option  is  used,
-              they are passed to the backend.
-  --no-strip-incoming-x-forwarded-proto
+              they are passed to the backend.)");
+
+  std::println(out, R"(  --no-strip-incoming-x-forwarded-proto
               Don't strip X-Forwarded-Proto  header field from inbound
-              client requests.
-  --add-forwarded=<LIST>
+              client requests.)");
+
+  std::println(out, R"(  --add-forwarded=<LIST>
               Append RFC  7239 Forwarded header field  with parameters
               specified in comma delimited list <LIST>.  The supported
               parameters  are "by",  "for", "host",  and "proto".   By
@@ -2934,11 +3055,13 @@ HTTP:
               obfuscated     string.     See     --forwarded-by    and
               --forwarded-for options respectively.  Note that nghttpx
               does  not  translate non-standard  X-Forwarded-*  header
-              fields into Forwarded header field, and vice versa.
-  --strip-incoming-forwarded
+              fields into Forwarded header field, and vice versa.)");
+
+  std::println(out, R"(  --strip-incoming-forwarded
               Strip  Forwarded   header  field  from   inbound  client
-              requests.
-  --forwarded-by=(obfuscated|ip|<VALUE>)
+              requests.)");
+
+  std::println(out, R"(  --forwarded-by=(obfuscated|ip|<VALUE>)
               Specify the parameter value sent out with "by" parameter
               of Forwarded  header field.   If "obfuscated"  is given,
               the string is randomly generated at startup.  If "ip" is
@@ -2949,8 +3072,9 @@ HTTP:
               obfuscated string.  The limitation is that it must start
               with   "_",  and   only   consists   of  character   set
               [A-Za-z0-9._-], as described in RFC 7239.
-              Default: obfuscated
-  --forwarded-for=(obfuscated|ip)
+              Default: obfuscated)");
+
+  std::println(out, R"(  --forwarded-for=(obfuscated|ip)
               Specify  the   parameter  value  sent  out   with  "for"
               parameter of Forwarded header field.  If "obfuscated" is
               given, the string is  randomly generated for each client
@@ -2958,21 +3082,27 @@ HTTP:
               of  the connection,  without port  number, is  sent with
               "for"  parameter.   In  case   of  UNIX  domain  socket,
               "localhost" is used instead of address.
-              Default: obfuscated
-  --no-via    Don't append to  Via header field.  If  Via header field
-              is received, it is left unaltered.
-  --no-strip-incoming-early-data
+              Default: obfuscated)");
+
+  std::println(out, R"(  --no-via
+              Don't append to  Via header field.  If  Via header field
+              is received, it is left unaltered.)");
+
+  std::println(out, R"(  --no-strip-incoming-early-data
               Don't strip Early-Data header  field from inbound client
-              requests.
-  --no-location-rewrite
+              requests.)");
+
+  std::println(out, R"(  --no-location-rewrite
               Don't  rewrite location  header field  in default  mode.
               When --http2-proxy  is used, location header  field will
-              not be altered regardless of this option.
-  --host-rewrite
+              not be altered regardless of this option.)");
+
+  std::println(out, R"(  --host-rewrite
               Rewrite  host and  :authority header  fields in  default
               mode.  When  --http2-proxy is  used, these  headers will
-              not be altered regardless of this option.
-  --altsvc=<PROTOID,PORT[,HOST,[ORIGIN[,PARAMS]]]>
+              not be altered regardless of this option.)");
+
+  std::println(out, R"(  --altsvc=<PROTOID,PORT[,HOST,[ORIGIN[,PARAMS]]]>
               Specify   protocol  ID,   port,  host   and  origin   of
               alternative service.  <HOST>,  <ORIGIN> and <PARAMS> are
               optional.   Empty <HOST>  and <ORIGIN>  are allowed  and
@@ -2980,147 +3110,176 @@ HTTP:
               advertised  in alt-svc  header  field  only in  HTTP/1.1
               frontend.   This option  can be  used multiple  times to
               specify multiple alternative services.
-              Example: --altsvc="h2,443,,,ma=3600; persist=1"
-  --http2-altsvc=<PROTOID,PORT[,HOST,[ORIGIN[,PARAMS]]]>
+              Example: --altsvc="h2,443,,,ma=3600; persist=1")");
+
+  std::println(out, R"(  --http2-altsvc=<PROTOID,PORT[,HOST,[ORIGIN[,PARAMS]]]>
               Just like --altsvc option, but  this altsvc is only sent
-              in HTTP/2 frontend.
-  --add-request-header=<HEADER>
+              in HTTP/2 frontend.)");
+
+  std::println(out, R"(  --add-request-header=<HEADER>
               Specify additional header field to add to request header
               set.   The field  name must  be lowercase.   This option
               just  appends header  field and  won't replace  anything
               already set.  This  option can be used  several times to
               specify multiple header fields.
-              Example: --add-request-header="foo: bar"
-  --add-response-header=<HEADER>
+              Example: --add-request-header="foo: bar")");
+
+  std::println(out, R"(  --add-response-header=<HEADER>
               Specify  additional  header  field to  add  to  response
               header  set.  The  field name  must be  lowercase.  This
               option  just  appends  header field  and  won't  replace
               anything already  set.  This option can  be used several
               times to specify multiple header fields.
-              Example: --add-response-header="foo: bar"
-  --request-header-field-buffer=<SIZE>
+              Example: --add-response-header="foo: bar")");
+
+  std::println(out, R"(  --request-header-field-buffer=<SIZE>
               Set maximum buffer size for incoming HTTP request header
               field list.  This is the sum of header name and value in
               bytes.   If  trailer  fields  exist,  they  are  counted
               towards this number.
-              Default: )"
-      << util::utos_unit(config->http.request_header_field_buffer) << R"(
-  --max-request-header-fields=<N>
+              Default: {})",
+               util::utos_unit(config->http.request_header_field_buffer));
+
+  std::println(out, R"(  --max-request-header-fields=<N>
               Set  maximum  number  of incoming  HTTP  request  header
               fields.   If  trailer  fields exist,  they  are  counted
               towards this number.
-              Default: )"
-      << config->http.max_request_header_fields << R"(
-  --response-header-field-buffer=<SIZE>
+              Default: {})",
+               config->http.max_request_header_fields);
+
+  std::println(out, R"(  --response-header-field-buffer=<SIZE>
               Set  maximum  buffer  size for  incoming  HTTP  response
               header field list.   This is the sum of  header name and
               value  in  bytes.  If  trailer  fields  exist, they  are
               counted towards this number.
-              Default: )"
-      << util::utos_unit(config->http.response_header_field_buffer) << R"(
-  --max-response-header-fields=<N>
+              Default: {})",
+               util::utos_unit(config->http.response_header_field_buffer));
+
+  std::println(out, R"(  --max-response-header-fields=<N>
               Set  maximum number  of  incoming  HTTP response  header
               fields.   If  trailer  fields exist,  they  are  counted
               towards this number.
-              Default: )"
-      << config->http.max_response_header_fields << R"(
-  --error-page=(<CODE>|*)=<PATH>
+              Default: {})",
+               config->http.max_response_header_fields);
+
+  std::println(out, R"(  --error-page=(<CODE>|*)=<PATH>
               Set file path  to custom error page  served when nghttpx
               originally  generates  HTTP  error status  code  <CODE>.
               <CODE> must be greater than or equal to 400, and at most
               599.  If "*"  is used instead of <CODE>,  it matches all
               HTTP  status  code.  If  error  status  code comes  from
-              backend server, the custom error pages are not used.
-  --server-name=<NAME>
+              backend server, the custom error pages are not used.)");
+
+  std::println(out, R"(  --server-name=<NAME>
               Change server response header field value to <NAME>.
-              Default: )"
-      << config->http.server_name << R"(
-  --no-server-rewrite
+              Default: {})",
+               config->http.server_name);
+
+  std::println(out, R"(  --no-server-rewrite
               Don't rewrite server header field in default mode.  When
               --http2-proxy is used, these headers will not be altered
-              regardless of this option.
-  --redirect-https-port=<PORT>
+              regardless of this option.)");
+
+  std::println(out, R"(  --redirect-https-port=<PORT>
               Specify the port number which appears in Location header
               field  when  redirect  to  HTTPS  URI  is  made  due  to
               "redirect-if-not-tls" parameter in --backend option.
-              Default: )"
-      << config->http.redirect_https_port << R"(
-  --require-http-scheme
+              Default: {})",
+               config->http.redirect_https_port);
+
+  std::println(out, R"(  --require-http-scheme
               Always require http or https scheme in HTTP request.  It
               also  requires that  https scheme  must be  used for  an
               encrypted  connection.  Otherwise,  http scheme  must be
               used.   This   option  is   recommended  for   a  server
               deployment which directly faces clients and the services
-              it provides only require http or https scheme.
+              it provides only require http or https scheme.)");
 
-API:
-  --api-max-request-body=<SIZE>
+  std::println(out, "");
+  std::println(out, "API:");
+
+  std::println(out, R"(  --api-max-request-body=<SIZE>
               Set the maximum size of request body for API request.
-              Default: )"
-      << util::utos_unit(config->api.max_request_body) << R"(
+              Default: {})",
+               util::utos_unit(config->api.max_request_body));
 
-DNS:
-  --dns-cache-timeout=<DURATION>
+  std::println(out, "");
+  std::println(out, "DNS:");
+
+  std::println(out, R"(  --dns-cache-timeout=<DURATION>
               Set duration that cached DNS results remain valid.  Note
               that nghttpx caches the unsuccessful results as well.
-              Default: )"
-      << util::duration_str(config->dns.timeout.cache) << R"(
-  --dns-lookup-timeout=<DURATION>
+              Default: {})",
+               util::duration_str(config->dns.timeout.cache));
+
+  std::println(out, R"(  --dns-lookup-timeout=<DURATION>
               Set timeout that  DNS server is given to  respond to the
               initial  DNS  query.  For  the  2nd  and later  queries,
               server is  given time based  on this timeout, and  it is
               scaled linearly.
-              Default: )"
-      << util::duration_str(config->dns.timeout.lookup) << R"(
-  --dns-max-try=<N>
+              Default: {})",
+               util::duration_str(config->dns.timeout.lookup));
+
+  std::println(out, R"(  --dns-max-try=<N>
               Set the number of DNS query before nghttpx gives up name
               lookup.
-              Default: )"
-      << config->dns.max_try << R"(
-  --frontend-max-requests=<N>
+              Default: {})",
+               config->dns.max_try);
+
+  std::println(out, R"(  --frontend-max-requests=<N>
               The number  of requests that single  frontend connection
               can process.  For HTTP/2, this  is the number of streams
               in  one  HTTP/2 connection.   For  HTTP/1,  this is  the
               number of keep alive requests.  This is hint to nghttpx,
               and it  may allow additional few  requests.  The default
-              value is unlimited.
+              value is unlimited.)");
 
-Debug:
-  --frontend-http2-dump-request-header=<PATH>
+  std::println(out, "");
+  std::println(out, "Debug:");
+
+  std::println(out, R"(  --frontend-http2-dump-request-header=<PATH>
               Dumps request headers received by HTTP/2 frontend to the
               file denoted  in <PATH>.  The  output is done  in HTTP/1
               header field format and each header block is followed by
               an empty line.  This option  is not thread safe and MUST
-              NOT be used with option -n<N>, where <N> >= 2.
-  --frontend-http2-dump-response-header=<PATH>
+              NOT be used with option -n<N>, where <N> >= 2.)");
+
+  std::println(out, R"(  --frontend-http2-dump-response-header=<PATH>
               Dumps response headers sent  from HTTP/2 frontend to the
               file denoted  in <PATH>.  The  output is done  in HTTP/1
               header field format and each header block is followed by
               an empty line.  This option  is not thread safe and MUST
-              NOT be used with option -n<N>, where <N> >= 2.
-  -o, --frontend-frame-debug
+              NOT be used with option -n<N>, where <N> >= 2.)");
+
+  std::println(out, R"(  -o, --frontend-frame-debug
               Print HTTP/2 frames in  frontend to stderr.  This option
               is  not thread  safe and  MUST NOT  be used  with option
-              -n=N, where N >= 2.
+              -n=N, where N >= 2.)");
 
-Process:
-  -D, --daemon
+  std::println(out, "");
+  std::println(out, "Process:");
+
+  std::println(out, R"(  -D, --daemon
               Run in a background.  If -D is used, the current working
-              directory is changed to '/'.
-  --pid-file=<PATH>
-              Set path to save PID of this program.
-  --user=<USER>
+              directory is changed to '/'.)");
+
+  std::println(out, R"(  --pid-file=<PATH>
+              Set path to save PID of this program.)");
+
+  std::println(out, R"(  --user=<USER>
               Run this program as <USER>.   This option is intended to
-              be used to drop root privileges.
-  --single-process
+              be used to drop root privileges.)");
+
+  std::println(out, R"(  --single-process
               Run this program in a  single process mode for debugging
               purpose.  Without this option,  nghttpx creates at least
               2 processes: main and  worker processes.  If this option
               is  used, main  and  worker are  unified  into a  single
               process.   nghttpx still  spawns  additional process  if
               neverbleed  is used.   In the  single process  mode, the
-              signal handling feature is disabled.
-  --max-worker-processes=<N>
+              signal handling feature is disabled.)");
+
+  std::println(out, R"(  --max-worker-processes=<N>
               The maximum number of  worker processes.  nghttpx spawns
               new worker  process when  it reloads  its configuration.
               The previous worker  process enters graceful termination
@@ -3132,66 +3291,77 @@ Process:
               if  the number  of  worker processes  exceeds the  given
               value,   the  oldest   worker   process  is   terminated
               immediately.  Specifying 0 means no  limit and it is the
-              default behaviour.
-  --worker-process-grace-shutdown-period=<DURATION>
+              default behaviour.)");
+
+  std::println(out, R"(  --worker-process-grace-shutdown-period=<DURATION>
               Maximum  period  for  a   worker  process  to  terminate
               gracefully.  When  a worker  process enters  in graceful
               shutdown   period  (e.g.,   when  nghttpx   reloads  its
               configuration)  and  it  does not  finish  handling  the
               existing connections in the given  period of time, it is
               immediately terminated.  Specifying 0 means no limit and
-              it is the default behaviour.
+              it is the default behaviour.)");
 
-Scripting:
-  --mruby-file=<PATH>
-              Set mruby script file
-  --ignore-per-pattern-mruby-error
+  std::println(out, "");
+  std::println(out, "Scripting:");
+
+  std::println(out, R"(  --mruby-file=<PATH>
+              Set mruby script file)");
+
+  std::println(out, R"(  --ignore-per-pattern-mruby-error
               Ignore mruby compile error  for per-pattern mruby script
               file.  If error  occurred, it is treated as  if no mruby
-              file were specified for the pattern.
-)";
+              file were specified for the pattern.)");
 
 #ifdef ENABLE_HTTP3
-  out << R"(
-HTTP/3 and QUIC:
-  --frontend-quic-idle-timeout=<DURATION>
+  std::println(out, "");
+  std::println(out, "HTTP/3 and QUIC:");
+
+  std::println(out, R"(  --frontend-quic-idle-timeout=<DURATION>
               Specify an idle timeout for QUIC connection.
-              Default: )"
-      << util::duration_str(config->quic.upstream.timeout.idle) << R"(
-  --frontend-quic-debug-log
-              Output QUIC debug log to /dev/stderr.
-  --quic-bpf-program-file=<PATH>
+              Default: {})",
+               util::duration_str(config->quic.upstream.timeout.idle));
+
+  std::println(out, R"(  --frontend-quic-debug-log
+              Output QUIC debug log to /dev/stderr.)");
+
+  std::println(out, R"(  --quic-bpf-program-file=<PATH>
               Specify a path to  eBPF program file reuseport_kern.o to
               direct  an  incoming  QUIC  UDP datagram  to  a  correct
               socket.
-              Default: )"
-      << config->quic.bpf.prog_file << R"(
-  --frontend-quic-early-data
+              Default: {})",
+               config->quic.bpf.prog_file);
+
+  std::println(out, R"(  --frontend-quic-early-data
               Enable early data on frontend QUIC connections.  nghttpx
               sends "Early-Data" header field to a backend server if a
               request is received in early  data and handshake has not
               finished.  All backend servers should deal with possibly
-              replayed requests.
-  --frontend-quic-qlog-dir=<DIR>
+              replayed requests.)");
+
+  std::println(out, R"(  --frontend-quic-qlog-dir=<DIR>
               Specify a  directory where  a qlog  file is  written for
               frontend QUIC  connections.  A qlog file  is created per
               each QUIC  connection.  The  file name is  ISO8601 basic
               format, followed by "-", server Source Connection ID and
-              ".sqlog".
-  --frontend-quic-require-token
+              ".sqlog".)");
+
+  std::println(out, R"(  --frontend-quic-require-token
               Require an address validation  token for a frontend QUIC
               connection.   Server sends  a token  in Retry  packet or
-              NEW_TOKEN frame in the previous connection.
-  --frontend-quic-congestion-controller=<CC>
+              NEW_TOKEN frame in the previous connection.)");
+
+  std::println(out, R"(  --frontend-quic-congestion-controller=<CC>
               Specify a congestion controller algorithm for a frontend
               QUIC  connection.   <CC>  should be  either  "cubic"  or
               "bbr".
-              Default: )"
-      << (config->quic.upstream.congestion_controller == NGTCP2_CC_ALGO_CUBIC
-            ? "cubic"
-            : "bbr")
-      << R"(
-  --frontend-quic-secret-file=<PATH>
+              Default: {})",
+               config->quic.upstream.congestion_controller ==
+                   NGTCP2_CC_ALGO_CUBIC
+                 ? "cubic"
+                 : "bbr");
+
+  std::println(out, R"(  --frontend-quic-secret-file=<PATH>
               Path to file that contains secure random data to be used
               as QUIC keying materials.  It is used to derive keys for
               encrypting tokens and Connection IDs.  It is not used to
@@ -3215,75 +3385,84 @@ HTTP/3 and QUIC:
               is treated as if none of  this option is given.  If this
               option is not  given or an error  occurred while opening
               or  reading  a  file,  a keying  material  is  generated
-              internally on startup and reload.
-  --quic-server-id=<HEXSTRING>
+              internally on startup and reload.)");
+
+  std::println(out, R"(  --quic-server-id=<HEXSTRING>
               Specify server  ID encoded in Connection  ID to identify
               this  particular  server  instance.   Connection  ID  is
               encrypted and  this part is  not visible in  public.  It
               must be 4  bytes long and must be encoded  in hex string
               (which is 8  bytes long).  If this option  is omitted, a
               random   server  ID   is   generated   on  startup   and
-              configuration reload.
-  --frontend-quic-initial-rtt=<DURATION>
+              configuration reload.)");
+
+  std::println(out, R"(  --frontend-quic-initial-rtt=<DURATION>
               Specify the initial RTT of the frontend QUIC connection.
-              Default: )"
-      << util::duration_str(config->quic.upstream.initial_rtt) << R"(
-  --no-quic-bpf
-              Disable eBPF.
-  --frontend-http3-window-size=<SIZE>
+              Default: {})",
+               util::duration_str(config->quic.upstream.initial_rtt));
+
+  std::println(out, R"(  --no-quic-bpf
+              Disable eBPF.)");
+
+  std::println(
+    out, R"(  --frontend-http3-window-size=<SIZE>
               Sets  the  per-stream  initial  window  size  of  HTTP/3
               frontend connection.
-              Default: )"
-      << util::utos_unit(as_unsigned(config->http3.upstream.window_size)) << R"(
-  --frontend-http3-connection-window-size=<SIZE>
+              Default: {})",
+    util::utos_unit(as_unsigned(config->http3.upstream.window_size)));
+
+  std::println(out, R"(  --frontend-http3-connection-window-size=<SIZE>
               Sets the  per-connection window size of  HTTP/3 frontend
               connection.
-              Default: )"
-      << util::utos_unit(
-           as_unsigned(config->http3.upstream.connection_window_size))
-      << R"(
-  --frontend-http3-max-window-size=<SIZE>
+              Default: {})",
+               util::utos_unit(
+                 as_unsigned(config->http3.upstream.connection_window_size)));
+
+  std::println(
+    out, R"(  --frontend-http3-max-window-size=<SIZE>
               Sets  the  maximum  per-stream  window  size  of  HTTP/3
               frontend connection.  The window  size is adjusted based
               on the receiving rate of stream data.  The initial value
               is the  value specified  by --frontend-http3-window-size
               and the window size grows up to <SIZE> bytes.
-              Default: )"
-      << util::utos_unit(as_unsigned(config->http3.upstream.max_window_size))
-      << R"(
-  --frontend-http3-max-connection-window-size=<SIZE>
+              Default: {})",
+    util::utos_unit(as_unsigned(config->http3.upstream.max_window_size)));
+
+  std::println(out, R"(  --frontend-http3-max-connection-window-size=<SIZE>
               Sets the  maximum per-connection  window size  of HTTP/3
               frontend connection.  The window  size is adjusted based
               on the receiving rate of stream data.  The initial value
               is         the         value        specified         by
               --frontend-http3-connection-window-size  and the  window
               size grows up to <SIZE> bytes.
-              Default: )"
-      << util::utos_unit(
-           as_unsigned(config->http3.upstream.max_connection_window_size))
-      << R"(
-  --frontend-http3-max-concurrent-streams=<N>
+              Default: {})",
+               util::utos_unit(as_unsigned(
+                 config->http3.upstream.max_connection_window_size)));
+
+  std::println(out, R"(  --frontend-http3-max-concurrent-streams=<N>
               Set the maximum number of  the concurrent streams in one
               frontend HTTP/3 connection.
-              Default: )"
-      << config->http3.upstream.max_concurrent_streams << R"(
-)";
+              Default: {})",
+               config->http3.upstream.max_concurrent_streams);
 #endif // ENABLE_HTTP3
 
-  out << R"(
-Misc:
-  --conf=<PATH>
+  std::println(out, "");
+  std::println(out, "Misc:");
+
+  std::println(out, R"(  --conf=<PATH>
               Load  configuration  from   <PATH>.   Please  note  that
               nghttpx always  tries to read the  default configuration
               file if --conf is not given.
-              Default: )"
-      << config->conf_path << R"(
-  --include=<PATH>
+              Default: {})",
+               config->conf_path);
+
+  std::println(out, R"(  --include=<PATH>
               Load additional configurations from <PATH>.  File <PATH>
               is  read  when  configuration  parser  encountered  this
               option.  This option can be used multiple times, or even
-              recursively.
-  -v, --version
+              recursively.)");
+
+  std::println(out, R"(  -v, --version
               Print version and exit.
   -h, --help  Print this help and exit.
 
@@ -3295,8 +3474,7 @@ Misc:
   The <DURATION> argument is an integer and an optional unit (e.g., 1s
   is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms
   (hours, minutes, seconds and milliseconds, respectively).  If a unit
-  is omitted, a second is used as unit.)"
-      << std::endl;
+  is omitted, a second is used as unit.)");
 }
 } // namespace
 
@@ -4037,7 +4215,7 @@ int main(int argc, char **argv) {
       cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND, std::string_view{optarg});
       break;
     case 'h':
-      print_help(std::cout);
+      print_help(stdout);
       exit(EXIT_SUCCESS);
     case 'k':
       cmdcfgs.emplace_back(SHRPX_OPT_INSECURE, "yes"sv);
