@@ -802,6 +802,7 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
                        nghttp2_data_source *source, void *user_data) {
   auto downstream = static_cast<Downstream *>(source->ptr);
   auto upstream = static_cast<Http2Upstream *>(downstream->get_upstream());
+  auto handler = upstream->get_client_handler();
   auto body = downstream->get_response_buf();
 
   auto wb = upstream->get_response_buf();
@@ -820,8 +821,10 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
 
   if (body->rleft() == 0) {
     downstream->disable_upstream_wtimer();
+    downstream->unregister_upstream_write_rate_timer();
   } else {
     downstream->reset_upstream_wtimer();
+    handler->extend_write_rate_timer(length);
   }
 
   if (length > 0 && !downstream->resume_read(SHRPX_NO_BUFFER, length)) {
@@ -1543,6 +1546,7 @@ Http2Upstream::send_reply(Downstream *downstream,
 
   if (data_prd_ptr) {
     downstream->reset_upstream_wtimer();
+    downstream->register_upstream_write_rate_timer();
   }
 
   return {};
@@ -1598,6 +1602,7 @@ Http2Upstream::error_reply(Downstream *downstream, unsigned int status_code) {
   }
 
   downstream->reset_upstream_wtimer();
+  downstream->register_upstream_write_rate_timer();
 
   return {};
 }
@@ -1903,6 +1908,7 @@ Http2Upstream::on_downstream_body(Downstream *downstream,
       session_, static_cast<int32_t>(downstream->get_stream_id()));
 
     downstream->ensure_upstream_wtimer();
+    downstream->register_upstream_write_rate_timer();
   }
 
   return {};
@@ -1927,6 +1933,7 @@ Http2Upstream::on_downstream_body_complete(Downstream *downstream) {
   nghttp2_session_resume_data(
     session_, static_cast<int32_t>(downstream->get_stream_id()));
   downstream->ensure_upstream_wtimer();
+  downstream->register_upstream_write_rate_timer();
 
   return {};
 }
