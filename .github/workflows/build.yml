@@ -28,29 +28,29 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
     - name: Restore libbpf cache
       id: cache-libbpf
-      uses: actions/cache@v5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       if: runner.os == 'Linux'
       with:
         path: libbpf/build
         key: ${{ matrix.os }}-libbpf-${{ env.LIBBPF_VERSION }}
     - name: Restore OpenSSL v1.1.1 cache
       id: cache-openssl1
-      uses: actions/cache@v5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: openssl1/build
         key: ${{ matrix.os }}-openssl-${{ env.OPENSSL1_VERSION }}
     - name: Restore OpenSSL v4.x cache
       id: cache-openssl4
-      uses: actions/cache@v5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: openssl4/build
         key: ${{ matrix.os }}-openssl-${{ env.OPENSSL4_VERSION }}
     - name: Restore BoringSSL cache
       id: cache-boringssl
-      uses: actions/cache@v5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: |
           boringssl/build/libcrypto.a
@@ -59,7 +59,7 @@ jobs:
         key: ${{ matrix.os }}-boringssl-${{ env.BORINGSSL_VERSION }}
     - name: Restore aws-lc cache
       id: cache-awslc
-      uses: actions/cache@v5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: |
           aws-lc/build/crypto/libcrypto.a
@@ -68,25 +68,25 @@ jobs:
         key: ${{ matrix.os }}-awslc-${{ env.AWSLC_VERSION }}
     - name: Restore wolfSSL cache
       id: cache-wolfssl
-      uses: actions/cache@v5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: wolfssl/build
         key: ${{ matrix.os }}-wolfssl-${{ env.WOLFSSL_VERSION }}
     - name: Restore nghttp3 cache
       id: cache-nghttp3
-      uses: actions/cache@v5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: nghttp3/build
         key: ${{ matrix.os }}-nghttp3-${{ env.NGHTTP3_VERSION }}
     - name: Restore ngtcp2 + quictls/openssl v1.1.1 cache
       id: cache-ngtcp2-openssl1
-      uses: actions/cache@v5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ngtcp2-openssl1/build
         key: ${{ matrix.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL1_VERSION }}
     - name: Restore ngtcp2 + quictls/openssl v4.x cache
       id: cache-ngtcp2-openssl4
-      uses: actions/cache@v5
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       with:
         path: ngtcp2-openssl4/build
         key: ${{ matrix.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL4_VERSION }}
@@ -283,7 +283,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       with:
         submodules: recursive
     - name: Linux setup
@@ -354,7 +354,7 @@ jobs:
         echo 'CC=gcc' >> $GITHUB_ENV
         echo 'CXX=g++' >> $GITHUB_ENV
     - name: Restore libbpf cache
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       if: matrix.http3 == 'http3' && matrix.compiler == 'clang' && runner.os == 'Linux'
       with:
         path: libbpf/build
@@ -379,14 +379,14 @@ jobs:
         echo 'LIBEV_CFLAGS='"$LIBEV_CFLAGS" >> $GITHUB_ENV
         echo 'LIBEV_LIBS='"$LIBEV_LIBS" >> $GITHUB_ENV
     - name: Restore quictls/openssl v1.1.1 cache
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       if: matrix.openssl == 'openssl1'
       with:
         path: openssl1/build
         key: ${{ matrix.os }}-openssl-${{ env.OPENSSL1_VERSION }}
         fail-on-cache-miss: true
     - name: Restore openssl/openssl v4.x cache
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       if: matrix.openssl == 'openssl4'
       with:
         path: openssl4/build
@@ -401,7 +401,7 @@ jobs:
         echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
         echo 'EXTRA_CMAKE_OPTS='"$EXTRA_CMAKE_OPTS" >> $GITHUB_ENV
     - name: Restore BoringSSL cache
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       if: matrix.openssl == 'boringssl'
       with:
         path: |
@@ -411,7 +411,7 @@ jobs:
         key: ${{ matrix.os }}-boringssl-${{ env.BORINGSSL_VERSION }}
         fail-on-cache-miss: true
     - name: Restore aws-lc cache
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       if: matrix.openssl == 'awslc'
       with:
         path: |
@@ -449,7 +449,7 @@ jobs:
         echo 'BORINGSSL_LIBS='"$OPENSSL_LIBS" >> $GITHUB_ENV
         echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
     - name: Restore wolfSSL cache
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       if: matrix.openssl == 'wolfssl'
       with:
         path: wolfssl/build
@@ -464,21 +464,21 @@ jobs:
         echo 'EXTRA_AUTOTOOLS_OPTS='"$EXTRA_AUTOTOOLS_OPTS" >> $GITHUB_ENV
         echo 'EXTRA_CMAKE_OPTS='"$EXTRA_CMAKE_OPTS" >> $GITHUB_ENV
     - name: Restore nghttp3 cache
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       if: matrix.http3 == 'http3'
       with:
         path: nghttp3/build
         key: ${{ matrix.os }}-nghttp3-${{ env.NGHTTP3_VERSION }}
         fail-on-cache-miss: true
     - name: Restore ngtcp2 + quictls/openssl v1.1.1 cache + BoringSSL
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       if: matrix.http3 == 'http3' && (matrix.openssl == 'openssl1' || matrix.openssl == 'boringssl' || matrix.openssl == 'wolfssl')
       with:
         path: ngtcp2-openssl1/build
         key: ${{ matrix.os }}-ngtcp2-${{ env.NGTCP2_VERSION }}-openssl-${{ env.OPENSSL1_VERSION }}
         fail-on-cache-miss: true
     - name: Restore ngtcp2 + quictls/openssl v4.x cache + aws-lc
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
       if: matrix.http3 == 'http3' && (matrix.openssl == 'openssl4' || matrix.openssl == 'awslc')
       with:
         path: ngtcp2-openssl4/build
@@ -556,7 +556,7 @@ jobs:
         cd $NGHTTP2_BUILD_DIR
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)"
         make -j"$(nproc 2> /dev/null || sysctl -n hw.ncpu)" check
-    - uses: actions/setup-go@v6
+    - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
       if: matrix.buildtool != 'distcheck'
       with:
         go-version: "1.25"
@@ -581,7 +581,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       with:
         submodules: recursive
     - name: Prepare for i386
@@ -632,10 +632,10 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       with:
         submodules: recursive
-    - uses: microsoft/setup-msbuild@v3
+    - uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3
     - name: Configure cmake
       run: cmake -B build -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_GENERATOR_PLATFORM=${{ matrix.platform }} -DVCPKG_TARGET_TRIPLET=${{ matrix.arch}}-windows -DBUILD_STATIC_LIBS=ON -DBUILD_TESTING=ON
     - name: Build nghttp2
@@ -649,10 +649,10 @@ jobs:
     steps:
     - run: git config --global core.autocrlf input
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       with:
         submodules: recursive
-    - uses: cygwin/cygwin-install-action@v6
+    - uses: cygwin/cygwin-install-action@121fc294c6b6864e1d52caeaa5c8ddb33d3e90f3 # v6
       with:
         packages: |
           automake
@@ -682,7 +682,7 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       with:
         fetch-depth: 0
         submodules: recursive
@@ -699,7 +699,7 @@ jobs:
         GPG_KEY: ${{ secrets.GPG_KEY }}
         GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
     - name: Make release
-      uses: actions/github-script@v9
+      uses: actions/github-script@373c709c69115d41ff229c7e5df9f8788daa9553 # v9
       with:
         script: |
           const fs = require('fs')
