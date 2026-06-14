@@ -560,6 +560,9 @@ int htp_hdrs_completecb(llhttp_t *htp) {
       auto output = downstream->get_response_buf();
       static constexpr auto res = "HTTP/1.1 100 Continue\r\n\r\n"sv;
       output->append(res);
+
+      downstream->register_upstream_write_rate_timer();
+
       handler->signal_write();
     }
   }
@@ -1070,6 +1073,8 @@ HttpsUpstream::send_reply(Downstream *downstream,
 
   downstream->set_response_state(DownstreamState::MSG_COMPLETE);
 
+  downstream->register_upstream_write_rate_timer();
+
   return {};
 }
 
@@ -1120,6 +1125,8 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   }
 
   downstream->set_response_state(DownstreamState::MSG_COMPLETE);
+
+  downstream->register_upstream_write_rate_timer();
 }
 
 void HttpsUpstream::attach_downstream(std::unique_ptr<Downstream> downstream) {
@@ -1366,6 +1373,8 @@ HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     log_response_headers(buf);
   }
 
+  downstream->register_upstream_write_rate_timer();
+
   return {};
 }
 
@@ -1388,6 +1397,9 @@ HttpsUpstream::on_downstream_body(Downstream *downstream,
   if (downstream->get_chunked_response()) {
     output->append("\r\n"sv);
   }
+
+  downstream->register_upstream_write_rate_timer();
+
   return {};
 }
 
@@ -1407,6 +1419,8 @@ HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
                                               http2::HDOP_STRIP_ALL);
       output->append("\r\n"sv);
     }
+
+    downstream->register_upstream_write_rate_timer();
   }
   if (log_enabled(INFO)) {
     Log{INFO, downstream} << "HTTP response completed";
@@ -1587,6 +1601,12 @@ void HttpsUpstream::response_drain(size_t n) {
   auto buf = downstream_->get_response_buf();
 
   buf->drain(n);
+
+  handler_->extend_write_rate_timer(n);
+
+  if (buf->rleft() == 0) {
+    downstream_->unregister_upstream_write_rate_timer();
+  }
 }
 
 bool HttpsUpstream::response_empty() const {

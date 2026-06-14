@@ -396,6 +396,12 @@ inline constexpr auto SHRPX_OPT_BACKEND_STREAM_READ_TIMEOUT =
   "backend-stream-read-timeout"sv;
 inline constexpr auto SHRPX_OPT_BACKEND_STREAM_WRITE_TIMEOUT =
   "backend-stream-write-timeout"sv;
+inline constexpr auto SHRPX_OPT_FRONTEND_MIN_WRITE_RATE =
+  "frontend-min-write-rate"sv;
+inline constexpr auto SHRPX_OPT_FRONTEND_INITIAL_WRITE_RATE_TIMEOUT =
+  "frontend-initial-write-rate-timeout"sv;
+inline constexpr auto SHRPX_OPT_FRONTEND_MAX_WRITE_RATE_TIMEOUT =
+  "frontend-max-write-rate-timeout"sv;
 
 inline constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -863,7 +869,10 @@ struct HttpConfig {
     struct {
       ev_tstamp stream_read;
       ev_tstamp stream_write;
+      ev_tstamp initial_write_rate;
+      ev_tstamp max_write_rate;
     } timeout;
+    size_t min_write_rate;
   } upstream;
   struct {
     struct {
@@ -1239,8 +1248,11 @@ enum {
   SHRPX_OPTID_FRONTEND_HTTP3_MAX_WINDOW_SIZE,
   SHRPX_OPTID_FRONTEND_HTTP3_READ_TIMEOUT,
   SHRPX_OPTID_FRONTEND_HTTP3_WINDOW_SIZE,
+  SHRPX_OPTID_FRONTEND_INITIAL_WRITE_RATE_TIMEOUT,
   SHRPX_OPTID_FRONTEND_KEEP_ALIVE_TIMEOUT,
   SHRPX_OPTID_FRONTEND_MAX_REQUESTS,
+  SHRPX_OPTID_FRONTEND_MAX_WRITE_RATE_TIMEOUT,
+  SHRPX_OPTID_FRONTEND_MIN_WRITE_RATE,
   SHRPX_OPTID_FRONTEND_NO_TLS,
   SHRPX_OPTID_FRONTEND_QUIC_CONGESTION_CONTROLLER,
   SHRPX_OPTID_FRONTEND_QUIC_DEBUG_LOG,
