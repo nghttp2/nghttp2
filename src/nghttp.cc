@@ -1093,7 +1093,7 @@ std::expected<void, Error> HttpClient::connection_made() {
 
 std::expected<void, Error> HttpClient::on_read(std::span<const uint8_t> data) {
   if (config.hexdump) {
-    util::hexdump(stdout, data.data(), data.size());
+    (void)util::hexdump(stdout, data.data(), data.size());
   }
 
   auto rv = nghttp2_session_mem_recv2(session, data.data(), data.size());
@@ -1515,7 +1515,7 @@ void update_html_parser(HttpClient *client, Request *req,
   if (!req->html_parser) {
     return;
   }
-  req->update_html_parser(data, fin);
+  (void)req->update_html_parser(data, fin);
 
   auto scheme = req->get_real_scheme();
   auto host = req->get_real_host();
@@ -1547,7 +1547,7 @@ void update_html_parser(HttpClient *client, Request *req,
     auto extpri = resolve_pri(res_type);
 
     if (client->add_request(uri, nullptr, 0, extpri, req->level + 1)) {
-      submit_request(client, config.headers, client->reqvec.back().get());
+      (void)submit_request(client, config.headers, client->reqvec.back().get());
     }
   }
   req->html_parser->clear_links();
