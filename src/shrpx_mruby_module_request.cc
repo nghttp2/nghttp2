@@ -322,8 +322,10 @@ mrb_value request_push(mrb_state *mrb, mrb_value self) {
   mrb_int len;
   mrb_get_args(mrb, "s", &uri, &len);
 
-  upstream->initiate_push(downstream,
-                          std::string_view{uri, static_cast<size_t>(len)});
+  if (!upstream->initiate_push(
+        downstream, std::string_view{uri, static_cast<size_t>(len)})) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "initiating server push failed");
+  }
 
   return mrb_nil_value();
 }

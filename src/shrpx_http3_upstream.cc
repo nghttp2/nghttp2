@@ -945,7 +945,9 @@ std::expected<void, Error> Http3Upstream::on_timeout(Downstream *downstream) {
                     << downstream->get_stream_id();
   }
 
-  shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+  if (auto rv = shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR); !rv) {
+    return rv;
+  }
 
   handler_->signal_write();
 
@@ -996,9 +998,13 @@ Http3Upstream::downstream_read(DownstreamConnection *dconn) {
     // RST_STREAM to the upstream and delete downstream connection
     // here. Deleting downstream will be taken place at
     // on_stream_close_callback.
-    shutdown_stream(downstream,
-                    infer_upstream_shutdown_stream_error_code(
-                      downstream->get_response_rst_stream_error_code()));
+    if (auto rv = shutdown_stream(
+          downstream, infer_upstream_shutdown_stream_error_code(
+                        downstream->get_response_rst_stream_error_code()));
+        !rv) {
+      return rv;
+    }
+
     downstream->pop_downstream_connection();
     // dconn was deleted
     dconn = nullptr;
@@ -1034,7 +1040,9 @@ Http3Upstream::downstream_read(DownstreamConnection *dconn) {
 
     if (downstream->can_detach_downstream_connection()) {
       // Keep-alive
-      downstream->detach_downstream_connection();
+      if (auto rv = downstream->detach_downstream_connection(); !rv) {
+        return rv;
+      }
     }
   }
 
@@ -1126,7 +1134,9 @@ Http3Upstream::downstream_error(DownstreamConnection *dconn, int events) {
     // stream, we don't have to do anything since response was
     // complete.
     if (downstream->get_upgraded()) {
-      shutdown_stream(downstream, NGHTTP3_H3_NO_ERROR);
+      if (auto rv = shutdown_stream(downstream, NGHTTP3_H3_NO_ERROR); !rv) {
+        return rv;
+      }
     }
   } else {
     if (downstream->get_response_state() == DownstreamState::HEADER_COMPLETE) {
@@ -1134,8 +1144,10 @@ Http3Upstream::downstream_error(DownstreamConnection *dconn, int events) {
         if (auto rv = on_downstream_body_complete(downstream); !rv) {
           return rv;
         }
-      } else {
-        shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+      } else if (auto rv =
+                   shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+                 !rv) {
+        return rv;
       }
     } else {
       unsigned int status;
@@ -1444,7 +1456,12 @@ Http3Upstream::on_downstream_body_complete(Downstream *downstream) {
   auto &resp = downstream->response();
 
   if (!downstream->validate_response_recv_body_length()) {
-    shutdown_stream(downstream, NGHTTP3_H3_GENERAL_PROTOCOL_ERROR);
+    if (auto rv =
+          shutdown_stream(downstream, NGHTTP3_H3_GENERAL_PROTOCOL_ERROR);
+        !rv) {
+      return rv;
+    }
+
     resp.connection_close = true;
     return {};
   }
@@ -1514,7 +1531,7 @@ void Http3Upstream::on_handler_delete() {
     }
 
     // Ignore return value.  We always enter into close-wait.
-    send_connection_close(ccerr);
+    (void)send_connection_close(ccerr);
   }
 
   auto d =
@@ -1551,7 +1568,11 @@ Http3Upstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
       return {};
     }
     // pushed stream is handled here
-    shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+
+    // Ignore the error otherwise we might delete ClientHandler
+    // twice.  See Http2Session.
+    (void)shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+
     downstream->pop_downstream_connection();
 
     handler_->signal_write();
@@ -1600,8 +1621,11 @@ fail:
   }
 
   if (!on_downstream_abort_request(downstream, 502)) {
-    shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+    // Ignore the error otherwise we might delete ClientHandler
+    // twice.  See Http2Session.
+    (void)shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
   }
+
   downstream->pop_downstream_connection();
 
   handler_->signal_write();
@@ -1760,7 +1784,7 @@ Http3Upstream::on_read(const UpstreamAddr *faddr, const Address &remote_addr,
       // Overwrite error if any is set
       ngtcp2_ccerr_set_liberr(&last_error_, rv, nullptr, 0);
 
-      quic_conn_handler->send_retry(
+      (void)quic_conn_handler->send_retry(
         handler_->get_upstream_addr(), vc.version, {vc.dcid, vc.dcidlen},
         {vc.scid, vc.scidlen}, remote_addr, local_addr, data.size() * 3);
 
@@ -2227,8 +2251,7 @@ Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
   // For HTTP/2 proxy, we require :authority.
   if (method_token != HTTP_CONNECT && config->http2_proxy &&
       faddr->alt_mode == UpstreamAltMode::NONE && !authority) {
-    shutdown_stream(downstream, NGHTTP3_H3_GENERAL_PROTOCOL_ERROR);
-    return {};
+    return shutdown_stream(downstream, NGHTTP3_H3_GENERAL_PROTOCOL_ERROR);
   }
 
   req.method = method_token;
@@ -2294,21 +2317,22 @@ Http3Upstream::http_end_request_headers(Downstream *downstream, int fin) {
     return {};
   }
 
-  start_downstream(downstream);
+  return start_downstream(downstream);
+}
+
+std::expected<void, Error>
+Http3Upstream::start_downstream(Downstream *downstream) {
+  if (downstream_queue_.can_activate(downstream->request().authority)) {
+    return initiate_downstream(downstream);
+  }
+
+  downstream_queue_.mark_blocked(downstream);
 
   return {};
 }
 
-void Http3Upstream::start_downstream(Downstream *downstream) {
-  if (downstream_queue_.can_activate(downstream->request().authority)) {
-    initiate_downstream(downstream);
-    return;
-  }
-
-  downstream_queue_.mark_blocked(downstream);
-}
-
-void Http3Upstream::initiate_downstream(Downstream *downstream) {
+std::expected<void, Error>
+Http3Upstream::initiate_downstream(Downstream *downstream) {
 #ifdef HAVE_MRUBY
   DownstreamConnection *dconn_ptr;
 #endif // defined(HAVE_MRUBY)
@@ -2322,13 +2346,16 @@ void Http3Upstream::initiate_downstream(Downstream *downstream) {
       }
 
       if (!error_reply(downstream, 502)) {
-        shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+        if (auto rv = shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+            !rv) {
+          return rv;
+        }
       }
 
       downstream->set_request_state(DownstreamState::CONNECT_FAIL);
       downstream_queue_.mark_failure(downstream);
 
-      return;
+      return {};
     }
 
     auto dconn = std::move(*maybe_dconn);
@@ -2347,36 +2374,46 @@ void Http3Upstream::initiate_downstream(Downstream *downstream) {
     const auto &mruby_ctx = group->shared_addr->mruby_ctx;
     if (!mruby_ctx->run_on_request_proc(downstream)) {
       if (!error_reply(downstream, 500)) {
-        shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+        if (auto rv = shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+            !rv) {
+          return rv;
+        }
       }
 
       downstream_queue_.mark_failure(downstream);
 
-      return;
+      return {};
     }
 
     if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
-      return;
+      return {};
     }
   }
 #endif // defined(HAVE_MRUBY)
 
   if (!downstream->push_request_headers()) {
     if (!error_reply(downstream, 502)) {
-      shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+      if (auto rv = shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+          !rv) {
+        return rv;
+      }
     }
 
     downstream_queue_.mark_failure(downstream);
 
-    return;
+    return {};
   }
 
   downstream_queue_.mark_active(downstream);
 
   auto &req = downstream->request();
   if (!req.http2_expect_body && !downstream->end_upload_data()) {
-    shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+    if (auto rv = shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR); !rv) {
+      return rv;
+    }
   }
+
+  return {};
 }
 
 namespace {
@@ -2400,7 +2437,10 @@ Http3Upstream::http_recv_data(Downstream *downstream,
 
   if (!downstream->push_upload_data_chunk(data)) {
     if (downstream->get_response_state() != DownstreamState::MSG_COMPLETE) {
-      shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+      if (auto rv = shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+          !rv) {
+        return rv;
+      }
     }
 
     consume(downstream->get_stream_id(), data.size());
@@ -2435,7 +2475,9 @@ Http3Upstream::http_end_stream(Downstream *downstream) {
 
   if (!downstream->end_upload_data() &&
       downstream->get_response_state() != DownstreamState::MSG_COMPLETE) {
-    shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR);
+    if (auto rv = shutdown_stream(downstream, NGHTTP3_H3_INTERNAL_ERROR); !rv) {
+      return rv;
+    }
   }
 
   downstream->set_request_state(DownstreamState::MSG_COMPLETE);
@@ -2454,14 +2496,17 @@ int http_stream_close(nghttp3_conn *conn, int64_t stream_id,
     return 0;
   }
 
-  upstream->http_stream_close(downstream, app_error_code);
+  if (!upstream->http_stream_close(downstream, app_error_code)) {
+    return NGHTTP3_ERR_CALLBACK_FAILURE;
+  }
 
   return 0;
 }
 } // namespace
 
-void Http3Upstream::http_stream_close(Downstream *downstream,
-                                      uint64_t app_error_code) {
+std::expected<void, Error>
+Http3Upstream::http_stream_close(Downstream *downstream,
+                                 uint64_t app_error_code) {
   auto stream_id = downstream->get_stream_id();
 
   if (log_enabled(INFO)) {
@@ -2484,15 +2529,15 @@ void Http3Upstream::http_stream_close(Downstream *downstream,
   ngtcp2_conn_extend_max_streams_bidi(conn_, 1);
 
   if (downstream->get_request_state() == DownstreamState::CONNECT_FAIL) {
-    remove_downstream(downstream);
-    // downstream was deleted
-
-    return;
+    // After remove_downstream, downstream is deleted.
+    return remove_downstream(downstream);
   }
 
   if (downstream->can_detach_downstream_connection()) {
     // Keep-alive
-    downstream->detach_downstream_connection();
+    if (auto rv = downstream->detach_downstream_connection(); !rv) {
+      return rv;
+    }
   }
 
   downstream->set_request_state(DownstreamState::STREAM_CLOSED);
@@ -2501,8 +2546,9 @@ void Http3Upstream::http_stream_close(Downstream *downstream,
 
   // If shrpx_downstream::push_request_headers() failed, the
   // error is handled here.
-  remove_downstream(downstream);
-  // downstream was deleted
+
+  // After remove_downstream, downstream is deleted.
+  return remove_downstream(downstream);
 }
 
 namespace {
@@ -2736,7 +2782,8 @@ void Http3Upstream::consume(int64_t stream_id, size_t nconsumed) {
   ngtcp2_conn_extend_max_offset(conn_, nconsumed);
 }
 
-void Http3Upstream::remove_downstream(Downstream *downstream) {
+std::expected<void, Error>
+Http3Upstream::remove_downstream(Downstream *downstream) {
   if (downstream->accesslog_ready()) {
     handler_->write_accesslog(downstream);
   }
@@ -2747,13 +2794,17 @@ void Http3Upstream::remove_downstream(Downstream *downstream) {
   auto next_downstream = downstream_queue_.remove_and_get_blocked(downstream);
 
   if (next_downstream) {
-    initiate_downstream(next_downstream);
+    if (auto rv = initiate_downstream(next_downstream); !rv) {
+      return rv;
+    }
   }
 
   if (downstream_queue_.get_downstreams() == nullptr) {
     // There is no downstream at the moment.  Start idle timer now.
     handler_->repeat_read_timer();
   }
+
+  return {};
 }
 
 void Http3Upstream::log_response_headers(

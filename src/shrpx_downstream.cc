@@ -59,7 +59,11 @@ void header_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   downstream->disable_upstream_rtimer();
   downstream->disable_upstream_wtimer();
 
-  upstream->on_timeout(downstream);
+  if (!upstream->on_timeout(downstream)) {
+    auto handler = upstream->get_client_handler();
+
+    delete handler;
+  }
 }
 } // namespace
 
@@ -78,7 +82,11 @@ void upstream_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   downstream->disable_upstream_rtimer();
   downstream->disable_upstream_wtimer();
 
-  upstream->on_timeout(downstream);
+  if (!upstream->on_timeout(downstream)) {
+    auto handler = upstream->get_client_handler();
+
+    delete handler;
+  }
 }
 } // namespace
 
@@ -111,8 +119,15 @@ void downstream_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 
   auto dconn = downstream->get_downstream_connection();
 
-  if (dconn) {
-    dconn->on_timeout();
+  if (!dconn) {
+    return;
+  }
+
+  if (!dconn->on_timeout()) {
+    auto upstream = downstream->get_upstream();
+    auto handler = upstream->get_client_handler();
+
+    delete handler;
   }
 }
 } // namespace
@@ -233,9 +248,9 @@ std::expected<void, Error> Downstream::attach_downstream_connection(
   return {};
 }
 
-void Downstream::detach_downstream_connection() {
+std::expected<void, Error> Downstream::detach_downstream_connection() {
   if (!dconn_) {
-    return;
+    return {};
   }
 
 #ifdef HAVE_MRUBY
@@ -246,12 +261,16 @@ void Downstream::detach_downstream_connection() {
   }
 #endif // defined(HAVE_MRUBY)
 
-  dconn_->detach_downstream(this);
+  if (auto rv = dconn_->detach_downstream(this); !rv) {
+    return rv;
+  }
 
   auto handler = dconn_->get_client_handler();
 
   handler->pool_downstream_connection(
     std::unique_ptr<DownstreamConnection>(dconn_.release()));
+
+  return {};
 }
 
 DownstreamConnection *Downstream::get_downstream_connection() {

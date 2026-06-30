@@ -322,7 +322,7 @@ public:
 
   std::expected<void, Error>
   attach_downstream_connection(std::unique_ptr<DownstreamConnection> dconn);
-  void detach_downstream_connection();
+  std::expected<void, Error> detach_downstream_connection();
   DownstreamConnection *get_downstream_connection();
   // Returns dconn_ and nullifies dconn_.
   std::unique_ptr<DownstreamConnection> pop_downstream_connection();

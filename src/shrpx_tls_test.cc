@@ -70,7 +70,7 @@ void test_shrpx_tls_create_lookup_tree(void) {
   auto num = array_size(hostnames);
 
   for (size_t idx = 0; idx < num; ++idx) {
-    tree->add_cert(hostnames[idx], idx);
+    assert_true(tree->add_cert(hostnames[idx], idx).has_value());
   }
 
   tree->dump();
@@ -107,7 +107,7 @@ void test_shrpx_tls_create_lookup_tree(void) {
 
   tree = std::make_unique<tls::CertLookupTree>();
   for (size_t idx = 0; idx < num; ++idx) {
-    tree->add_cert(names[idx], idx);
+    assert_true(tree->add_cert(names[idx], idx).has_value());
   }
   for (size_t i = 0; i < num; ++i) {
     assert_size(i, ==, tree->lookup(names[i]).value_or(badval));

@@ -196,14 +196,14 @@ public:
   void reset_connection_check_timer_if_not_checking();
   // Signals that connection is alive.  Internally
   // reset_connection_check_timer() is called.
-  void connection_alive();
+  std::expected<void, Error> connection_alive();
   // Change connection check state.
   void set_connection_check_state(ConnectionCheck state);
   ConnectionCheck get_connection_check_state() const;
 
   bool should_hard_fail() const;
 
-  void submit_pending_requests();
+  std::expected<void, Error> submit_pending_requests();
 
   DownstreamAddr *get_addr() const;
 
@@ -255,7 +255,7 @@ public:
 
   // This is called when SETTINGS frame without ACK flag set is
   // received.
-  void on_settings_received(const nghttp2_frame *frame);
+  std::expected<void, Error> on_settings_received(const nghttp2_frame *frame);
 
   bool get_allow_connect_proto() const;
 

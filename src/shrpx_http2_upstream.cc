@@ -68,12 +68,17 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 
   auto &req = downstream->request();
 
-  upstream->consume(stream_id, req.unconsumed_body_length);
+  if (!upstream->consume(stream_id, req.unconsumed_body_length)) {
+    return NGHTTP2_ERR_CALLBACK_FAILURE;
+  }
 
   req.unconsumed_body_length = 0;
 
   if (downstream->get_request_state() == DownstreamState::CONNECT_FAIL) {
-    upstream->remove_downstream(downstream);
+    if (!upstream->remove_downstream(downstream)) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+
     // downstream was deleted
 
     return 0;
@@ -81,7 +86,9 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 
   if (downstream->can_detach_downstream_connection()) {
     // Keep-alive
-    downstream->detach_downstream_connection();
+    if (!downstream->detach_downstream_connection()) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
   }
 
   downstream->set_request_state(DownstreamState::STREAM_CLOSED);
@@ -90,7 +97,10 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 
   // If shrpx_downstream::push_request_headers() failed, the
   // error is handled here.
-  upstream->remove_downstream(downstream);
+  if (!upstream->remove_downstream(downstream)) {
+    return NGHTTP2_ERR_CALLBACK_FAILURE;
+  }
+
   // downstream was deleted
 
   // How to test this case? Request sufficient large download
@@ -345,8 +355,7 @@ Http2Upstream::on_request_headers(Downstream *downstream,
   // For HTTP/2 proxy, we require :authority.
   if (method_token != HTTP_CONNECT && config->http2_proxy &&
       faddr->alt_mode == UpstreamAltMode::NONE && !authority) {
-    rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-    return {};
+    return rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
   }
 
   req.method = method_token;
@@ -420,21 +429,22 @@ Http2Upstream::on_request_headers(Downstream *downstream,
     return {};
   }
 
-  start_downstream(downstream);
+  return start_downstream(downstream);
+}
+
+std::expected<void, Error>
+Http2Upstream::start_downstream(Downstream *downstream) {
+  if (downstream_queue_.can_activate(downstream->request().authority)) {
+    return initiate_downstream(downstream);
+  }
+
+  downstream_queue_.mark_blocked(downstream);
 
   return {};
 }
 
-void Http2Upstream::start_downstream(Downstream *downstream) {
-  if (downstream_queue_.can_activate(downstream->request().authority)) {
-    initiate_downstream(downstream);
-    return;
-  }
-
-  downstream_queue_.mark_blocked(downstream);
-}
-
-void Http2Upstream::initiate_downstream(Downstream *downstream) {
+std::expected<void, Error>
+Http2Upstream::initiate_downstream(Downstream *downstream) {
 #ifdef HAVE_MRUBY
   DownstreamConnection *dconn_ptr;
 #endif // defined(HAVE_MRUBY)
@@ -445,13 +455,15 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
       if (!(maybe_dconn.error() == Error::TLS_REQUIRED
               ? redirect_to_https(downstream)
               : error_reply(downstream, 502))) {
-        rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+        if (auto rv = rst_stream(downstream, NGHTTP2_INTERNAL_ERROR); !rv) {
+          return rv;
+        }
       }
 
       downstream->set_request_state(DownstreamState::CONNECT_FAIL);
       downstream_queue_.mark_failure(downstream);
 
-      return;
+      return {};
     }
 
     auto dconn = std::move(*maybe_dconn);
@@ -470,38 +482,44 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
     const auto &mruby_ctx = group->shared_addr->mruby_ctx;
     if (!mruby_ctx->run_on_request_proc(downstream)) {
       if (!error_reply(downstream, 500)) {
-        rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+        if (auto rv = rst_stream(downstream, NGHTTP2_INTERNAL_ERROR); !rv) {
+          return rv;
+        }
       }
 
       downstream_queue_.mark_failure(downstream);
 
-      return;
+      return {};
     }
 
     if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
-      return;
+      return {};
     }
   }
 #endif // defined(HAVE_MRUBY)
 
   if (!downstream->push_request_headers()) {
     if (!error_reply(downstream, 502)) {
-      rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+      if (auto rv = rst_stream(downstream, NGHTTP2_INTERNAL_ERROR); !rv) {
+        return rv;
+      }
     }
 
     downstream_queue_.mark_failure(downstream);
 
-    return;
+    return {};
   }
 
   downstream_queue_.mark_active(downstream);
 
   auto &req = downstream->request();
   if (!req.http2_expect_body && !downstream->end_upload_data()) {
-    rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    if (auto rv = rst_stream(downstream, NGHTTP2_INTERNAL_ERROR); !rv) {
+      return rv;
+    }
   }
 
-  return;
+  return {};
 }
 
 namespace {
@@ -525,8 +543,9 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       downstream->disable_upstream_rtimer();
 
       if (!downstream->end_upload_data() &&
-          downstream->get_response_state() != DownstreamState::MSG_COMPLETE) {
-        upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+          downstream->get_response_state() != DownstreamState::MSG_COMPLETE &&
+          !upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR)) {
+        return NGHTTP2_ERR_CALLBACK_FAILURE;
       }
 
       downstream->set_request_state(DownstreamState::MSG_COMPLETE);
@@ -557,8 +576,9 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       downstream->disable_upstream_rtimer();
 
       if (!downstream->end_upload_data() &&
-          downstream->get_response_state() != DownstreamState::MSG_COMPLETE) {
-        upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+          downstream->get_response_state() != DownstreamState::MSG_COMPLETE &&
+          !upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR)) {
+        return NGHTTP2_ERR_CALLBACK_FAILURE;
       }
 
       downstream->set_request_state(DownstreamState::MSG_COMPLETE);
@@ -608,8 +628,9 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
   downstream->reset_upstream_rtimer();
 
   if (!downstream->push_upload_data_chunk({data, len})) {
-    if (downstream->get_response_state() != DownstreamState::MSG_COMPLETE) {
-      upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    if (downstream->get_response_state() != DownstreamState::MSG_COMPLETE &&
+        !upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR)) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
 
     if (!upstream->consume(stream_id, len)) {
@@ -658,7 +679,9 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
           << " to finish off incomplete request";
       }
 
-      upstream->rst_stream(downstream, NGHTTP2_NO_ERROR);
+      if (!upstream->rst_stream(downstream, NGHTTP2_NO_ERROR)) {
+        return NGHTTP2_ERR_CALLBACK_FAILURE;
+      }
     }
 
     return 0;
@@ -740,15 +763,17 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     auto mruby_ctx = worker->get_mruby_context();
 
     if (!mruby_ctx->run_on_request_proc(ptr)) {
-      if (!upstream->error_reply(ptr, 500)) {
-        upstream->rst_stream(ptr, NGHTTP2_INTERNAL_ERROR);
-        return 0;
+      if (!upstream->error_reply(ptr, 500) &&
+          !upstream->rst_stream(ptr, NGHTTP2_INTERNAL_ERROR)) {
+        return NGHTTP2_ERR_CALLBACK_FAILURE;
       }
       return 0;
     }
 #endif // defined(HAVE_MRUBY)
 
-    upstream->start_downstream(ptr);
+    if (!upstream->start_downstream(ptr)) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
 
     return 0;
   }
@@ -786,8 +811,9 @@ int on_frame_not_send_callback(nghttp2_session *session,
     // To avoid stream hanging around, issue RST_STREAM.
     auto downstream = static_cast<Downstream *>(
       nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
-    if (downstream) {
-      upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    if (downstream &&
+        !upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR)) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
   }
   return 0;
@@ -1218,8 +1244,12 @@ Http2Upstream::downstream_read(DownstreamConnection *dconn) {
     // RST_STREAM to the upstream and delete downstream connection
     // here. Deleting downstream will be taken place at
     // on_stream_close_callback.
-    rst_stream(downstream, infer_upstream_rst_stream_error_code(
-                             downstream->get_response_rst_stream_error_code()));
+    if (auto rv = rst_stream(
+          downstream, infer_upstream_rst_stream_error_code(
+                        downstream->get_response_rst_stream_error_code()));
+        !rv) {
+      return rv;
+    }
     downstream->pop_downstream_connection();
     // dconn was deleted
     dconn = nullptr;
@@ -1255,7 +1285,9 @@ Http2Upstream::downstream_read(DownstreamConnection *dconn) {
 
     if (downstream->can_detach_downstream_connection()) {
       // Keep-alive
-      downstream->detach_downstream_connection();
+      if (auto rv = downstream->detach_downstream_connection(); !rv) {
+        return rv;
+      }
     }
   }
 
@@ -1305,7 +1337,9 @@ Http2Upstream::downstream_eof(DownstreamConnection *dconn) {
     // downstream_data_read_callback to send RST_STREAM after pending
     // response body is sent. This is needed to ensure that RST_STREAM
     // is sent after all pending data are sent.
-    on_downstream_body_complete(downstream);
+    if (auto rv = on_downstream_body_complete(downstream); !rv) {
+      return rv;
+    }
   } else if (downstream->get_response_state() !=
              DownstreamState::MSG_COMPLETE) {
     // If stream was not closed, then we set MSG_COMPLETE and let
@@ -1345,14 +1379,19 @@ Http2Upstream::downstream_error(DownstreamConnection *dconn, int events) {
     // stream, we don't have to do anything since response was
     // complete.
     if (downstream->get_upgraded()) {
-      rst_stream(downstream, NGHTTP2_NO_ERROR);
+      if (auto rv = rst_stream(downstream, NGHTTP2_NO_ERROR); !rv) {
+        return rv;
+      }
     }
   } else {
     if (downstream->get_response_state() == DownstreamState::HEADER_COMPLETE) {
       if (downstream->get_upgraded()) {
-        on_downstream_body_complete(downstream);
-      } else {
-        rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+        if (auto rv = on_downstream_body_complete(downstream); !rv) {
+          return rv;
+        }
+      } else if (auto rv = rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+                 !rv) {
+        return rv;
       }
     } else {
       unsigned int status;
@@ -1612,7 +1651,8 @@ void Http2Upstream::add_pending_downstream(
   downstream_queue_.add_pending(std::move(downstream));
 }
 
-void Http2Upstream::remove_downstream(Downstream *downstream) {
+std::expected<void, Error>
+Http2Upstream::remove_downstream(Downstream *downstream) {
   if (downstream->accesslog_ready()) {
     handler_->write_accesslog(downstream);
   }
@@ -1623,7 +1663,9 @@ void Http2Upstream::remove_downstream(Downstream *downstream) {
   auto next_downstream = downstream_queue_.remove_and_get_blocked(downstream);
 
   if (next_downstream) {
-    initiate_downstream(next_downstream);
+    if (auto rv = initiate_downstream(next_downstream); !rv) {
+      return rv;
+    }
   }
 
   if (downstream_queue_.get_downstreams() == nullptr) {
@@ -1633,6 +1675,8 @@ void Http2Upstream::remove_downstream(Downstream *downstream) {
 
     handler_->reset_upstream_read_timeout(upstreamconf.timeout.http2_idle);
   }
+
+  return {};
 }
 
 // WARNING: Never call directly or indirectly nghttp2_session_send or
@@ -1925,7 +1969,10 @@ Http2Upstream::on_downstream_body_complete(Downstream *downstream) {
   auto &resp = downstream->response();
 
   if (!downstream->validate_response_recv_body_length()) {
-    rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+    if (auto rv = rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR); !rv) {
+      return rv;
+    }
+
     resp.connection_close = true;
     return {};
   }
@@ -2065,7 +2112,10 @@ std::expected<void, Error> Http2Upstream::on_timeout(Downstream *downstream) {
                     << downstream->get_stream_id();
   }
 
-  rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+  if (auto rv = rst_stream(downstream, NGHTTP2_INTERNAL_ERROR); !rv) {
+    return rv;
+  }
+
   handler_->signal_write();
 
   return {};
@@ -2100,7 +2150,11 @@ Http2Upstream::on_downstream_reset(Downstream *downstream, bool no_retry) {
       return {};
     }
     // pushed stream is handled here
-    rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+
+    // Ignore the error otherwise we might delete ClientHandler twice.
+    // See Http2Session.
+    (void)rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+
     downstream->pop_downstream_connection();
 
     handler_->signal_write();
@@ -2146,7 +2200,9 @@ fail:
   if (!(err == Error::TLS_REQUIRED
           ? on_downstream_abort_request_with_https_redirect(downstream)
           : on_downstream_abort_request(downstream, 502))) {
-    rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+    // Ignore the error otherwise we might delete ClientHandler
+    // twice.  See Http2Session.
+    (void)rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
   }
   downstream->pop_downstream_connection();
 

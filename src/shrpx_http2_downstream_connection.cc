@@ -70,11 +70,11 @@ Http2DownstreamConnection::~Http2DownstreamConnection() {
 
     if (http2session_->get_state() == Http2SessionState::CONNECTED &&
         downstream_->get_downstream_stream_id() != -1) {
-      submit_rst_stream(downstream_, error_code);
+      (void)submit_rst_stream(downstream_, error_code);
 
       auto &resp = downstream_->response();
 
-      http2session_->consume(
+      (void)http2session_->consume(
         static_cast<int32_t>(downstream_->get_downstream_stream_id()),
         resp.unconsumed_body_length);
 
@@ -111,7 +111,8 @@ Http2DownstreamConnection::attach_downstream(Downstream *downstream) {
   return {};
 }
 
-void Http2DownstreamConnection::detach_downstream(Downstream *downstream) {
+std::expected<void, Error>
+Http2DownstreamConnection::detach_downstream(Downstream *downstream) {
   if (log_enabled(INFO)) {
     Log{INFO, this} << "Detaching from DOWNSTREAM:" << downstream;
   }
@@ -119,13 +120,18 @@ void Http2DownstreamConnection::detach_downstream(Downstream *downstream) {
   auto &resp = downstream_->response();
 
   if (downstream_->get_downstream_stream_id() != -1) {
-    if (submit_rst_stream(downstream)) {
-      http2session_->signal_write();
+    if (auto rv = submit_rst_stream(downstream); !rv) {
+      return rv;
     }
 
-    http2session_->consume(
-      static_cast<int32_t>(downstream_->get_downstream_stream_id()),
-      resp.unconsumed_body_length);
+    http2session_->signal_write();
+
+    if (auto rv = http2session_->consume(
+          static_cast<int32_t>(downstream_->get_downstream_stream_id()),
+          resp.unconsumed_body_length);
+        !rv) {
+      return rv;
+    }
 
     resp.unconsumed_body_length = 0;
 
@@ -135,6 +141,8 @@ void Http2DownstreamConnection::detach_downstream(Downstream *downstream) {
   downstream->disable_downstream_rtimer();
   downstream->disable_downstream_wtimer();
   downstream_ = nullptr;
+
+  return {};
 }
 
 std::expected<void, Error>

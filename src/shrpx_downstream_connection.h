@@ -50,7 +50,8 @@ public:
   virtual ~DownstreamConnection();
   virtual std::expected<void, Error>
   attach_downstream(Downstream *downstream) = 0;
-  virtual void detach_downstream(Downstream *downstream) = 0;
+  virtual std::expected<void, Error>
+  detach_downstream(Downstream *downstream) = 0;
 
   virtual std::expected<void, Error> push_request_headers() = 0;
   virtual std::expected<void, Error>

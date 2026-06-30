@@ -151,7 +151,8 @@ public:
   std::expected<void, Error> http_end_request_headers(Downstream *downstream,
                                                       int fin);
   std::expected<void, Error> http_end_stream(Downstream *downstream);
-  void http_stream_close(Downstream *downstream, uint64_t app_error_code);
+  std::expected<void, Error> http_stream_close(Downstream *downstream,
+                                               uint64_t app_error_code);
   std::expected<void, Error> http_acked_stream_data(Downstream *downstream,
                                                     uint64_t datalen);
   std::expected<void, Error> http_reset_stream(int64_t stream_id,
@@ -160,14 +161,14 @@ public:
                                                uint64_t app_error_code);
   std::expected<void, Error> http_recv_data(Downstream *downstream,
                                             std::span<const uint8_t> data);
-  void start_downstream(Downstream *downstream);
-  void initiate_downstream(Downstream *downstream);
+  std::expected<void, Error> start_downstream(Downstream *downstream);
+  std::expected<void, Error> initiate_downstream(Downstream *downstream);
   std::expected<void, Error> shutdown_stream(Downstream *downstream,
                                              uint64_t app_error_code);
   std::expected<void, Error> shutdown_stream_read(int64_t stream_id,
                                                   uint64_t app_error_code);
   void consume(int64_t stream_id, size_t nconsumed);
-  void remove_downstream(Downstream *downstream);
+  std::expected<void, Error> remove_downstream(Downstream *downstream);
   void log_response_headers(Downstream *downstream,
                             const std::vector<nghttp3_nv> &nva) const;
   std::expected<void, Error> check_shutdown();

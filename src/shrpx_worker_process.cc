@@ -404,7 +404,7 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
     Log{INFO} << "Memcached: tls ticket key get request sent";
   }
 
-  dispatcher->add_request(std::move(req));
+  (void)dispatcher->add_request(std::move(req));
 }
 
 } // namespace

@@ -71,7 +71,7 @@ public:
                                               int events) override;
 
   void add_pending_downstream(std::unique_ptr<Downstream> downstream);
-  void remove_downstream(Downstream *downstream);
+  std::expected<void, Error> remove_downstream(Downstream *downstream);
 
   std::expected<void, Error> rst_stream(Downstream *downstream,
                                         uint32_t error_code);
@@ -122,8 +122,8 @@ public:
   std::expected<void, Error> consume(int32_t stream_id, size_t len);
   void log_response_headers(Downstream *downstream,
                             const std::vector<nghttp2_nv> &nva) const;
-  void start_downstream(Downstream *downstream);
-  void initiate_downstream(Downstream *downstream);
+  std::expected<void, Error> start_downstream(Downstream *downstream);
+  std::expected<void, Error> initiate_downstream(Downstream *downstream);
 
   void submit_goaway();
   void check_shutdown();

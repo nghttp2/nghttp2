@@ -854,7 +854,8 @@ void idle_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 }
 } // namespace
 
-void HttpDownstreamConnection::detach_downstream(Downstream *downstream) {
+std::expected<void, Error>
+HttpDownstreamConnection::detach_downstream(Downstream *downstream) {
   if (log_enabled(INFO)) {
     Log{INFO, this} << "Detaching from DOWNSTREAM:" << downstream;
   }
@@ -875,6 +876,8 @@ void HttpDownstreamConnection::detach_downstream(Downstream *downstream) {
 
   conn_.wlimit.stopw();
   ev_timer_stop(conn_.loop, &conn_.wt);
+
+  return {};
 }
 
 void HttpDownstreamConnection::pause_read(IOCtrlReason reason) {
@@ -1254,8 +1257,11 @@ std::expected<void, Error> HttpDownstreamConnection::write_first() {
     auto upstream = downstream_->get_upstream();
     auto &req = downstream_->request();
 
-    upstream->resume_read(SHRPX_NO_BUFFER, downstream_,
-                          req.unconsumed_body_length);
+    if (auto rv = upstream->resume_read(SHRPX_NO_BUFFER, downstream_,
+                                        req.unconsumed_body_length);
+        !rv) {
+      return rv;
+    }
   }
 
   return {};
@@ -1343,8 +1349,11 @@ std::expected<void, Error> HttpDownstreamConnection::write_clear() {
   if (input->rleft() == 0) {
     auto &req = downstream_->request();
 
-    upstream->resume_read(SHRPX_NO_BUFFER, downstream_,
-                          req.unconsumed_body_length);
+    if (auto rv = upstream->resume_read(SHRPX_NO_BUFFER, downstream_,
+                                        req.unconsumed_body_length);
+        !rv) {
+      return rv;
+    }
   }
 
   return {};
@@ -1480,8 +1489,11 @@ std::expected<void, Error> HttpDownstreamConnection::write_tls() {
 
     auto &req = downstream_->request();
 
-    upstream->resume_read(SHRPX_NO_BUFFER, downstream_,
-                          req.unconsumed_body_length);
+    if (auto rv = upstream->resume_read(SHRPX_NO_BUFFER, downstream_,
+                                        req.unconsumed_body_length);
+        !rv) {
+      return rv;
+    }
   }
 
   return {};
