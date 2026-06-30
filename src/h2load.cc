@@ -784,7 +784,7 @@ void Client::process_request_failure() {
   req_left = 0;
 
   if (req_inflight == 0) {
-    terminate_session();
+    (void)terminate_session();
   }
   std::println("Process Request Failure: {}", worker->stats.req_failed);
 }
@@ -1170,7 +1170,7 @@ void Client::on_stream_close(int64_t stream_id, bool success, bool final) {
   worker->report_progress();
   streams.erase(stream_id);
   if (req_left == 0 && req_inflight == 0) {
-    terminate_session();
+    (void)terminate_session();
     return;
   }
 
