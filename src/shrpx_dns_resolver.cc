@@ -365,9 +365,9 @@ void DNSResolver::on_result(int status, ares_addrinfo *ai) {
 }
 
 void DNSResolver::set_complete_cb(CompleteCb cb) {
-  completeCb_ = std::move(cb);
+  complete_cb_ = std::move(cb);
 }
 
-CompleteCb DNSResolver::get_complete_cb() const { return completeCb_; }
+CompleteCb DNSResolver::get_complete_cb() const { return complete_cb_; }
 
 } // namespace shrpx
