@@ -1371,7 +1371,7 @@ void test_util_sha256(void) {
   static constexpr auto s = "All your base are belong to us."sv;
   std::array<uint8_t, 32> md;
 
-  util::sha256(md, s);
+  assert_true(util::sha256(md, s).has_value());
   auto mdhex = util::format_hex(md);
 
   assert_stdsv_equal(
@@ -1383,7 +1383,7 @@ void test_util_sha1(void) {
   static constexpr auto s = "All your base are belong to us."sv;
   std::array<uint8_t, 20> md;
 
-  util::sha1(md, s);
+  assert_true(util::sha1(md, s).has_value());
   auto mdhex = util::format_hex(md);
 
   assert_stdsv_equal("6e65eeb0bab294dadf2297a7aa2315703ed5b958"sv, mdhex);
