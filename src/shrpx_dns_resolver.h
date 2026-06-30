@@ -103,7 +103,7 @@ private:
 
   std::vector<std::unique_ptr<ev_io>> revs_, wevs_;
   Address result_{};
-  CompleteCb completeCb_;
+  CompleteCb complete_cb_;
   ev_timer timer_;
   std::string_view name_;
   struct ev_loop *loop_;
