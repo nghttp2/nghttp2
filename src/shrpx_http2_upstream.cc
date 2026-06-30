@@ -566,7 +566,7 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       handler->stop_read_timer();
 
       if (!upstream->on_request_headers(downstream, frame)) {
-        return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+        return NGHTTP2_ERR_CALLBACK_FAILURE;
       }
 
       return 0;
