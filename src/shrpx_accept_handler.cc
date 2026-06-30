@@ -111,8 +111,8 @@ std::expected<void, Error> AcceptHandler::accept_connection() {
   util::make_socket_closeonexec(cfd);
 #endif // !defined(HAVE_ACCEPT4)
 
-  worker_->handle_connection(cfd, reinterpret_cast<const sockaddr *>(&ss),
-                             addrlen, faddr_);
+  (void)worker_->handle_connection(cfd, reinterpret_cast<const sockaddr *>(&ss),
+                                   addrlen, faddr_);
 
   return {};
 }
@@ -154,8 +154,8 @@ void AcceptHandler::drain_connection() {
     util::make_socket_closeonexec(cfd);
 #endif // !defined(HAVE_ACCEPT4)
 
-    worker_->handle_connection(cfd, reinterpret_cast<const sockaddr *>(&ss),
-                               addrlen, faddr_);
+    (void)worker_->handle_connection(
+      cfd, reinterpret_cast<const sockaddr *>(&ss), addrlen, faddr_);
   }
 }
 

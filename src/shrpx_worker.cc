@@ -522,7 +522,7 @@ void Worker::process_events() {
     Log{NOTICE, this} << "Reopening log files: worker process (thread " << this
                       << ")";
 
-    reopen_log_files(config->logging);
+    (void)reopen_log_files(config->logging);
 
     break;
   case WorkerEventType::GRACEFUL_SHUTDOWN:

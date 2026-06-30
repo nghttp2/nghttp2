@@ -46,12 +46,14 @@ HealthMonitorDownstreamConnection::attach_downstream(Downstream *downstream) {
   return {};
 }
 
-void HealthMonitorDownstreamConnection::detach_downstream(
-  Downstream *downstream) {
+std::expected<void, Error>
+HealthMonitorDownstreamConnection::detach_downstream(Downstream *downstream) {
   if (log_enabled(INFO)) {
     Log{INFO, this} << "Detaching from DOWNSTREAM:" << downstream;
   }
   downstream_ = nullptr;
+
+  return {};
 }
 
 std::expected<void, Error>

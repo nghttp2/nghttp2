@@ -75,8 +75,9 @@ void QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
                                      SHRPX_QUIC_SCIDLEN);
   if (rv != 0) {
     if (rv == NGTCP2_ERR_VERSION_NEGOTIATION) {
-      send_version_negotiation(faddr, vc.version, {vc.dcid, vc.dcidlen},
-                               {vc.scid, vc.scidlen}, remote_addr, local_addr);
+      (void)send_version_negotiation(faddr, vc.version, {vc.dcid, vc.dcidlen},
+                                     {vc.scid, vc.scidlen}, remote_addr,
+                                     local_addr);
 
       return;
     }
@@ -149,7 +150,7 @@ void QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           conn_handler->match_quic_lingering_worker_process_worker_id(
             decrypted_dcid.worker);
         if (maybe_quic_lwp) {
-          conn_handler->forward_quic_packet_to_lingering_worker_process(
+          (void)conn_handler->forward_quic_packet_to_lingering_worker_process(
             *maybe_quic_lwp, remote_addr, local_addr, pi, data);
 
           return;
@@ -199,17 +200,17 @@ void QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       }
 
       if (worker_->get_graceful_shutdown()) {
-        send_connection_close(faddr, hd.version, hd.dcid, hd.scid, remote_addr,
-                              local_addr, NGTCP2_CONNECTION_REFUSED,
-                              data.size() * 3);
+        (void)send_connection_close(faddr, hd.version, hd.dcid, hd.scid,
+                                    remote_addr, local_addr,
+                                    NGTCP2_CONNECTION_REFUSED, data.size() * 3);
         return;
       }
 
       if (hd.tokenlen == 0) {
         if (quicconf.upstream.require_token) {
-          send_retry(faddr, vc.version, {vc.dcid, vc.dcidlen},
-                     {vc.scid, vc.scidlen}, remote_addr, local_addr,
-                     data.size() * 3);
+          (void)send_retry(faddr, vc.version, {vc.dcid, vc.dcidlen},
+                           {vc.scid, vc.scidlen}, remote_addr, local_addr,
+                           data.size() * 3);
 
           return;
         }
@@ -241,9 +242,9 @@ void QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
               quicconf.upstream.require_token) {
             // 2nd Retry packet is not allowed, so send
             // CONNECTION_CLOSE with INVALID_TOKEN.
-            send_connection_close(faddr, hd.version, hd.dcid, hd.scid,
-                                  remote_addr, local_addr, NGTCP2_INVALID_TOKEN,
-                                  data.size() * 3);
+            (void)send_connection_close(faddr, hd.version, hd.dcid, hd.scid,
+                                        remote_addr, local_addr,
+                                        NGTCP2_INVALID_TOKEN, data.size() * 3);
             return;
           }
 
@@ -277,9 +278,9 @@ void QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           }
 
           if (quicconf.upstream.require_token) {
-            send_retry(faddr, vc.version, {vc.dcid, vc.dcidlen},
-                       {vc.scid, vc.scidlen}, remote_addr, local_addr,
-                       data.size() * 3);
+            (void)send_retry(faddr, vc.version, {vc.dcid, vc.dcidlen},
+                             {vc.scid, vc.scidlen}, remote_addr, local_addr,
+                             data.size() * 3);
 
             return;
           }
@@ -298,9 +299,9 @@ void QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
           }
 
           if (quicconf.upstream.require_token) {
-            send_retry(faddr, vc.version, {vc.dcid, vc.dcidlen},
-                       {vc.scid, vc.scidlen}, remote_addr, local_addr,
-                       data.size() * 3);
+            (void)send_retry(faddr, vc.version, {vc.dcid, vc.dcidlen},
+                             {vc.scid, vc.scidlen}, remote_addr, local_addr,
+                             data.size() * 3);
 
             return;
           }
@@ -320,9 +321,9 @@ void QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
       }
       default:
         if (quicconf.upstream.require_token) {
-          send_retry(faddr, vc.version, {vc.dcid, vc.dcidlen},
-                     {vc.scid, vc.scidlen}, remote_addr, local_addr,
-                     data.size() * 3);
+          (void)send_retry(faddr, vc.version, {vc.dcid, vc.dcidlen},
+                           {vc.scid, vc.scidlen}, remote_addr, local_addr,
+                           data.size() * 3);
 
           return;
         }
@@ -342,8 +343,8 @@ void QUICConnectionHandler::handle_packet(const UpstreamAddr *faddr,
         }
 
         if (data.size() >= SHRPX_QUIC_SCIDLEN + 21) {
-          send_stateless_reset(faddr, data.size(), {vc.dcid, vc.dcidlen},
-                               remote_addr, local_addr);
+          (void)send_stateless_reset(faddr, data.size(), {vc.dcid, vc.dcidlen},
+                                     remote_addr, local_addr);
         }
       }
 
@@ -539,7 +540,8 @@ std::expected<void, Error> QUICConnectionHandler::send_retry(
   std::ranges::copy_n(std::ranges::begin(buf), as_signed(retrylen),
                       retry.get());
 
-  quic_send_packet(faddr, remote_addr, local_addr, {retry.get(), retrylen});
+  (void)quic_send_packet(faddr, remote_addr, local_addr,
+                         {retry.get(), retrylen});
 
   if (auto rv = generate_quic_hashed_connection_id(idcid, remote_addr,
                                                    local_addr, idcid);

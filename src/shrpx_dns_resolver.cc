@@ -86,7 +86,7 @@ void process_result(DNSResolver *resolv) {
 namespace {
 void readcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto resolv = static_cast<DNSResolver *>(w->data);
-  resolv->on_read(w->fd);
+  (void)resolv->on_read(w->fd);
   process_result(resolv);
 }
 } // namespace
@@ -94,7 +94,7 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
 namespace {
 void writecb(struct ev_loop *loop, ev_io *w, int revents) {
   auto resolv = static_cast<DNSResolver *>(w->data);
-  resolv->on_write(w->fd);
+  (void)resolv->on_write(w->fd);
   process_result(resolv);
 }
 } // namespace
@@ -102,7 +102,7 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 namespace {
 void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto resolv = static_cast<DNSResolver *>(w->data);
-  resolv->on_timeout();
+  (void)resolv->on_timeout();
   process_result(resolv);
 }
 } // namespace

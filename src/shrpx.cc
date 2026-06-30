@@ -487,7 +487,7 @@ void exec_binary() {
 
   // child process
 
-  shrpx_signal_unset_main_proc_ign_handler();
+  (void)shrpx_signal_unset_main_proc_ign_handler();
 
   if (!shrpx_signal_unblock_all()) {
     auto error = errno;
@@ -1399,7 +1399,7 @@ fork_worker_process(const std::vector<InheritedUNIXDomainAddr> &iaddrs
 
     close_unused_inherited_addr(iaddrs);
 
-    shrpx_signal_set_worker_proc_ign_handler();
+    (void)shrpx_signal_set_worker_proc_ign_handler();
 
     if (!shrpx_signal_unblock_all()) {
       auto error = errno;
@@ -1496,7 +1496,7 @@ namespace {
 std::expected<void, Error> event_loop() {
   std::array<char, STRERROR_BUFSIZE> errbuf;
 
-  shrpx_signal_set_main_proc_ign_handler();
+  (void)shrpx_signal_set_main_proc_ign_handler();
 
   auto config = mod_config();
 
@@ -1585,7 +1585,7 @@ std::expected<void, Error> event_loop() {
   // when we know that PID file is recreated, it means we can send
   // QUIT signal to the old process to make it shutdown gracefully.
   if (!config->pid_file.empty()) {
-    save_pid();
+    (void)save_pid();
   }
 
   shrpx_sd_notifyf(0, "READY=1");
@@ -3526,7 +3526,7 @@ std::expected<void, Error> process_options(
   }
 
   // Reopen log files using configurations in file
-  reopen_log_files(config->logging);
+  (void)reopen_log_files(config->logging);
 
   {
     std::unordered_set<std::string_view> include_set;
@@ -3891,7 +3891,7 @@ void reload_config() {
   worker_process_adjust_limit();
 
   if (!get_config()->pid_file.empty()) {
-    save_pid();
+    (void)save_pid();
   }
 }
 } // namespace
@@ -3912,7 +3912,7 @@ int main(int argc, char **argv) {
 
   // First open log files with default configuration, so that we can
   // log errors/warnings while reading configuration files.
-  reopen_log_files(get_config()->logging);
+  (void)reopen_log_files(get_config()->logging);
 
   suconfig.original_argv = argv;
 

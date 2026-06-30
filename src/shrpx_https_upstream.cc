@@ -514,8 +514,9 @@ int htp_hdrs_completecb(llhttp_t *htp) {
   for (;;) {
     auto maybe_dconn = handler->get_downstream_connection(downstream);
     if (!maybe_dconn) {
-      if (maybe_dconn.error() == Error::TLS_REQUIRED) {
-        upstream->redirect_to_https(downstream);
+      if (maybe_dconn.error() == Error::TLS_REQUIRED &&
+          !upstream->redirect_to_https(downstream)) {
+        return -1;
       }
       downstream->set_request_state(DownstreamState::CONNECT_FAIL);
       return -1;
@@ -803,7 +804,9 @@ std::expected<void, Error> HttpsUpstream::on_write() {
   if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
     if (downstream->can_detach_downstream_connection()) {
       // Keep-alive
-      downstream->detach_downstream_connection();
+      if (auto rv = downstream->detach_downstream_connection(); !rv) {
+        return rv;
+      }
     } else {
       // Connection close
       downstream->pop_downstream_connection();
@@ -900,7 +903,9 @@ HttpsUpstream::downstream_read(DownstreamConnection *dconn) {
 
   if (downstream->can_detach_downstream_connection()) {
     // Keep-alive
-    downstream->detach_downstream_connection();
+    if (auto rv = downstream->detach_downstream_connection(); !rv) {
+      return rv;
+    }
   }
 
 end:
@@ -941,7 +946,11 @@ HttpsUpstream::downstream_eof(DownstreamConnection *dconn) {
       Log{INFO, dconn} << "The end of the response body was indicated by "
                        << "EOF";
     }
-    on_downstream_body_complete(downstream);
+
+    if (auto rv = on_downstream_body_complete(downstream); !rv) {
+      return rv;
+    }
+
     downstream->set_response_state(DownstreamState::MSG_COMPLETE);
     downstream->pop_downstream_connection();
     goto end;
@@ -1450,7 +1459,10 @@ HttpsUpstream::on_downstream_abort_request(Downstream *downstream,
 std::expected<void, Error>
 HttpsUpstream::on_downstream_abort_request_with_https_redirect(
   Downstream *downstream) {
-  redirect_to_https(downstream);
+  if (auto rv = redirect_to_https(downstream); !rv) {
+    return rv;
+  }
+
   handler_->signal_write();
   return {};
 }

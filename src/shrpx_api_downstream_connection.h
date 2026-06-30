@@ -69,7 +69,7 @@ public:
   APIDownstreamConnection(Worker *worker);
   ~APIDownstreamConnection() override;
   std::expected<void, Error> attach_downstream(Downstream *downstream) override;
-  void detach_downstream(Downstream *downstream) override;
+  std::expected<void, Error> detach_downstream(Downstream *downstream) override;
 
   std::expected<void, Error> push_request_headers() override;
   std::expected<void, Error>
