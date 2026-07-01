@@ -27,7 +27,6 @@
 
 #include "shrpx.h"
 
-#include <unordered_set>
 #include <memory>
 #include <expected>
 
