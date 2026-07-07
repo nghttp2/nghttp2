@@ -2625,7 +2625,7 @@ void test_nghttp2_session_recv_priority_stream_id_zero(void) {
     .on_invalid_frame_recv_callback = on_invalid_frame_recv_callback,
   };
   scripted_data_feed df;
-  my_user_data user_data;
+  my_user_data user_data ={0};
   nghttp2_bufs bufs;
   nghttp2_frame frame;
   nghttp2_priority_spec pri_spec;
