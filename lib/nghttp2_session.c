@@ -6216,6 +6216,16 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
 
         break;
       case NGHTTP2_PRIORITY:
+        if (iframe->frame.hd.stream_id == 0) {
+          rv = session_handle_invalid_connection(session, &iframe->frame,
+                                                  NGHTTP2_ERR_PROTO,
+                                                  "PRIORITY: stream_id == 0");
+          if (nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+          return (nghttp2_ssize)inlen;
+        }
+
         session_inbound_frame_reset(session);
 
         break;

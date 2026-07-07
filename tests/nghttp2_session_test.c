@@ -61,6 +61,7 @@ static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_session_recv_altsvc),
   munit_void_test(test_nghttp2_session_recv_origin),
   munit_void_test(test_nghttp2_session_recv_priority_update),
+  munit_void_test(test_nghttp2_session_recv_priority_stream_id_zero),
   munit_void_test(test_nghttp2_session_continue),
   munit_void_test(test_nghttp2_session_add_frame),
   munit_void_test(test_nghttp2_session_on_request_headers_received),
@@ -2616,6 +2617,40 @@ void test_nghttp2_session_recv_settings_header_table_size(void) {
   nghttp2_bufs_free(&bufs);
   nghttp2_session_del(session);
 }
+
+void test_nghttp2_session_recv_priority_stream_id_zero(void) {
+  nghttp2_session *session;
+  static const nghttp2_session_callbacks callbacks = {
+    .recv_callback2 = scripted_recv_callback,
+    .on_invalid_frame_recv_callback = on_invalid_frame_recv_callback,
+  };
+  scripted_data_feed df;
+  my_user_data user_data;
+  nghttp2_bufs bufs;
+  nghttp2_frame frame;
+  nghttp2_priority_spec pri_spec;
+
+  frame_pack_bufs_init(&bufs);
+
+  user_data.df = &df;
+  user_data.invalid_frame_recv_cb_called = 0;
+  nghttp2_session_server_new(&session, &callbacks, &user_data);
+
+  nghttp2_priority_spec_default_init(&pri_spec);
+  /* stream_id == 0 is illegal for PRIORITY; RFC 9113 Section 6.3 */
+  nghttp2_frame_priority_init(&frame.priority, 0, &pri_spec);
+  nghttp2_frame_pack_priority(&bufs, &frame.priority);
+  nghttp2_frame_priority_free(&frame.priority);
+
+  scripted_data_feed_init2(&df, &bufs);
+
+  assert_int(0, ==, nghttp2_session_recv(session));
+  assert_int(1, ==, user_data.invalid_frame_recv_cb_called);
+
+  nghttp2_bufs_free(&bufs);
+  nghttp2_session_del(session);
+}
+
 
 void test_nghttp2_session_recv_too_large_frame_length(void) {
   nghttp2_session *session;
