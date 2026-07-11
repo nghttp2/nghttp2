@@ -42,6 +42,12 @@
     .valuelen = nghttp2_strlen_lit((VALUE)),                                   \
     .flags = NGHTTP2_NV_FLAG_NONE,                                             \
   }
+#define MAKE_RCBUF(S)                                                          \
+  {                                                                            \
+    .base = (uint8_t *)(S),                                                    \
+    .len = nghttp2_strlen_lit((S)),                                            \
+    .ref = -1,                                                                 \
+  }
 #define ARRLEN(ARR) (sizeof(ARR) / sizeof(ARR[0]))
 
 int unpack_framebuf(nghttp2_frame *frame, nghttp2_bufs *bufs);

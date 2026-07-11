@@ -31,10 +31,12 @@
 #include "munit.h"
 
 #include "nghttp2_http.h"
+#include "nghttp2_extpri.h"
 #include "nghttp2_test_helper.h"
 
 static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_http_parse_priority),
+  munit_void_test(test_nghttp2_http_on_header),
   munit_test_end(),
 };
 
@@ -263,5 +265,63 @@ void test_nghttp2_http_parse_priority(void) {
     rv = nghttp2_http_parse_priority(&pri, v, sizeof(v));
 
     assert_int(NGHTTP2_ERR_INVALID_ARGUMENT, ==, rv);
+  }
+}
+
+void test_nghttp2_http_on_header(void) {
+  static const nghttp2_session_callbacks callbacks = {0};
+  static const nghttp2_frame frame = {
+    .headers.hd.type = NGHTTP2_HEADERS,
+  };
+  nghttp2_session *session;
+  nghttp2_stream *stream;
+  int rv;
+
+  {
+    nghttp2_session_server_new(&session, &callbacks, NULL);
+    stream = open_recv_stream(session, 1);
+
+    rv =
+      nghttp2_http_on_header(session, stream, &frame,
+                             &(nghttp2_hd_nv){
+                               .name = &(nghttp2_rcbuf)MAKE_RCBUF("priority"),
+                               .value = &(nghttp2_rcbuf)MAKE_RCBUF("u=1"),
+                               .token = NGHTTP2_TOKEN_PRIORITY,
+                             },
+                             /* trailer = */ 0);
+
+    assert_int(0, ==, rv);
+    assert_uint8(nghttp2_extpri_to_uint8(&(nghttp2_extpri){
+                   .urgency = 1,
+                 }),
+                 ==, stream->http_extpri);
+    assert_true(stream->http_flags & NGHTTP2_HTTP_FLAG_PRIORITY);
+    assert_false(stream->http_flags & NGHTTP2_HTTP_FLAG_BAD_PRIORITY);
+
+    nghttp2_session_del(session);
+  }
+
+  {
+    nghttp2_session_server_new(&session, &callbacks, NULL);
+    stream = open_recv_stream(session, 1);
+
+    rv =
+      nghttp2_http_on_header(session, stream, &frame,
+                             &(nghttp2_hd_nv){
+                               .name = &(nghttp2_rcbuf)MAKE_RCBUF("priority"),
+                               .value = &(nghttp2_rcbuf)MAKE_RCBUF("u=1\r\n"),
+                               .token = NGHTTP2_TOKEN_PRIORITY,
+                             },
+                             /* trailer = */ 0);
+
+    assert_int(NGHTTP2_ERR_IGN_HTTP_HEADER, ==, rv);
+    assert_uint8(nghttp2_extpri_to_uint8(&(nghttp2_extpri){
+                   .urgency = NGHTTP2_EXTPRI_DEFAULT_URGENCY,
+                 }),
+                 ==, stream->http_extpri);
+    assert_false(stream->http_flags & NGHTTP2_HTTP_FLAG_PRIORITY);
+    assert_true(stream->http_flags & NGHTTP2_HTTP_FLAG_BAD_PRIORITY);
+
+    nghttp2_session_del(session);
   }
 }
