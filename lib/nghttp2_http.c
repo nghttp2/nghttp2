@@ -298,6 +298,13 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_hd_nv *nv,
     }
     break;
   case NGHTTP2_TOKEN_PRIORITY:
+    if (!check_header_value(stream, nv->value)) {
+      stream->http_flags &= ~NGHTTP2_HTTP_FLAG_PRIORITY;
+      stream->http_flags |= NGHTTP2_HTTP_FLAG_BAD_PRIORITY;
+
+      return NGHTTP2_ERR_IGN_HTTP_HEADER;
+    }
+
     if (!trailer &&
         /* Do not parse the header field in PUSH_PROMISE. */
         (stream->stream_id & 1) &&
@@ -396,7 +403,7 @@ static int http_response_on_header(nghttp2_stream *stream, nghttp2_hd_nv *nv) {
 }
 
 int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
-                           nghttp2_frame *frame, nghttp2_hd_nv *nv,
+                           const nghttp2_frame *frame, nghttp2_hd_nv *nv,
                            int trailer) {
   /* We are strict for pseudo header field.  One bad character should
      lead to fail.  OTOH, we should be a bit forgiving for regular
