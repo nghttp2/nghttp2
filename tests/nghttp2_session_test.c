@@ -62,6 +62,7 @@ static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_session_recv_origin),
   munit_void_test(test_nghttp2_session_recv_priority_update),
   munit_void_test(test_nghttp2_session_recv_priority_stream_id_zero),
+  munit_void_test(test_nghttp2_session_recv_priority_stream_id_zero_mid_buffer),
   munit_void_test(test_nghttp2_session_continue),
   munit_void_test(test_nghttp2_session_add_frame),
   munit_void_test(test_nghttp2_session_on_request_headers_received),
@@ -2625,7 +2626,7 @@ void test_nghttp2_session_recv_priority_stream_id_zero(void) {
     .on_invalid_frame_recv_callback = on_invalid_frame_recv_callback,
   };
   scripted_data_feed df;
-  my_user_data user_data ={0};
+  my_user_data user_data = {0};
   nghttp2_bufs bufs;
   nghttp2_frame frame;
   nghttp2_priority_spec pri_spec;
@@ -2651,6 +2652,73 @@ void test_nghttp2_session_recv_priority_stream_id_zero(void) {
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_recv_priority_stream_id_zero_mid_buffer(void) {
+  nghttp2_session *session;
+  static const nghttp2_session_callbacks callbacks = {
+    .on_frame_recv_callback = on_frame_recv_callback,
+    .on_invalid_frame_recv_callback = on_invalid_frame_recv_callback,
+  };
+  my_user_data ud = {0};
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  nghttp2_ssize rv;
+  nghttp2_frame frame;
+  nghttp2_priority_spec pri_spec;
+  nghttp2_outbound_item *item;
+  uint8_t data[64];
+  size_t datalen;
+  nghttp2_mem *mem;
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  nghttp2_frame_ping_init(&frame.ping, NGHTTP2_FLAG_NONE, NULL);
+  nghttp2_frame_pack_ping(&bufs, &frame.ping);
+  nghttp2_frame_ping_free(&frame.ping);
+
+  buf = &bufs.head->buf;
+  memcpy(data, buf->pos, nghttp2_buf_len(buf));
+  datalen = nghttp2_buf_len(buf);
+
+  nghttp2_priority_spec_default_init(&pri_spec);
+  nghttp2_frame_priority_init(&frame.priority, 0, &pri_spec);
+  nghttp2_bufs_reset(&bufs);
+  nghttp2_frame_pack_priority(&bufs, &frame.priority);
+  nghttp2_frame_priority_free(&frame.priority);
+
+  memcpy(data + datalen, buf->pos, nghttp2_buf_len(buf));
+  datalen += nghttp2_buf_len(buf);
+
+  nghttp2_frame_ping_init(&frame.ping, NGHTTP2_FLAG_NONE, NULL);
+  nghttp2_bufs_reset(&bufs);
+  nghttp2_frame_pack_ping(&bufs, &frame.ping);
+  nghttp2_frame_ping_free(&frame.ping);
+
+  memcpy(data + datalen, buf->pos, nghttp2_buf_len(buf));
+  datalen += nghttp2_buf_len(buf);
+
+  rv = nghttp2_session_mem_recv2(session, data, datalen);
+
+  assert_ptrdiff((nghttp2_ssize)datalen, ==, rv);
+  assert_int(1, ==, ud.frame_recv_cb_called);
+  assert_int(1, ==, ud.invalid_frame_recv_cb_called);
+
+  item = nghttp2_session_pop_next_ob_item(session);
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_PING, ==, item->frame.hd.type);
+  nghttp2_outbound_item_free(item, mem);
+  mem->free(item, NULL);
+
+  item = nghttp2_session_get_next_ob_item(session);
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_PROTOCOL_ERROR, ==, item->frame.goaway.error_code);
+
+  nghttp2_bufs_free(&bufs);
+  nghttp2_session_del(session);
+}
 
 void test_nghttp2_session_recv_too_large_frame_length(void) {
   nghttp2_session *session;
