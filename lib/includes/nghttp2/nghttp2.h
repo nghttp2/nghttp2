@@ -55,7 +55,7 @@ extern "C" {
 
 #include <nghttp2/nghttp2ver.h>
 
-#ifdef NGHTTP2_STATICLIB
+#ifndef NGHTTP2_SHAREDLIB
 #  define NGHTTP2_EXTERN
 #elif defined(WIN32) ||                                                        \
   (__has_declspec_attribute(dllexport) && __has_declspec_attribute(dllimport))
