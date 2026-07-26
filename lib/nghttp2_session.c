@@ -6638,10 +6638,6 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
       }
 #endif /* defined(DEBUGBUILD) */
 
-      if (++session->num_continuations > session->max_continuations) {
-        return NGHTTP2_ERR_TOO_MANY_CONTINUATIONS;
-      }
-
       readlen = inbound_frame_buf_read(iframe, in, last);
       in += readlen;
 
@@ -6669,6 +6665,10 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
         }
 
         return (nghttp2_ssize)inlen;
+      }
+
+      if (++session->num_continuations > session->max_continuations) {
+        return NGHTTP2_ERR_TOO_MANY_CONTINUATIONS;
       }
 
       /* CONTINUATION won't bear NGHTTP2_PADDED flag */

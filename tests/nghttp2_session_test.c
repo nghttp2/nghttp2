@@ -1425,6 +1425,8 @@ void test_nghttp2_session_recv_continuation(void) {
   nghttp2_frame_hd cont_hd;
   nghttp2_priority_spec pri_spec;
   nghttp2_mem *mem;
+  nghttp2_option *option;
+  size_t i;
 
   mem = nghttp2_mem_default();
   frame_pack_bufs_init(&bufs);
@@ -1490,6 +1492,30 @@ void test_nghttp2_session_recv_continuation(void) {
 
   nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);
+
+  /* Too many CONTINUATIONS */
+  nghttp2_option_new(&option);
+  nghttp2_option_set_max_continuations(option, 1);
+
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
+
+  ud.header_cb_called = 0;
+  ud.begin_frame_cb_called = 0;
+
+  for (i = 0; i < datalen - cont_hd.length - 1; ++i) {
+    rv = nghttp2_session_mem_recv2(session, &data[i], 1);
+
+    assert_ptrdiff((nghttp2_ssize)1, ==, rv);
+  }
+
+  rv = nghttp2_session_mem_recv2(session, &data[i], 1);
+
+  assert_ptrdiff(NGHTTP2_ERR_TOO_MANY_CONTINUATIONS, ==, rv);
+  assert_int(3, ==, ud.header_cb_called);
+  assert_int(2, ==, ud.begin_frame_cb_called);
+
+  nghttp2_session_del(session);
+  nghttp2_option_del(option);
 
   /* HEADERS with padding followed by CONTINUATION */
   nghttp2_session_server_new(&session, &callbacks, &ud);
