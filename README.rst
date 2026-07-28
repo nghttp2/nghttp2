@@ -340,7 +340,7 @@ Build aws-lc:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v5.1.0 https://github.com/aws/aws-lc
+   $ git clone --depth 1 -b v5.4.0 https://github.com/aws/aws-lc
    $ cd aws-lc
    $ cmake -B build -DDISABLE_GO=ON --install-prefix=$PWD/opt
    $ make -j$(nproc) -C build
@@ -351,7 +351,7 @@ Build nghttp3:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.17.0 https://github.com/ngtcp2/nghttp3
+   $ git clone --depth 1 -b v1.18.0 https://github.com/ngtcp2/nghttp3
    $ cd nghttp3
    $ git submodule update --init --depth 1
    $ autoreconf -i
@@ -364,7 +364,7 @@ Build ngtcp2:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.24.0 https://github.com/ngtcp2/ngtcp2
+   $ git clone --depth 1 -b v1.25.0 https://github.com/ngtcp2/ngtcp2
    $ cd ngtcp2
    $ git submodule update --init --depth 1
    $ autoreconf -i
