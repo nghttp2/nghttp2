@@ -756,6 +756,7 @@ std::expected<void, Error> Http3Upstream::on_write() {
   }
 
   handler_->get_connection()->wlimit.stopw();
+  reset_upstream_addr_fd();
 
   if (auto rv = write_streams(); !rv) {
     return rv;
@@ -768,6 +769,20 @@ std::expected<void, Error> Http3Upstream::on_write() {
   reset_timer();
 
   return {};
+}
+
+void Http3Upstream::reset_upstream_addr_fd() {
+  auto path = ngtcp2_conn_get_path2(conn_);
+  auto faddr = static_cast<const UpstreamAddr *>(path->user_data);
+  auto conn = handler_->get_connection();
+
+  if (faddr->fd == conn->wev.fd) {
+    return;
+  }
+
+  assert(!ev_is_active(&conn->wev));
+
+  ev_io_set(&conn->wev, faddr->fd, EV_WRITE);
 }
 
 namespace {

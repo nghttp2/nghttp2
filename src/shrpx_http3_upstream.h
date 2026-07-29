@@ -193,6 +193,7 @@ public:
                        std::span<const uint8_t> data, size_t gso_size);
   void send_blocked_packet();
   void signal_write_upstream_addr(const UpstreamAddr *faddr);
+  void reset_upstream_addr_fd();
 
   ngtcp2_conn *get_conn() const;
 
