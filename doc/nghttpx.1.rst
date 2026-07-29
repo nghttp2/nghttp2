@@ -38,7 +38,6 @@ Connections
 
 .. option:: -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][[;<PARAM>]...]
 
-
     Set  backend  host  and   port.   The  multiple  backend
     addresses are  accepted by repeating this  option.  UNIX
     domain socket  can be  specified by prefixing  path name
@@ -560,17 +559,31 @@ Timeout
 
     Default: ``1m``
 
-.. option:: --stream-read-timeout=<DURATION>
+.. option:: --frontend-stream-read-timeout=<DURATION>
 
-    Specify  read timeout  for HTTP/2  streams.  0  means no
-    timeout.
+    Specify read  timeout for  HTTP/2 and HTTP/3  streams in
+    the frontend connection.  0 means no timeout.
 
     Default: ``0``
 
-.. option:: --stream-write-timeout=<DURATION>
+.. option:: --frontend-stream-write-timeout=<DURATION>
 
-    Specify write  timeout for  HTTP/2 streams.  0  means no
-    timeout.
+    Specify write  timeout for HTTP/2 and  HTTP/3 streams in
+    the frontend connection.  0 means no timeout.
+
+    Default: ``1m``
+
+.. option:: --backend-stream-read-timeout=<DURATION>
+
+    Specify read  timeout for HTTP/2 streams  in the backend
+    connection.  0 means no timeout.
+
+    Default: ``0``
+
+.. option:: --backend-stream-write-timeout=<DURATION>
+
+    Specify write timeout for  HTTP/2 streams in the backend
+    connection.  0 means no timeout.
 
     Default: ``1m``
 
@@ -634,6 +647,34 @@ Timeout
     option caps its maximum value.
 
     Default: ``2m``
+
+.. option:: --frontend-min-write-rate=<SIZE>
+
+    Set the  minimum rate  of stream  data that  client must
+    read from frontend connection.  The <SIZE> specifies the
+    number of bytes per second.  If client is unable to read
+    at least the given rate,  the connection is closed.  The
+    implementation extends the timeout by the stream data to
+    send.    Use  :option:`--frontend-initial-write-rate-timeout`   to
+    specify       the       initial      timeout.        Use
+    :option:`--frontend-max-write-rate-timeout`  to  set  the  maximum
+    timeout.  Setting 0 disables this feature.
+
+    Default: ``0``
+
+.. option:: --frontend-initial-write-rate-timeout=<DURATION>
+
+    Set the initial timeout set by :option:`--frontend-min-write-rate`
+    feature.
+
+    Default: ``10s``
+
+.. option:: --frontend-max-write-rate-timeout=<DURATION>
+
+    Set the maximum timeout set by :option:`--frontend-min-write-rate`
+    feature.
+
+    Default: ``1m``
 
 
 SSL/TLS

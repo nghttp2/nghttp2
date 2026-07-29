@@ -28,7 +28,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "NGHTTPX" "1" "Apr 19, 2026" "1.69.0" "nghttp2"
+.TH "NGHTTPX" "1" "Jul 29, 2026" "1.70.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .SH SYNOPSIS
@@ -599,17 +599,33 @@ Default: \fB1m\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-stream\-read\-timeout=<DURATION>
-Specify  read timeout  for HTTP/2  streams.  0  means no
-timeout.
+.B \-\-frontend\-stream\-read\-timeout=<DURATION>
+Specify read  timeout for  HTTP/2 and HTTP/3  streams in
+the frontend connection.  0 means no timeout.
 .sp
 Default: \fB0\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-stream\-write\-timeout=<DURATION>
-Specify write  timeout for  HTTP/2 streams.  0  means no
-timeout.
+.B \-\-frontend\-stream\-write\-timeout=<DURATION>
+Specify write  timeout for HTTP/2 and  HTTP/3 streams in
+the frontend connection.  0 means no timeout.
+.sp
+Default: \fB1m\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-stream\-read\-timeout=<DURATION>
+Specify read  timeout for HTTP/2 streams  in the backend
+connection.  0 means no timeout.
+.sp
+Default: \fB0\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-stream\-write\-timeout=<DURATION>
+Specify write timeout for  HTTP/2 streams in the backend
+connection.  0 means no timeout.
 .sp
 Default: \fB1m\fP
 .UNINDENT
@@ -681,6 +697,37 @@ consecutive failed attempts increase the interval.  This
 option caps its maximum value.
 .sp
 Default: \fB2m\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-frontend\-min\-write\-rate=<SIZE>
+Set the  minimum rate  of stream  data that  client must
+read from frontend connection.  The <SIZE> specifies the
+number of bytes per second.  If client is unable to read
+at least the given rate,  the connection is closed.  The
+implementation extends the timeout by the stream data to
+send.    Use  \fB\-\-frontend\-initial\-write\-rate\-timeout\fP   to
+specify       the       initial      timeout.        Use
+\fB\-\-frontend\-max\-write\-rate\-timeout\fP  to  set  the  maximum
+timeout.  Setting 0 disables this feature.
+.sp
+Default: \fB0\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-frontend\-initial\-write\-rate\-timeout=<DURATION>
+Set the initial timeout set by \fB\-\-frontend\-min\-write\-rate\fP
+feature.
+.sp
+Default: \fB10s\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-frontend\-max\-write\-rate\-timeout=<DURATION>
+Set the maximum timeout set by \fB\-\-frontend\-min\-write\-rate\fP
+feature.
+.sp
+Default: \fB1m\fP
 .UNINDENT
 .SS SSL/TLS
 .INDENT 0.0
