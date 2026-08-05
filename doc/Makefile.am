@@ -79,6 +79,7 @@ APIDOCS= \
 	nghttp2_option_set_user_recv_extension_type.rst \
 	nghttp2_option_set_max_continuations.rst \
 	nghttp2_option_set_max_outbound_ack.rst \
+	nghttp2_option_set_max_outbound_queue_size.rst \
 	nghttp2_option_set_max_settings.rst \
 	nghttp2_option_set_stream_reset_rate_limit.rst \
 	nghttp2_option_set_glitch_rate_limit.rst \
