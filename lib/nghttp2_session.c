@@ -498,6 +498,8 @@ static int session_new(nghttp2_session **session_ptr,
   (*session_ptr)->max_outbound_ack = NGHTTP2_DEFAULT_MAX_OBQ_FLOOD_ITEM;
   (*session_ptr)->max_settings = NGHTTP2_DEFAULT_MAX_SETTINGS;
   (*session_ptr)->max_continuations = NGHTTP2_DEFAULT_MAX_CONTINUATIONS;
+  (*session_ptr)->max_outbound_queue_size =
+    NGHTTP2_DEFAULT_MAX_OUTBOUND_QUEUE_SIZE;
 
   if (option) {
     if ((option->opt_set_mask & NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE) &&
@@ -577,6 +579,10 @@ static int session_new(nghttp2_session **session_ptr,
     if (option->opt_set_mask & NGHTTP2_OPT_GLITCH_RATE_LIMIT) {
       nghttp2_ratelim_init(&(*session_ptr)->glitch_ratelim,
                            option->glitch_burst, option->glitch_rate);
+    }
+
+    if (option->opt_set_mask & NGHTTP2_OPT_MAX_OUTBOUND_QUEUE_SIZE) {
+      (*session_ptr)->max_outbound_queue_size = option->max_outbound_queue_size;
     }
   }
 
@@ -5423,8 +5429,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
   return (ssize_t)nghttp2_session_mem_recv2(session, in, inlen);
 }
 
-nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
-                                        const uint8_t *in, size_t inlen) {
+static nghttp2_ssize session_mem_recv(nghttp2_session *session,
+                                      const uint8_t *in, size_t inlen) {
   const uint8_t *first, *last;
   nghttp2_inbound_frame *iframe = &session->iframe;
   size_t readlen;
@@ -7092,6 +7098,23 @@ nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
   assert(in == last);
 
   return (nghttp2_ssize)(in - first);
+}
+
+nghttp2_ssize nghttp2_session_mem_recv2(nghttp2_session *session,
+                                        const uint8_t *in, size_t inlen) {
+  nghttp2_ssize nread;
+
+  nread = session_mem_recv(session, in, inlen);
+  if (nread < 0 && nghttp2_is_fatal((int)nread)) {
+    return nread;
+  }
+
+  if (nghttp2_session_get_outbound_queue_size(session) >
+      session->max_outbound_queue_size) {
+    return NGHTTP2_ERR_FLOODED;
+  }
+
+  return nread;
 }
 
 int nghttp2_session_recv(nghttp2_session *session) {

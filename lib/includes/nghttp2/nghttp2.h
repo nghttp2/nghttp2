@@ -465,10 +465,10 @@ typedef enum {
   /**
    * Possible flooding by peer was detected in this HTTP/2 session.
    * Flooding is measured by how many PING and SETTINGS frames with
-   * ACK flag set are queued for transmission.  These frames are
-   * response for the peer initiated frames, and peer can cause memory
-   * exhaustion on server side to send these frames forever and does
-   * not read network.
+   * ACK flag set are queued for transmission, and the size of the
+   * outbound queue.  These frames are response for the peer initiated
+   * frames, and peer can cause memory exhaustion on server side to
+   * send these frames forever and does not read network.
    */
   NGHTTP2_ERR_FLOODED = -904,
   /**
@@ -3257,6 +3257,21 @@ NGHTTP2_EXTERN void nghttp2_option_set_max_continuations(nghttp2_option *option,
 NGHTTP2_EXTERN void nghttp2_option_set_glitch_rate_limit(nghttp2_option *option,
                                                          uint64_t burst,
                                                          uint64_t rate);
+
+/**
+ * @function
+ *
+ * This function sets the maximum number of frames allowed in the
+ * outbound queue.  The limit is checked after
+ * `nghttp2_session_mem_recv2()` and `nghttp2_session_recv()`.  The
+ * current queue size (excluding deferred DATA frames) can be obtained
+ * by `nghttp2_session_get_outbound_queue_size()`.  If it exceeds
+ * |val|, `nghttp2_session_mem_recv2()` and `nghttp2_session_recv()`
+ * return :enum:`nghttp2_error.NGHTTP2_ERR_FLOODED`.  The default
+ * value is 5000.
+ */
+NGHTTP2_EXTERN void
+nghttp2_option_set_max_outbound_queue_size(nghttp2_option *option, size_t val);
 
 /**
  * @function
