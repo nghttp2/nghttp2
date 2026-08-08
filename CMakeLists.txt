@@ -52,6 +52,7 @@ endif()
 
 include(GNUInstallDirs)
 include(CMakeDependentOption)
+include(CMakePushCheckState)
 
 # For documentation
 find_package(Python3 COMPONENTS Interpreter)
@@ -134,7 +135,6 @@ if(NOT ENABLE_LIB_ONLY)
     endif()
   endforeach()
 
-  include(CMakePushCheckState)
   include(CheckCXXSourceCompiles)
   cmake_push_check_state()
   set(CMAKE_REQUIRED_DEFINITIONS "${CXX1XCXXFLAGS}")
