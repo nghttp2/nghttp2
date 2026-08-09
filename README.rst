@@ -142,6 +142,15 @@ required:
 Use ``--with-libbpf`` configure option to build eBPF program.
 libelf-dev is needed to build libbpf.
 
+To enable the experimental HTTP/3 over QMux support for h2load, the
+following libraries are required:
+
+* `dwnx <https://github.com/ngtcp2/dwnx>`_
+* `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ >= 1.18.0
+
+Use ``--enable-h3qmux`` configure option to enable HTTP/3 over QMux
+feature for h2load.
+
 For Ubuntu 20.04, you can build libbpf from `the source code
 <https://github.com/libbpf/libbpf/releases>`_.  nghttpx requires eBPF
 program for reloading its configuration and hot swapping its

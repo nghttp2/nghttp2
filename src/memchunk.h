@@ -45,6 +45,7 @@ struct iovec {
 #include <algorithm>
 #include <string>
 #include <utility>
+#include <expected>
 
 #include "template.h"
 
@@ -112,6 +113,18 @@ template <typename T> struct Pool {
   size_t poolsize{};
   size_t freelistsize{};
 };
+
+template <typename F>
+concept AppendFunc = requires(F &f, std::span<uint8_t> buf) {
+  []<typename E>(std::expected<size_t, E>) {}(f(buf));
+};
+
+template <typename F>
+using error_type_t =
+  typename decltype([]<typename E>(
+                      std::expected<size_t, E>) -> std::type_identity<E> {
+    return {};
+  }(std::declval<std::invoke_result_t<F &, std::span<uint8_t>>>()))::type;
 
 template <typename Memchunk> struct Memchunks {
   Memchunks(Pool<Memchunk> *pool) : pool(pool) {}
@@ -221,6 +234,35 @@ template <typename Memchunk> struct Memchunks {
     auto last = f(tail->last);
     len += static_cast<size_t>(last - tail->last);
     tail->last = last;
+  }
+
+  // first ensures that at least |max_count| bytes are available to
+  // store in the current buffer, assuming that the chunk size of the
+  // underlying Memchunk is at least |max_count| bytes.  Then call
+  // |f|(std::span{tail->last, |max_count|}) to write data into buffer
+  // directly.  |f| must not write more than |max_count| bytes.  It
+  // must return the number of bytes written, or error.
+  template <AppendFunc F>
+  std::expected<void, error_type_t<F>> append_or_error(size_t max_count, F f) {
+    if (!tail) {
+      head = tail = pool->get();
+    } else if (tail->left() < max_count) {
+      tail->next = pool->get();
+      tail = tail->next;
+    }
+
+    assert(tail->left() >= max_count);
+
+    auto maybe_nwrite = f(std::span{tail->last, max_count});
+    if (!maybe_nwrite) {
+      return std::unexpected{maybe_nwrite.error()};
+    }
+
+    auto nwrite = *maybe_nwrite;
+    len += nwrite;
+    tail->last += nwrite;
+
+    return {};
   }
   size_t copy(Memchunks &dest) {
     auto m = head;

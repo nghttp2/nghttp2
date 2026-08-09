@@ -74,6 +74,8 @@ inline constexpr auto NGHTTP2_H2 = "h2"sv;
 inline constexpr auto NGHTTP2_H1_1_ALPN = "\x8http/1.1"sv;
 inline constexpr auto NGHTTP2_H1_1 = "http/1.1"sv;
 
+inline constexpr auto NGHTTP2_H3QX01 = "h3qx-01"sv;
+
 namespace util {
 
 template <std::predicate<size_t> Pred>
@@ -1389,6 +1391,12 @@ uint8_t msghdr_get_ecn(msghdr *msg, int family);
 // not found, or UDP_GRO is not supported, this function returns 0.
 size_t msghdr_get_udp_gro(msghdr *msg);
 #endif // defined(ENABLE_HTTP3)
+
+#ifdef ENABLE_H3QMUX
+// Returns true if ALPN ID |proto| is supported HTTP/3 over QMux
+// protocol identifier.
+bool check_h3qmux_is_selected(std::string_view proto);
+#endif // ENABLE_H3QMUX
 
 } // namespace util
 

@@ -1949,6 +1949,12 @@ size_t msghdr_get_udp_gro(msghdr *msg) {
 }
 #endif // defined(ENABLE_HTTP3)
 
+#ifdef ENABLE_H3QMUX
+bool check_h3qmux_is_selected(std::string_view proto) {
+  return NGHTTP2_H3QX01 == proto;
+}
+#endif // ENABLE_H3QMUX
+
 } // namespace util
 
 } // namespace nghttp2

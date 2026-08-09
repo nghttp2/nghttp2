@@ -84,6 +84,9 @@
 #  include "h2load_http3_session.h"
 #  include "h2load_quic.h"
 #endif // defined(ENABLE_HTTP3)
+#ifdef ENABLE_H3QMUX
+#  include "h2load_h3qmux_session.h"
+#endif // ENABLE_H3QMUX
 #include "tls.h"
 #include "http2.h"
 #include "util.h"
@@ -1222,6 +1225,10 @@ std::expected<void, Error> Client::connection_made() {
           return std::unexpected{Error::ALPN};
         }
 #endif // defined(ENABLE_HTTP3)
+#ifdef ENABLE_H3QMUX
+      } else if (util::check_h3qmux_is_selected(proto)) {
+        session = std::make_unique<H3QMuxSession>(this);
+#endif // ENABLE_H3QMUX
       } else if (util::check_h2_is_selected(proto)) {
         session = std::make_unique<Http2Session>(this);
       } else if (NGHTTP2_H1_1 == proto) {
@@ -1472,7 +1479,7 @@ std::expected<void, Error> Client::tls_handshake() {
 }
 
 std::expected<void, Error> Client::read_tls() {
-  std::array<uint8_t, 8_k> rawbuf;
+  std::array<uint8_t, 16_k> rawbuf;
 
   ERR_clear_error();
 

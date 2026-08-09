@@ -45,6 +45,7 @@ AM_CPPFLAGS = \
 	@LIBXML2_CFLAGS@ \
 	@LIBEV_CFLAGS@ \
 	@LIBNGHTTP3_CFLAGS@ \
+	@LIBDWNX_CFLAGS@ \
 	@LIBNGTCP2_CRYPTO_WOLFSSL_CFLAGS@ \
 	@LIBNGTCP2_CRYPTO_QUICTLS_CFLAGS@ \
 	@LIBNGTCP2_CRYPTO_LIBRESSL_CFLAGS@ \
@@ -70,6 +71,7 @@ LDADD = $(top_builddir)/lib/libnghttp2.la \
 	@LIBXML2_LIBS@ \
 	@LIBEV_LIBS@ \
 	@LIBNGHTTP3_LIBS@ \
+	@LIBDWNX_LIBS@ \
 	@LIBNGTCP2_CRYPTO_WOLFSSL_LIBS@ \
 	@LIBNGTCP2_CRYPTO_QUICTLS_LIBS@ \
 	@LIBNGTCP2_CRYPTO_LIBRESSL_LIBS@ \
@@ -129,6 +131,11 @@ h2load_SOURCES += \
 	h2load_http3_session.cc h2load_http3_session.h \
 	h2load_quic.cc h2load_quic.h
 endif # ENABLE_HTTP3
+
+if ENABLE_H3QMUX
+h2load_SOURCES += \
+	h2load_h3qmux_session.cc h2load_h3qmux_session.h
+endif # ENABLE_H3QMUX
 
 NGHTTPX_SRCS = \
 	util.cc util.h http2.cc http2.h timegm.c timegm.h base64.h \

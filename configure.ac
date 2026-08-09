@@ -102,6 +102,11 @@ AC_ARG_ENABLE([http3],
                     [(EXPERIMENTAL) Enable HTTP/3.  This requires ngtcp2, nghttp3, and a custom OpenSSL.])],
     [request_http3=$enableval], [request_http3=no])
 
+AC_ARG_ENABLE([h3qmux],
+    [AS_HELP_STRING([--enable-h3qmux],
+                    [(EXPERIMENTAL) Enable HTTP/3 over QMux.  This requires dwnx and nghttp3.])],
+    [request_h3qmux=$enableval], [request_h3qmux=no])
+
 AC_ARG_WITH([libxml2],
     [AS_HELP_STRING([--with-libxml2],
                     [Use libxml2 [default=check]])],
@@ -172,6 +177,11 @@ AC_ARG_WITH([libnghttp3],
                     [Use libnghttp3 [default=check]])],
     [request_libnghttp3=$withval], [request_libnghttp3=check])
 
+AC_ARG_WITH([libdwnx],
+    [AS_HELP_STRING([--with-libdwnx],
+                    [Use libdwnx [default=check]])],
+    [request_libndwnx=$withval], [request_libdwnx=check])
+
 AC_ARG_WITH([libbpf],
     [AS_HELP_STRING([--with-libbpf],
                     [Use libbpf [default=no]])],
@@ -231,6 +241,7 @@ if [test "x$request_lib_only" = "xyes"]; then
   request_neverbleed=no
   request_libngtcp2=no
   request_libnghttp3=no
+  request_libdwnx=no
   request_libbpf=no
 fi
 
@@ -675,6 +686,21 @@ if test "x${request_libnghttp3}" = "xyes" &&
   AC_MSG_ERROR([libnghttp3 was requested (--with-libnghttp3) but not found])
 fi
 
+# dwnx (for src)
+have_libdwnx=no
+if test "x${request_libdwnx}" != "xno"; then
+  PKG_CHECK_MODULES([LIBDWNX], [libdwnx >= 0.0.0], [have_libdwnx=yes],
+                    [have_libdwnx=no])
+  if test "x${have_libdwnx}" = "xno"; then
+    AC_MSG_NOTICE($LIBDWNX_PKG_ERRORS)
+  fi
+fi
+
+if test "x${request_libdwnx}" = "xyes" &&
+   test "x${have_libdwnx}" != "xyes"; then
+  AC_MSG_ERROR([libdwnx was requested (--with-libdwnx) but not found])
+fi
+
 # libbpf (for src)
 have_libbpf=no
 if test "x${request_libbpf}" != "xno"; then
@@ -906,6 +932,22 @@ if test "x${request_http3}" = "xyes" &&
 fi
 
 AM_CONDITIONAL([ENABLE_HTTP3], [ test "x${enable_http3}" = "xyes" ])
+
+# Check HTTP/3 over QMux support
+enable_h3qmux=no
+if test "x${request_h3qmux}" != "xno" &&
+   test "x${have_libdwnx}" = "xyes" &&
+   test "x${have_libnghttp3}" = "xyes"; then
+  enable_h3qmux=yes
+  AC_DEFINE([ENABLE_H3QMUX], [1], [Define to 1 if HTTP/3 over QMux is enabled.])
+fi
+
+if test "x${request_h3qmux}" = "xyes" &&
+   test "x${enable_h3qmux}" != "xyes"; then
+  AC_MSG_ERROR([HTTP/3 over QMux was requested (--enable-h3qmux) but dependencies are not met.])
+fi
+
+AM_CONDITIONAL([ENABLE_H3QMUX], [ test "x${enable_h3qmux}" = "xyes" ])
 
 enable_hpack_tools=no
 # HPACK tools requires jansson
@@ -1311,6 +1353,7 @@ AC_MSG_NOTICE([summary of build options:
       libngtcp2_crypto_boringssl: ${have_libngtcp2_crypto_boringssl} (CFLAGS='${LIBNGTCP2_CRYPTO_BORINGSSL_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_BORINGSSL_LIBS}')
       libngtcp2_crypto_ossl: ${have_libngtcp2_crypto_ossl} (CFLAGS='${LIBNGTCP2_CRYPTO_OSSL_CFLAGS}' LIBS='${LIBNGTCP2_CRYPTO_OSSL_LIBS}')
       libnghttp3:     ${have_libnghttp3} (CFLAGS='${LIBNGHTTP3_CFLAGS}' LIBS='${LIBNGHTTP3_LIBS}')
+      libdwnx:        ${have_libdwnx} (CFLAGS='${LIBDWNX_CFLAGS}' LIBS='${LIBDWNX_LIBS}')
       libbpf:         ${have_libbpf} (CFLAGS='${LIBBPF_CFLAGS}' LIBS='${LIBBPF_LIBS}')
       Libevent(SSL):  ${have_libevent_openssl} (CFLAGS='${LIBEVENT_OPENSSL_CFLAGS}' LIBS='${LIBEVENT_OPENSSL_LIBS}')
       Jansson:        ${have_jansson} (CFLAGS='${JANSSON_CFLAGS}' LIBS='${JANSSON_LIBS}')
@@ -1329,4 +1372,5 @@ AC_MSG_NOTICE([summary of build options:
       Examples:       ${enable_examples}
       Threading:      ${enable_threads}
       HTTP/3 (EXPERIMENTAL): ${enable_http3}
+      HTTP/3 over QMux (EXPERIMENTAL): ${enable_h3qmux}
 ])
