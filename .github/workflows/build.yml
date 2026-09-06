@@ -294,7 +294,7 @@ jobs:
         sudo sed -i '/azure.archive.ubuntu.com/d' /etc/apt/apt-mirrors.txt
         sudo apt-get update
         sudo apt-get install \
-          g++-14 \
+          g++-15 \
           clang-19 \
           autoconf \
           automake \
@@ -344,8 +344,8 @@ jobs:
     - name: Setup gcc (Linux)
       if: runner.os == 'Linux' && matrix.compiler == 'gcc'
       run: |
-        echo 'CC=gcc-14' >> $GITHUB_ENV
-        echo 'CXX=g++-14' >> $GITHUB_ENV
+        echo 'CC=gcc-15' >> $GITHUB_ENV
+        echo 'CXX=g++-15' >> $GITHUB_ENV
         # g++-12 is known to produce false positive warnings.
         echo 'CXXFLAGS=-Wno-restrict' >> $GITHUB_ENV
     - name: Setup gcc (MacOS)
