@@ -338,8 +338,8 @@ bool non_empty_value(const HeaderRefs::value_type *nv) {
 
 namespace {
 void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
-                                  const HeaderRefs &headers, uint8_t nv_flags,
-                                  uint32_t flags) {
+                                  std::span<const HeaderRef> headers,
+                                  uint8_t nv_flags, uint32_t flags) {
   auto it_forwarded = std::ranges::end(headers);
   auto it_xff = std::ranges::end(headers);
   auto it_xfp = std::ranges::end(headers);
@@ -438,19 +438,20 @@ void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
 } // namespace
 
 void copy_headers_to_nva(std::vector<nghttp2_nv> &nva,
-                         const HeaderRefs &headers, uint32_t flags) {
+                         std::span<const HeaderRef> headers, uint32_t flags) {
   copy_headers_to_nva_internal(nva, headers, NGHTTP2_NV_FLAG_NONE, flags);
 }
 
 void copy_headers_to_nva_nocopy(std::vector<nghttp2_nv> &nva,
-                                const HeaderRefs &headers, uint32_t flags) {
+                                std::span<const HeaderRef> headers,
+                                uint32_t flags) {
   copy_headers_to_nva_internal(
     nva, headers, NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE,
     flags);
 }
 
 void build_http1_headers_from_headers(DefaultMemchunks *buf,
-                                      const HeaderRefs &headers,
+                                      std::span<const HeaderRef> headers,
                                       uint32_t flags) {
   auto it_forwarded = std::ranges::end(headers);
   auto it_xff = std::ranges::end(headers);

@@ -30,8 +30,6 @@
 
 #include <cstring>
 
-#include "munitxx.h"
-
 #include <nghttp2/nghttp2.h>
 
 #include "network.h"
@@ -67,7 +65,7 @@ Address parse_addr(const char *ipaddr, const char *port) {
 
   auto rv = getaddrinfo(ipaddr, port, &hints, &res);
 
-  assert_int(0, ==, rv);
+  assert_eq(0, rv);
   assert_not_null(res);
 
   Address addr;
@@ -89,23 +87,24 @@ void test_network_address(void) {
 
   // IPv4
   {
-    constexpr auto ipaddr = "10.1.0.100";
+    static constexpr auto ipaddr = "10.1.0.100";
 
     auto addr = parse_addr(ipaddr, "443");
 
-    assert_ptr_equal(&std::get<sockaddr_in>(addr.skaddr), addr.as_sockaddr());
-    assert_size(sizeof(sockaddr_in), ==, addr.size());
+    assert_eq(reinterpret_cast<sockaddr *>(&std::get<sockaddr_in>(addr.skaddr)),
+              addr.as_sockaddr());
+    assert_eq(sizeof(sockaddr_in), addr.size());
     assert_false(addr.empty());
-    assert_int(AF_INET, ==, addr.family());
-    assert_uint16(443, ==, addr.port());
+    assert_eq(AF_INET, addr.family());
+    assert_eq(443, addr.port());
 
     addr.port(8443);
 
-    assert_uint16(8443, ==, addr.port());
+    assert_eq(8443, addr.port());
 
     in_addr r;
 
-    assert_int(1, ==, inet_pton(AF_INET, ipaddr, &r));
+    assert_eq(1, inet_pton(AF_INET, ipaddr, &r));
 
     const auto &inaddr = std::get<sockaddr_in>(addr.skaddr);
 
@@ -114,23 +113,25 @@ void test_network_address(void) {
 
   // IPv6
   {
-    constexpr auto ipaddr = "2001:db8::1";
+    static constexpr auto ipaddr = "2001:db8::1";
 
     auto addr = parse_addr(ipaddr, "443");
 
-    assert_ptr_equal(&std::get<sockaddr_in6>(addr.skaddr), addr.as_sockaddr());
-    assert_size(sizeof(sockaddr_in6), ==, addr.size());
+    assert_eq(
+      reinterpret_cast<sockaddr *>(&std::get<sockaddr_in6>(addr.skaddr)),
+      addr.as_sockaddr());
+    assert_eq(sizeof(sockaddr_in6), addr.size());
     assert_false(addr.empty());
-    assert_int(AF_INET6, ==, addr.family());
-    assert_uint16(443, ==, addr.port());
+    assert_eq(AF_INET6, addr.family());
+    assert_eq(443, addr.port());
 
     addr.port(8443);
 
-    assert_uint16(8443, ==, addr.port());
+    assert_eq(8443, addr.port());
 
     in6_addr r;
 
-    assert_int(1, ==, inet_pton(AF_INET6, ipaddr, &r));
+    assert_eq(1, inet_pton(AF_INET6, ipaddr, &r));
 
     const auto &inaddr = std::get<sockaddr_in6>(addr.skaddr);
 
@@ -140,7 +141,7 @@ void test_network_address(void) {
 #ifndef _WIN32
   // UNIX
   {
-    constexpr char path[] = "/unix.sock";
+    static constexpr char path[] = "/unix.sock";
 
     Address addr;
 
@@ -148,15 +149,16 @@ void test_network_address(void) {
     unaddr.sun_family = AF_UNIX;
     memcpy(unaddr.sun_path, path, sizeof(path));
 
-    assert_ptr_equal(&std::get<sockaddr_un>(addr.skaddr), addr.as_sockaddr());
-    assert_size(sizeof(sockaddr_un), ==, addr.size());
+    assert_eq(reinterpret_cast<sockaddr *>(&std::get<sockaddr_un>(addr.skaddr)),
+              addr.as_sockaddr());
+    assert_eq(sizeof(sockaddr_un), addr.size());
     assert_false(addr.empty());
-    assert_int(AF_UNIX, ==, addr.family());
-    assert_uint16(0, ==, addr.port());
+    assert_eq(AF_UNIX, addr.family());
+    assert_eq(0, addr.port());
 
     addr.port(8443);
 
-    assert_uint16(0, ==, addr.port());
+    assert_eq(0, addr.port());
   }
 #endif // !defined(_WIN32)
 }

@@ -24,8 +24,6 @@
  */
 #include "shrpx_downstream_test.h"
 
-#include "munitxx.h"
-
 #include "shrpx_downstream.h"
 
 using namespace std::literals;
@@ -70,10 +68,17 @@ void test_downstream_field_store_append_last_header(void) {
 
   fs.add_header_token("echo"sv, "foxtrot"sv, false, -1);
 
-  auto ans =
-    HeaderRefs{{"alphabravogolf0123456789"sv, "CharliedeltAecho0123456789"sv},
-               {"echo"sv, "foxtrot"sv}};
-  assert_true(ans == fs.headers());
+  assert_eq((HeaderRefs{
+              {
+                "alphabravogolf0123456789"sv,
+                "CharliedeltAecho0123456789"sv,
+              },
+              {
+                "echo"sv,
+                "foxtrot"sv,
+              },
+            }),
+            fs.headers());
 }
 
 void test_downstream_field_store_header(void) {
@@ -85,12 +90,11 @@ void test_downstream_field_store_header(void) {
                       http2::HD_CONTENT_LENGTH);
 
   // By token
-  assert_true(HeaderRef(":authority"sv, "1"sv) ==
-              *fs.header(http2::HD__AUTHORITY));
+  assert_eq(HeaderRef(":authority"sv, "1"sv), *fs.header(http2::HD__AUTHORITY));
   assert_null(fs.header(http2::HD__METHOD));
 
   // By name
-  assert_true(HeaderRef("alpha"sv, "0"sv) == *fs.header("alpha"sv));
+  assert_eq(HeaderRef("alpha"sv, "0"sv), *fs.header("alpha"sv));
   assert_null(fs.header("bravo"sv));
 }
 
@@ -109,15 +113,15 @@ void test_downstream_crumble_request_cookie(void) {
 
   auto num_cookies = d.count_crumble_request_cookie();
 
-  assert_size(5, ==, nva.size());
-  assert_size(5, ==, num_cookies);
+  assert_eq(5, nva.size());
+  assert_eq(5, num_cookies);
 
-  HeaderRefs cookies;
-  std::ranges::transform(nva, std::back_inserter(cookies), [](const auto &nv) {
-    return HeaderRef(as_string_view(nv.name, nv.namelen),
-                     as_string_view(nv.value, nv.valuelen),
-                     nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
-  });
+  auto cookies = nva | std::ranges::views::transform([](auto &&nv) {
+                   return HeaderRef(as_string_view(nv.name, nv.namelen),
+                                    as_string_view(nv.value, nv.valuelen),
+                                    nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
+                 }) |
+                 std::ranges::to<std::vector>();
 
   HeaderRefs ans = {{"cookie"sv, "alpha"sv},
                     {"cookie"sv, "bravo"sv},
@@ -125,7 +129,7 @@ void test_downstream_crumble_request_cookie(void) {
                     {"cookie"sv, "delta"sv},
                     {"cookie"sv, "echo"sv}};
 
-  assert_true(ans == cookies);
+  assert_eq(ans, cookies);
   assert_true(cookies[0].no_index);
   assert_true(cookies[1].no_index);
   assert_true(cookies[2].no_index);
@@ -141,8 +145,7 @@ void test_downstream_assemble_request_cookie(void) {
   req.fs.add_header_token("cookie"sv, "bravo;"sv, false, http2::HD_COOKIE);
   req.fs.add_header_token("cookie"sv, "charlie; "sv, false, http2::HD_COOKIE);
   req.fs.add_header_token("cookie"sv, "delta;;"sv, false, http2::HD_COOKIE);
-  assert_stdsv_equal("alpha; bravo; charlie; delta"sv,
-                     d.assemble_request_cookie());
+  assert_eq("alpha; bravo; charlie; delta"sv, d.assemble_request_cookie());
 }
 
 void test_downstream_rewrite_location_response_header(void) {
@@ -155,7 +158,7 @@ void test_downstream_rewrite_location_response_header(void) {
                            http2::HD_LOCATION);
   d.rewrite_location_response_header("https"sv);
   auto location = resp.fs.header(http2::HD_LOCATION);
-  assert_stdsv_equal("https://localhost:8443/"sv, (*location).value);
+  assert_eq("https://localhost:8443/"sv, (*location).value);
 }
 
 void test_downstream_supports_non_final_response(void) {
@@ -201,19 +204,9 @@ void test_downstream_find_affinity_cookie(void) {
   req.fs.add_header_token("cookie"sv, "short=e1e2e3e"sv, false,
                           http2::HD_COOKIE);
 
-  uint32_t aff;
-
-  aff = d.find_affinity_cookie("lb"sv);
-
-  assert_uint32(0xDEADBEEF, ==, aff);
-
-  aff = d.find_affinity_cookie("LB"sv);
-
-  assert_uint32(0xF1F2F3F4, ==, aff);
-
-  aff = d.find_affinity_cookie("short"sv);
-
-  assert_uint32(0, ==, aff);
+  assert_eq(0xDEADBEEF, d.find_affinity_cookie("lb"sv));
+  assert_eq(0xF1F2F3F4, d.find_affinity_cookie("LB"sv));
+  assert_eq(0, d.find_affinity_cookie("short"sv));
 }
 
 } // namespace shrpx

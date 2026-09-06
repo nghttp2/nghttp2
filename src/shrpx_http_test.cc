@@ -30,8 +30,6 @@
 
 #include <cstdlib>
 
-#include "munitxx.h"
-
 #include "shrpx_http.h"
 #include "shrpx_config.h"
 #include "shrpx_log.h"
@@ -59,49 +57,43 @@ const MunitSuite http_suite{
 void test_shrpx_http_create_forwarded(void) {
   BlockAllocator balloc(1024, 1024);
 
-  assert_stdsv_equal(
-    "by=\"example.com:3000\";for=\"[::1]\";host=\"www.example.com\";"
-    "proto=https"sv,
-    http::create_forwarded(
-      balloc, FORWARDED_BY | FORWARDED_FOR | FORWARDED_HOST | FORWARDED_PROTO,
-      "example.com:3000"sv, "[::1]"sv, "www.example.com"sv, "https"sv));
+  assert_eq("by=\"example.com:3000\";for=\"[::1]\";host=\"www.example.com\";"
+            "proto=https"sv,
+            http::create_forwarded(
+              balloc,
+              FORWARDED_BY | FORWARDED_FOR | FORWARDED_HOST | FORWARDED_PROTO,
+              "example.com:3000"sv, "[::1]"sv, "www.example.com"sv, "https"sv));
 
-  assert_stdsv_equal("for=192.168.0.1"sv,
-                     http::create_forwarded(balloc, FORWARDED_FOR, "alpha"sv,
-                                            "192.168.0.1"sv, "bravo"sv,
-                                            "charlie"sv));
+  assert_eq("for=192.168.0.1"sv,
+            http::create_forwarded(balloc, FORWARDED_FOR, "alpha"sv,
+                                   "192.168.0.1"sv, "bravo"sv, "charlie"sv));
 
-  assert_stdsv_equal(
-    "by=_hidden;for=\"[::1]\""sv,
-    http::create_forwarded(balloc, FORWARDED_BY | FORWARDED_FOR, "_hidden"sv,
-                           "[::1]"sv, ""sv, ""sv));
+  assert_eq("by=_hidden;for=\"[::1]\""sv,
+            http::create_forwarded(balloc, FORWARDED_BY | FORWARDED_FOR,
+                                   "_hidden"sv, "[::1]"sv, ""sv, ""sv));
 
-  assert_stdsv_equal(
-    "by=\"[::1]\";for=_hidden"sv,
-    http::create_forwarded(balloc, FORWARDED_BY | FORWARDED_FOR, "[::1]"sv,
-                           "_hidden"sv, ""sv, ""sv));
+  assert_eq("by=\"[::1]\";for=_hidden"sv,
+            http::create_forwarded(balloc, FORWARDED_BY | FORWARDED_FOR,
+                                   "[::1]"sv, "_hidden"sv, ""sv, ""sv));
 
-  assert_stdsv_equal(""sv,
-                     http::create_forwarded(balloc,
-                                            FORWARDED_BY | FORWARDED_FOR |
-                                              FORWARDED_HOST | FORWARDED_PROTO,
-                                            ""sv, ""sv, ""sv, ""sv));
+  assert_eq(""sv, http::create_forwarded(balloc,
+                                         FORWARDED_BY | FORWARDED_FOR |
+                                           FORWARDED_HOST | FORWARDED_PROTO,
+                                         ""sv, ""sv, ""sv, ""sv));
 }
 
 void test_shrpx_http_create_via_header_value(void) {
   std::array<char, 16> buf;
 
-  auto end = http::create_via_header_value(std::ranges::begin(buf), 1, 1);
-
-  assert_stdstring_equal("1.1 nghttpx",
-                         (std::string{std::ranges::begin(buf), end}));
+  assert_eq("1.1 nghttpx", as_string_view(std::ranges::begin(buf),
+                                          http::create_via_header_value(
+                                            std::ranges::begin(buf), 1, 1)));
 
   std::ranges::fill(buf, '\0');
 
-  end = http::create_via_header_value(std::ranges::begin(buf), 2, 0);
-
-  assert_stdstring_equal("2 nghttpx",
-                         (std::string{std::ranges::begin(buf), end}));
+  assert_eq("2 nghttpx", as_string_view(std::ranges::begin(buf),
+                                        http::create_via_header_value(
+                                          std::ranges::begin(buf), 2, 0)));
 }
 
 void test_shrpx_http_create_affinity_cookie(void) {
@@ -111,21 +103,21 @@ void test_shrpx_http_create_affinity_cookie(void) {
   c = http::create_affinity_cookie(balloc, "cookie-val"sv, 0xF1E2D3C4U, ""sv,
                                    false);
 
-  assert_stdsv_equal("cookie-val=f1e2d3c4"sv, c);
+  assert_eq("cookie-val=f1e2d3c4"sv, c);
 
   c = http::create_affinity_cookie(balloc, "alpha"sv, 0x00000000U, ""sv, true);
 
-  assert_stdsv_equal("alpha=00000000; Secure"sv, c);
+  assert_eq("alpha=00000000; Secure"sv, c);
 
   c = http::create_affinity_cookie(balloc, "bravo"sv, 0x01111111U, "bar"sv,
                                    false);
 
-  assert_stdsv_equal("bravo=01111111; Path=bar"sv, c);
+  assert_eq("bravo=01111111; Path=bar"sv, c);
 
   c = http::create_affinity_cookie(balloc, "charlie"sv, 0x01111111U, "bar"sv,
                                    true);
 
-  assert_stdsv_equal("charlie=01111111; Path=bar; Secure"sv, c);
+  assert_eq("charlie=01111111; Path=bar; Secure"sv, c);
 }
 
 void test_shrpx_http_create_altsvc_header_value(void) {
@@ -140,8 +132,8 @@ void test_shrpx_http_create_altsvc_header_value(void) {
       },
     };
 
-    assert_stdsv_equal(R"(h3="127.0.0.1:443"; ma=3600)"sv,
-                       http::create_altsvc_header_value(balloc, altsvcs));
+    assert_eq(R"(h3="127.0.0.1:443"; ma=3600)"sv,
+              http::create_altsvc_header_value(balloc, altsvcs));
   }
 
   {
@@ -159,8 +151,8 @@ void test_shrpx_http_create_altsvc_header_value(void) {
       },
     };
 
-    assert_stdsv_equal(R"(h3=":443"; ma=3600, h3%25="\"foo\":4433")"sv,
-                       http::create_altsvc_header_value(balloc, altsvcs));
+    assert_eq(R"(h3=":443"; ma=3600, h3%25="\"foo\":4433")"sv,
+              http::create_altsvc_header_value(balloc, altsvcs));
   }
 }
 

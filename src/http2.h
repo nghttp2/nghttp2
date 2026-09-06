@@ -34,6 +34,7 @@
 #include <array>
 #include <compare>
 #include <expected>
+#include <format>
 
 #include <nghttp2/nghttp2.h>
 
@@ -231,12 +232,13 @@ enum HeaderBuildOp {
 // is one or more of HeaderBuildOp flags.  They tell function that
 // certain header fields should not be added.
 void copy_headers_to_nva(std::vector<nghttp2_nv> &nva,
-                         const HeaderRefs &headers, uint32_t flags);
+                         std::span<const HeaderRef> headers, uint32_t flags);
 
 // Just like copy_headers_to_nva(), but this adds
 // NGHTTP2_NV_FLAG_NO_COPY_NAME and NGHTTP2_NV_FLAG_NO_COPY_VALUE.
 void copy_headers_to_nva_nocopy(std::vector<nghttp2_nv> &nva,
-                                const HeaderRefs &headers, uint32_t flags);
+                                std::span<const HeaderRef> headers,
+                                uint32_t flags);
 
 // Appends HTTP/1.1 style header lines to |buf| from headers in
 // |headers|.  |headers| must be indexed before this call (its
@@ -245,7 +247,7 @@ void copy_headers_to_nva_nocopy(std::vector<nghttp2_nv> &nva,
 // |flags| is one or more of HeaderBuildOp flags.  They tell function
 // that certain header fields should not be added.
 void build_http1_headers_from_headers(DefaultMemchunks *buf,
-                                      const HeaderRefs &headers,
+                                      std::span<const HeaderRef> headers,
                                       uint32_t flags);
 
 // Return positive window_size_increment if WINDOW_UPDATE should be
@@ -350,6 +352,8 @@ void index_header(HeaderIndex &hdidx, int32_t token, size_t idx);
 struct LinkHeader {
   // The region of URI.  This might not be NULL-terminated.
   std::string_view uri;
+
+  auto operator<=>(const LinkHeader &) const = default;
 };
 
 // Returns next URI-reference in Link header field value |src|.  If no
@@ -450,5 +454,35 @@ std::string encode_extpri(const nghttp2_extpri &extpri);
 } // namespace http2
 
 } // namespace nghttp2
+
+template <>
+struct std::formatter<nghttp2::Header> : public std::formatter<std::string> {
+  auto format(const nghttp2::Header &h, auto &ctx) const {
+    auto s = std::format("Header{{name={} value={} token={} no_index={}}}",
+                         h.name, h.value, h.token, h.no_index);
+
+    return std::formatter<std::string>::format(s, ctx);
+  }
+};
+
+template <>
+struct std::formatter<nghttp2::HeaderRef> : public std::formatter<std::string> {
+  auto format(const nghttp2::HeaderRef &h, auto &ctx) const {
+    auto s = std::format("HeaderRef{{name={} value={} token={} no_index={}}}",
+                         h.name, h.value, h.token, h.no_index);
+
+    return std::formatter<std::string>::format(s, ctx);
+  }
+};
+
+template <>
+struct std::formatter<nghttp2::http2::LinkHeader>
+  : public std::formatter<std::string> {
+  auto format(const nghttp2::http2::LinkHeader &h, auto &ctx) const {
+    auto s = std::format("LinkHeader{{uri={}}}", h.uri);
+
+    return std::formatter<std::string>::format(s, ctx);
+  }
+};
 
 #endif // !defined(HTTP2_H)

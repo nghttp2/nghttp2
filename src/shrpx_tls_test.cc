@@ -24,8 +24,6 @@
  */
 #include "shrpx_tls_test.h"
 
-#include "munitxx.h"
-
 #include "shrpx_tls.h"
 #include "shrpx_log.h"
 #include "util.h"
@@ -55,62 +53,58 @@ const MunitSuite tls_suite{
 void test_shrpx_tls_create_lookup_tree(void) {
   auto tree = std::make_unique<tls::CertLookupTree>();
 
-  constexpr std::string_view hostnames[] = {
-    "example.com"sv,             // 0
-    "www.example.org"sv,         // 1
-    "*www.example.org"sv,        // 2
-    "xy*.host.domain"sv,         // 3
-    "*yy.host.domain"sv,         // 4
-    "nghttp2.sourceforge.net"sv, // 5
-    "sourceforge.net"sv,         // 6
-    "sourceforge.net"sv,         // 7, duplicate
-    "*.foo.bar"sv,               // 8, oo.bar is suffix of *.foo.bar
-    "oo.bar"sv                   // 9
-  };
-  auto num = array_size(hostnames);
+  static constexpr auto hostnames = std::to_array({
+    "example.com"sv,         // 0
+    "www.example.org"sv,     // 1
+    "*www.example.org"sv,    // 2
+    "xy*.host.domain"sv,     // 3
+    "*yy.host.domain"sv,     // 4
+    "nghttp2.example.net"sv, // 5
+    "example.net"sv,         // 6
+    "example.net"sv,         // 7, duplicate
+    "*.foo.bar"sv,           // 8, oo.bar is suffix of *.foo.bar
+    "oo.bar"sv               // 9
+  });
 
-  for (size_t idx = 0; idx < num; ++idx) {
-    assert_true(tree->add_cert(hostnames[idx], idx).has_value());
+  for (auto i = 0UZ; i < hostnames.size(); ++i) {
+    assert_ok(tree->add_cert(hostnames[i], i));
   }
 
   tree->dump();
 
-  constexpr auto badval = std::numeric_limits<size_t>::max();
-
-  assert_size(0, ==, tree->lookup(hostnames[0]).value_or(badval));
-  assert_size(1, ==, tree->lookup(hostnames[1]).value_or(badval));
-  assert_size(2, ==, tree->lookup("2www.example.org"sv).value_or(badval));
-  assert_false(tree->lookup("www2.example.org"sv).has_value());
-  assert_size(3, ==, tree->lookup("xy1.host.domain"sv).value_or(badval));
+  assert_ok_eq(0, tree->lookup(hostnames[0]));
+  assert_ok_eq(1, tree->lookup(hostnames[1]));
+  assert_ok_eq(2, tree->lookup("2www.example.org"sv));
+  assert_err(Error::ENTITY_NOT_FOUND, tree->lookup("www2.example.org"sv));
+  assert_ok_eq(3, tree->lookup("xy1.host.domain"sv));
   // Does not match *yy.host.domain, because * must match at least 1
   // character.
-  assert_false(tree->lookup("yy.host.domain"sv).has_value());
-  assert_size(4, ==, tree->lookup("xyy.host.domain"sv).value_or(badval));
-  assert_false(tree->lookup(""sv).has_value());
-  assert_size(5, ==, tree->lookup(hostnames[5]).value_or(badval));
-  assert_size(6, ==, tree->lookup(hostnames[6]).value_or(badval));
-  static constexpr char h6[] = "pdylay.sourceforge.net";
+  assert_err(Error::ENTITY_NOT_FOUND, tree->lookup("yy.host.domain"sv));
+  assert_ok_eq(4, tree->lookup("xyy.host.domain"sv));
+  assert_err(Error::INVALID_ARGUMENT, tree->lookup(""sv));
+  assert_ok_eq(5, tree->lookup(hostnames[5]));
+  assert_ok_eq(6, tree->lookup(hostnames[6]));
+  static constexpr char h6[] = "pdylay.example.net";
   for (size_t i = 0; i < 7; ++i) {
-    assert_false(
-      tree->lookup(std::string_view{h6 + i, str_size(h6) - i}).has_value());
+    assert_err(Error::ENTITY_NOT_FOUND,
+               tree->lookup(std::string_view{h6 + i, str_size(h6) - i}));
   }
-  assert_size(8, ==, tree->lookup("x.foo.bar"sv).value_or(badval));
-  assert_size(9, ==, tree->lookup(hostnames[9]).value_or(badval));
+  assert_ok_eq(8, tree->lookup("x.foo.bar"sv));
+  assert_ok_eq(9, tree->lookup(hostnames[9]));
 
-  constexpr std::string_view names[] = {
-    "rab"sv,  // 1
-    "zab"sv,  // 2
-    "zzub"sv, // 3
-    "ab"sv    // 4
-  };
-  num = array_size(names);
+  static constexpr auto names = std::to_array({
+    "rab"sv,  // 0
+    "zab"sv,  // 1
+    "zzub"sv, // 2
+    "ab"sv    // 3
+  });
 
   tree = std::make_unique<tls::CertLookupTree>();
-  for (size_t idx = 0; idx < num; ++idx) {
-    assert_true(tree->add_cert(names[idx], idx).has_value());
+  for (auto i = 0UZ; i < names.size(); ++i) {
+    assert_ok(tree->add_cert(names[i], i));
   }
-  for (size_t i = 0; i < num; ++i) {
-    assert_size(i, ==, tree->lookup(names[i]).value_or(badval));
+  for (auto i = 0UZ; i < names.size(); ++i) {
+    assert_ok_eq(i, tree->lookup(names[i]));
   }
 }
 
@@ -148,7 +142,7 @@ void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void) {
   SSL_CTX_set_app_data(nghttp2_ssl_ctx, nghttp2_tls_ctx_data.get());
   rv = SSL_CTX_use_certificate_chain_file(nghttp2_ssl_ctx, nghttp2_certfile);
 
-  assert_int(1, ==, rv);
+  assert_eq(1, rv);
 
   static constexpr char examples_certfile[] =
     NGHTTP2_SRC_DIR "/test.example.com.pem";
@@ -159,7 +153,7 @@ void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void) {
   SSL_CTX_set_app_data(examples_ssl_ctx, examples_tls_ctx_data.get());
   rv = SSL_CTX_use_certificate_chain_file(examples_ssl_ctx, examples_certfile);
 
-  assert_int(1, ==, rv);
+  assert_eq(1, rv);
 
   tls::CertLookupTree tree;
   std::vector<std::vector<SSL_CTX *>> indexed_ssl_ctx;
@@ -167,19 +161,17 @@ void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void) {
   tls::cert_lookup_tree_add_ssl_ctx(&tree, indexed_ssl_ctx, nghttp2_ssl_ctx);
   tls::cert_lookup_tree_add_ssl_ctx(&tree, indexed_ssl_ctx, examples_ssl_ctx);
 
-  constexpr auto badval = std::numeric_limits<size_t>::max();
-
-  assert_false(tree.lookup("not-used.nghttp2.org"sv).has_value());
+  assert_err(Error::ENTITY_NOT_FOUND, tree.lookup("not-used.nghttp2.org"sv));
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
-  assert_size(0, ==, tree.lookup("www.test.nghttp2.org"sv).value_or(badval));
-  assert_size(1, ==, tree.lookup("w.test.nghttp2.org"sv).value_or(badval));
-  assert_size(2, ==, tree.lookup("test.nghttp2.org"sv).value_or(badval));
+  assert_ok_eq(0, tree.lookup("www.test.nghttp2.org"sv));
+  assert_ok_eq(1, tree.lookup("w.test.nghttp2.org"sv));
+  assert_ok_eq(2, tree.lookup("test.nghttp2.org"sv));
 #else  // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
-  assert_size(0, ==, tree.lookup("test.nghttp2.org"sv).value_or(badval));
-  assert_size(1, ==, tree.lookup("w.test.nghttp2.org"sv).value_or(badval));
-  assert_size(2, ==, tree.lookup("www.test.nghttp2.org"sv).value_or(badval));
+  assert_ok_eq(0, tree.lookup("test.nghttp2.org"sv));
+  assert_ok_eq(1, tree.lookup("w.test.nghttp2.org"sv));
+  assert_ok_eq(2, tree.lookup("www.test.nghttp2.org"sv));
 #endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
-  assert_size(3, ==, tree.lookup("test.example.com"sv).value_or(badval));
+  assert_ok_eq(3, tree.lookup("test.example.com"sv));
 }
 
 template <size_t N, size_t M>
@@ -240,7 +232,7 @@ static Address parse_addr(const char *ipaddr) {
 
   auto rv = getaddrinfo(ipaddr, "443", &hints, &res);
 
-  assert_int(0, ==, rv);
+  assert_eq(0, rv);
   assert_not_null(res);
 
   Address addr;
@@ -257,9 +249,8 @@ void test_shrpx_tls_verify_numeric_hostname(void) {
     static constexpr auto ipaddr = "127.0.0.1"sv;
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/verify_hostname.crt");
     auto addr = parse_addr(ipaddr.data());
-    auto rv = tls::verify_numeric_hostname(cert, ipaddr, &addr);
 
-    assert_true(rv.has_value());
+    assert_ok(tls::verify_numeric_hostname(cert, ipaddr, &addr));
 
     X509_free(cert);
   }
@@ -269,9 +260,8 @@ void test_shrpx_tls_verify_numeric_hostname(void) {
     static constexpr auto ipaddr = "::1"sv;
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/verify_hostname.crt");
     auto addr = parse_addr(ipaddr.data());
-    auto rv = tls::verify_numeric_hostname(cert, ipaddr, &addr);
 
-    assert_true(rv.has_value());
+    assert_ok(tls::verify_numeric_hostname(cert, ipaddr, &addr));
 
     X509_free(cert);
   }
@@ -281,9 +271,9 @@ void test_shrpx_tls_verify_numeric_hostname(void) {
     static constexpr auto ipaddr = "192.168.0.127"sv;
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/verify_hostname.crt");
     auto addr = parse_addr(ipaddr.data());
-    auto rv = tls::verify_numeric_hostname(cert, ipaddr, &addr);
 
-    assert_false(rv.has_value());
+    assert_err(Error::TLS_VERIFY_PEER,
+               tls::verify_numeric_hostname(cert, ipaddr, &addr));
 
     X509_free(cert);
   }
@@ -293,9 +283,9 @@ void test_shrpx_tls_verify_numeric_hostname(void) {
     static constexpr auto ipaddr = "192.168.0.1"sv;
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/ipaddr.crt");
     auto addr = parse_addr(ipaddr.data());
-    auto rv = tls::verify_numeric_hostname(cert, ipaddr, &addr);
 
-    assert_false(rv.has_value());
+    assert_err(Error::TLS_VERIFY_PEER,
+               tls::verify_numeric_hostname(cert, ipaddr, &addr));
 
     X509_free(cert);
   }
@@ -305,9 +295,8 @@ void test_shrpx_tls_verify_numeric_hostname(void) {
     static constexpr auto ipaddr = "127.0.0.1"sv;
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/nosan_ip.crt");
     auto addr = parse_addr(ipaddr.data());
-    auto rv = tls::verify_numeric_hostname(cert, ipaddr, &addr);
 
-    assert_true(rv.has_value());
+    assert_ok(tls::verify_numeric_hostname(cert, ipaddr, &addr));
 
     X509_free(cert);
   }
@@ -317,9 +306,8 @@ void test_shrpx_tls_verify_dns_hostname(void) {
   {
     // Successful exact DNS name match in SAN
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/verify_hostname.crt");
-    auto rv = tls::verify_dns_hostname(cert, "nghttp2.example.com"sv);
 
-    assert_true(rv.has_value());
+    assert_ok(tls::verify_dns_hostname(cert, "nghttp2.example.com"sv));
 
     X509_free(cert);
   }
@@ -327,9 +315,8 @@ void test_shrpx_tls_verify_dns_hostname(void) {
   {
     // Successful wildcard DNS name match in SAN
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/verify_hostname.crt");
-    auto rv = tls::verify_dns_hostname(cert, "www.nghttp2.example.com"sv);
 
-    assert_true(rv.has_value());
+    assert_ok(tls::verify_dns_hostname(cert, "www.nghttp2.example.com"sv));
 
     X509_free(cert);
   }
@@ -337,9 +324,9 @@ void test_shrpx_tls_verify_dns_hostname(void) {
   {
     // CommonName is not used if SAN is available.
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/verify_hostname.crt");
-    auto rv = tls::verify_dns_hostname(cert, "localhost"sv);
 
-    assert_false(rv.has_value());
+    assert_err(Error::TLS_VERIFY_PEER,
+               tls::verify_dns_hostname(cert, "localhost"sv));
 
     X509_free(cert);
   }
@@ -347,9 +334,8 @@ void test_shrpx_tls_verify_dns_hostname(void) {
   {
     // Successful DNS name match in CommonName
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/nosan.crt");
-    auto rv = tls::verify_dns_hostname(cert, "localhost"sv);
 
-    assert_true(rv.has_value());
+    assert_ok(tls::verify_dns_hostname(cert, "localhost"sv));
 
     X509_free(cert);
   }

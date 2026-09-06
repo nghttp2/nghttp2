@@ -29,8 +29,6 @@
 #  include <spanstream>
 #endif // !defined(__APPLE__)
 
-#include "munitxx.h"
-
 #include "template.h"
 
 using namespace std::literals;
@@ -55,14 +53,16 @@ const MunitSuite template_suite{
 void test_template_immutable_string(void) {
   ImmutableString null;
 
+  assert_eq("", as_string_view(null));
   assert_string_equal("", null.c_str());
-  assert_size(0, ==, null.size());
+  assert_eq(0, null.size());
   assert_true(null.empty());
 
   ImmutableString from_cstr("alpha");
 
+  assert_eq("alpha", as_string_view(from_cstr));
   assert_string_equal("alpha", from_cstr.c_str());
-  assert_size(5, ==, from_cstr.size());
+  assert_eq(5, from_cstr.size());
   assert_false(from_cstr.empty());
   assert_true("alpha" == from_cstr);
   assert_true(from_cstr == "alpha");
@@ -71,43 +71,43 @@ void test_template_immutable_string(void) {
 
   ImmutableString from_stdstr("alpha"s);
 
-  assert_true("alpha" == from_stdstr);
+  assert_eq("alpha", as_string_view(from_stdstr));
 
   // copy constructor
   ImmutableString src("charlie");
   ImmutableString copy = src;
 
-  assert_string_equal("charlie", copy.c_str());
-  assert_size(7, ==, copy.size());
+  assert_eq("charlie", as_string_view(copy));
+  assert_eq(7, copy.size());
 
   // copy assignment
   ImmutableString copy2;
   copy2 = src;
 
-  assert_string_equal("charlie", copy2.c_str());
-  assert_size(7, ==, copy2.size());
+  assert_eq("charlie", as_string_view(copy2));
+  assert_eq(7, copy2.size());
 
   // move constructor
   ImmutableString move = std::move(copy);
 
-  assert_string_equal("charlie", move.c_str());
-  assert_size(7, ==, move.size());
-  assert_string_equal("", copy.c_str());
-  assert_size(0, ==, copy.size());
+  assert_eq("charlie", as_string_view(move));
+  assert_eq(7, move.size());
+  assert_eq("", as_string_view(copy));
+  assert_eq(0, copy.size());
 
   // move assignment
   move = std::move(from_cstr);
 
-  assert_string_equal("alpha", move.c_str());
-  assert_size(5, ==, move.size());
-  assert_string_equal("", from_cstr.c_str());
-  assert_size(0, ==, from_cstr.size());
+  assert_eq("alpha", as_string_view(move));
+  assert_eq(5, move.size());
+  assert_eq("", as_string_view(from_cstr));
+  assert_eq(0, from_cstr.size());
 
   // from string literal
   auto from_lit = "bravo"_is;
 
-  assert_string_equal("bravo", from_lit.c_str());
-  assert_size(5, ==, from_lit.size());
+  assert_eq("bravo", as_string_view(from_lit));
+  assert_eq(5, from_lit.size());
 
   // equality
   ImmutableString eq("delta");
@@ -120,10 +120,10 @@ void test_template_immutable_string(void) {
   // operator[]
   ImmutableString br_op("foxtrot");
 
-  assert_char('f', ==, br_op[0]);
-  assert_char('o', ==, br_op[1]);
-  assert_char('t', ==, br_op[6]);
-  assert_char('\0', ==, br_op[7]);
+  assert_eq('f', br_op[0]);
+  assert_eq('o', br_op[1]);
+  assert_eq('t', br_op[6]);
+  assert_eq('\0', br_op[7]);
 
   // operator==(const ImmutableString &, const ImmutableString &)
   {
@@ -144,7 +144,7 @@ void test_template_immutable_string(void) {
     std::spanstream ss{buf};
     ss << a;
 
-    assert_stdsv_equal("foo", std::string_view{ss.span()});
+    assert_eq("foo", as_string_view(ss.span()));
   }
 #endif // !defined(__APPLE__)
 
@@ -153,7 +153,7 @@ void test_template_immutable_string(void) {
     std::string a = "alpha";
     a += ImmutableString("bravo");
 
-    assert_stdstring_equal("alphabravo", a);
+    assert_eq("alphabravo", a);
   }
 }
 
@@ -165,34 +165,33 @@ void test_template_as_uint8_span(void) {
   // dynamic extent
   auto s = as_uint8_span(std::span{a, 2});
 
-  assert_size(sizeof(a), ==, s.size());
-  assert_size(std::dynamic_extent, ==, s.extent);
+  assert_eq(sizeof(a), s.size());
+  assert_eq(std::dynamic_extent, s.extent);
   assert_memory_equal(s.size(), &a, s.data());
 
   // non-dynamic extent
   auto t = as_uint8_span(std::span<uint32_t, 2>{a, 2});
 
-  assert_size(sizeof(a), ==, t.size());
-  assert_size(sizeof(a), ==, t.extent);
+  assert_eq(sizeof(a), t.size());
+  assert_eq(sizeof(a), t.extent);
   assert_memory_equal(t.size(), &a, t.data());
 }
 
 void test_template_as_string_view(void) {
   {
-    auto a = std::to_array<uint8_t>({'a', 'l', 'p', 'h', 'a'});
+    static constexpr auto a = std::to_array<uint8_t>({'a', 'l', 'p', 'h', 'a'});
 
-    assert_stdsv_equal("alpha"sv, as_string_view(a));
-    assert_stdsv_equal(
-      "alpha"sv, as_string_view(std::ranges::begin(a), std::ranges::end(a)));
-    assert_stdsv_equal("alp"sv, as_string_view(std::ranges::begin(a), 3));
+    assert_eq("alpha"sv, as_string_view(a));
+    assert_eq("alpha"sv,
+              as_string_view(std::ranges::begin(a), std::ranges::end(a)));
+    assert_eq("alp"sv, as_string_view(std::ranges::begin(a), 3));
   }
 
   {
-    auto s = ""s;
+    static constexpr auto s = ""s;
 
-    assert_stdsv_equal(""sv, as_string_view(s));
-    assert_stdsv_equal(
-      ""sv, as_string_view(std::ranges::begin(s), std::ranges::end(s)));
+    assert_eq(""sv, as_string_view(s));
+    assert_eq(""sv, as_string_view(std::ranges::begin(s), std::ranges::end(s)));
   }
 }
 
@@ -219,7 +218,7 @@ void test_template_dlist(void) {
     ++n;
     dl.append(f.get());
 
-    assert_size(static_cast<size_t>(n), ==, dl.size());
+    assert_eq(static_cast<size_t>(n), dl.size());
   }
 
   // iteration
@@ -228,35 +227,35 @@ void test_template_dlist(void) {
   for (auto f = dl.head; f; f = f->dlnext) {
     ++n;
 
-    assert_int(n, ==, f->n);
+    assert_eq(n, f->n);
   }
 
   // move constructor
   auto dl_move = std::move(dl);
 
-  assert_size(0, ==, dl.size());
-  assert_size(arr.size(), ==, dl_move.size());
+  assert_eq(0, dl.size());
+  assert_eq(arr.size(), dl_move.size());
 
   n = 0;
 
   for (auto f = dl_move.head; f; f = f->dlnext) {
     ++n;
 
-    assert_int(n, ==, f->n);
+    assert_eq(n, f->n);
   }
 
   // move assignment
   dl = std::move(dl_move);
 
-  assert_size(0, ==, dl_move.size());
-  assert_size(arr.size(), ==, dl.size());
+  assert_eq(0, dl_move.size());
+  assert_eq(arr.size(), dl.size());
 
   n = 0;
 
   for (auto f = dl.head; f; f = f->dlnext) {
     ++n;
 
-    assert_int(n, ==, f->n);
+    assert_eq(n, f->n);
   }
 
   // remove
@@ -265,7 +264,7 @@ void test_template_dlist(void) {
   for (size_t i = 0; i < del.size(); ++i) {
     dl.remove(arr[static_cast<size_t>(del[i] - 1)].get());
 
-    assert_size(arr.size() - i - 1, ==, dl.size());
+    assert_eq(arr.size() - i - 1, dl.size());
   }
 
   auto left = std::to_array<int>({3, 4, 5, 7, 9});
@@ -273,14 +272,14 @@ void test_template_dlist(void) {
 
   for (size_t i = 0; i < left.size(); ++i, head = head->dlnext) {
     assert_not_null(head);
-    assert_int(left[i], ==, head->n);
+    assert_eq(left[i], head->n);
   }
 
   head = dl.tail;
 
   for (size_t i = left.size(); i > 0; --i, head = head->dlprev) {
     assert_not_null(head);
-    assert_int(left[i - 1], ==, head->n);
+    assert_eq(left[i - 1], head->n);
   }
 
   // not empty
