@@ -28,8 +28,6 @@
 #include <array>
 #include <numeric>
 
-#include "munitxx.h"
-
 #include <nghttp2/nghttp2.h>
 
 #include "siphash.h"
@@ -63,7 +61,7 @@ void test_siphash(void) {
   std::array<uint8_t, 15> input;
   std::iota(std::ranges::begin(input), std::ranges::end(input), 0);
 
-  assert_uint64(0xA129CA6149BE45E5ULL, ==, siphash24(key, input));
+  assert_eq(0xA129CA6149BE45E5ULL, siphash24(key, input));
 }
 
 } // namespace nghttp2

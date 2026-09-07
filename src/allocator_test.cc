@@ -24,8 +24,6 @@
  */
 #include "allocator_test.h"
 
-#include "munitxx.h"
-
 #include <nghttp2/nghttp2.h>
 
 #include "util.h"
@@ -67,7 +65,7 @@ void test_allocator_alloc(void) {
 
     auto p = balloc.alloc(117);
 
-    assert_size(117, ==, std::ranges::size(p));
+    assert_eq(117, std::ranges::size(p));
 
     // Check p is writable
     std::ranges::copy(std::span{data}.first(std::ranges::size(p)),
@@ -77,7 +75,7 @@ void test_allocator_alloc(void) {
                         std::ranges::data(p));
 
     // Check the isolation threshold works.
-    assert_ptr_equal(balloc.retain, balloc.head);
+    assert_eq(balloc.retain, balloc.head);
 
     p = balloc.alloc(1024);
 
@@ -86,7 +84,7 @@ void test_allocator_alloc(void) {
 
     assert_memory_equal(std::ranges::size(p), std::ranges::data(data),
                         std::ranges::data(p));
-    assert_ptr_not_equal(balloc.retain, balloc.head);
+    assert_ne(balloc.retain, balloc.head);
   }
 
   {
@@ -95,8 +93,8 @@ void test_allocator_alloc(void) {
     // This consumes the allocated block.
     auto p = balloc.alloc(8);
 
-    assert_size(8, ==, std::ranges::size(p));
-    assert_ptr_equal(balloc.head->last, balloc.head->end);
+    assert_eq(8, std::ranges::size(p));
+    assert_eq(balloc.head->last, balloc.head->end);
 
     // This allocates new block.
     p = balloc.alloc(8);
@@ -116,9 +114,9 @@ void test_allocator_realloc(void) {
 
     p = balloc.realloc(std::ranges::data(p), 110);
 
-    assert_ptr_not_equal(orig_ptr, std::ranges::data(p));
-    assert_size(200, ==, balloc.get_alloc_length(std::ranges::data(p)));
-    assert_size(110, ==, std::ranges::size(p));
+    assert_ne(orig_ptr, std::ranges::data(p));
+    assert_eq(200, balloc.get_alloc_length(std::ranges::data(p)));
+    assert_eq(110, std::ranges::size(p));
   }
 
   {
@@ -129,67 +127,58 @@ void test_allocator_realloc(void) {
 
     p = balloc.realloc(std::ranges::data(p), 100);
 
-    assert_ptr_equal(orig_ptr, std::ranges::data(p));
-    assert_size(100, ==, std::ranges::size(p));
+    assert_eq(orig_ptr, std::ranges::data(p));
+    assert_eq(100, std::ranges::size(p));
   }
 }
 
 void test_make_string_ref(void) {
   BlockAllocator balloc{256, 256};
 
-  auto s = make_string_ref(balloc, "foo the bar"sv);
-
-  assert_stdsv_equal("foo the bar"sv, s);
+  assert_eq("foo the bar"sv, make_string_ref(balloc, "foo the bar"sv));
 }
 
 void test_concat_string_ref(void) {
   BlockAllocator balloc{256, 256};
 
-  auto s = concat_string_ref(balloc, "alpha "sv, "bravo "sv, "charlie"sv);
+  assert_eq("alpha bravo charlie"sv,
+            concat_string_ref(balloc, "alpha "sv, "bravo "sv, "charlie"sv));
 
-  assert_stdsv_equal("alpha bravo charlie"sv, s);
-
-  auto t = concat_string_ref(balloc);
-
-  assert_stdsv_equal(""sv, t);
+  assert_eq(""sv, concat_string_ref(balloc));
 }
 
 void test_realloc_concat_string_ref(void) {
   BlockAllocator balloc{256, 256};
 
   auto s = make_string_ref(balloc, "alpha"sv);
-  assert_size(6, ==,
-              balloc.get_alloc_length(
-                reinterpret_cast<const uint8_t *>(std::ranges::data(s))));
+  assert_eq(6, balloc.get_alloc_length(
+                 reinterpret_cast<const uint8_t *>(std::ranges::data(s))));
 
   auto t = realloc_concat_string_ref(balloc, s, " "sv, "bravo"sv);
 
-  assert_stdsv_equal("alpha bravo"sv, t);
-  assert_ptr_not_equal(std::ranges::data(s), std::ranges::data(t));
-  assert_size(12, ==,
-              balloc.get_alloc_length(
-                reinterpret_cast<const uint8_t *>(std::ranges::data(t))));
+  assert_eq("alpha bravo"sv, t);
+  assert_ne(std::ranges::data(s), std::ranges::data(t));
+  assert_eq(12, balloc.get_alloc_length(
+                  reinterpret_cast<const uint8_t *>(std::ranges::data(t))));
 
   auto u = realloc_concat_string_ref(balloc, t, " charlie"sv);
 
-  assert_stdsv_equal("alpha bravo charlie"sv, u);
-  assert_ptr_not_equal(std::ranges::data(t), std::ranges::data(u));
-  assert_size(24, ==,
-              balloc.get_alloc_length(
-                reinterpret_cast<const uint8_t *>(std::ranges::data(u))));
+  assert_eq("alpha bravo charlie"sv, u);
+  assert_ne(std::ranges::data(t), std::ranges::data(u));
+  assert_eq(24, balloc.get_alloc_length(
+                  reinterpret_cast<const uint8_t *>(std::ranges::data(u))));
 
   auto v = realloc_concat_string_ref(balloc, u, " delta"sv);
 
-  assert_stdsv_equal("alpha bravo charlie delta"sv, v);
-  assert_ptr_not_equal(std::ranges::data(u), std::ranges::data(v));
-  assert_size(48, ==,
-              balloc.get_alloc_length(
-                reinterpret_cast<const uint8_t *>(std::ranges::data(v))));
+  assert_eq("alpha bravo charlie delta"sv, v);
+  assert_ne(std::ranges::data(u), std::ranges::data(v));
+  assert_eq(48, balloc.get_alloc_length(
+                  reinterpret_cast<const uint8_t *>(std::ranges::data(v))));
 
   auto w = realloc_concat_string_ref(balloc, v, " echo"sv);
 
-  assert_stdsv_equal("alpha bravo charlie delta echo"sv, w);
-  assert_ptr_equal(std::ranges::data(v), std::ranges::data(w));
+  assert_eq("alpha bravo charlie delta echo"sv, w);
+  assert_eq(std::ranges::data(v), std::ranges::data(w));
 }
 
 } // namespace nghttp2

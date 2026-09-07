@@ -26,8 +26,6 @@
 
 #include <cstring>
 
-#include "munitxx.h"
-
 #include <nghttp2/nghttp2.h>
 
 #include "base64.h"
@@ -50,75 +48,36 @@ const MunitSuite base64_suite{
 };
 
 void test_base64_encode(void) {
-  {
-    std::string in = "\xff";
-    auto out = base64::encode(in);
-    assert_stdstring_equal("/w==", out);
-  }
-  {
-    std::string in = "\xff\xfe";
-    auto out = base64::encode(in);
-    assert_stdstring_equal("//4=", out);
-  }
-  {
-    std::string in = "\xff\xfe\xfd";
-    auto out = base64::encode(in);
-    assert_stdstring_equal("//79", out);
-  }
-  {
-    std::string in = "\xff\xfe\xfd\xfc";
-    auto out = base64::encode(in);
-    assert_stdstring_equal("//79/A==", out);
-  }
+  assert_eq("/w==", base64::encode("\xff"sv));
+  assert_eq("//4=", base64::encode("\xff\xfe"sv));
+  assert_eq("//79", base64::encode("\xff\xfe\xfd"sv));
+  assert_eq("//79/A==", base64::encode("\xff\xfe\xfd\xfc"sv));
 }
 
 void test_base64_decode(void) {
   BlockAllocator balloc(4096, 4096);
-  {
-    auto in = "/w=="sv;
-    assert_stdsv_equal("\xff"sv, as_string_view(base64::decode(balloc, in)));
-  }
-  {
-    auto in = "//4="sv;
-    assert_stdsv_equal("\xff\xfe"sv,
-                       as_string_view(base64::decode(balloc, in)));
-  }
-  {
-    auto in = "//79"sv;
-    assert_stdsv_equal("\xff\xfe\xfd"sv,
-                       as_string_view(base64::decode(balloc, in)));
-  }
-  {
-    auto in = "//79/A=="sv;
-    assert_stdsv_equal("\xff\xfe\xfd\xfc"sv,
-                       as_string_view(base64::decode(balloc, in)));
-  }
-  {
-    // we check the number of valid input must be multiples of 4
-    auto in = "//79="sv;
-    assert_stdsv_equal(""sv, as_string_view(base64::decode(balloc, in)));
-  }
-  {
-    // ending invalid character at the boundary of multiples of 4 is
-    // bad
-    auto in = "bmdodHRw\n"sv;
-    assert_stdsv_equal(""sv, as_string_view(base64::decode(balloc, in)));
-  }
-  {
-    // after seeing '=', subsequent input must be also '='.
-    auto in = "//79/A=A"sv;
-    assert_stdsv_equal(""sv, as_string_view(base64::decode(balloc, in)));
-  }
-  {
-    // additional '=' at the end is bad
-    auto in = "//79/A======"sv;
-    assert_stdsv_equal(""sv, as_string_view(base64::decode(balloc, in)));
-  }
-  {
-    // Chars with high bit set
-    auto in = "\xCA\xFE\xCA\xCE"sv;
-    assert_stdsv_equal(""sv, as_string_view(base64::decode(balloc, in)));
-  }
+
+  assert_eq("\xff"sv, as_string_view(base64::decode(balloc, "/w=="sv)));
+  assert_eq("\xff\xfe"sv, as_string_view(base64::decode(balloc, "//4="sv)));
+  assert_eq("\xff\xfe\xfd"sv, as_string_view(base64::decode(balloc, "//79"sv)));
+  assert_eq("\xff\xfe\xfd\xfc"sv,
+            as_string_view(base64::decode(balloc, "//79/A=="sv)));
+
+  // we check the number of valid input must be multiples of 4
+  assert_eq(""sv, as_string_view(base64::decode(balloc, "//79="sv)));
+
+  // ending invalid character at the boundary of multiples of 4 is
+  // bad
+  assert_eq(""sv, as_string_view(base64::decode(balloc, "bmdodHRw\n"sv)));
+
+  // after seeing '=', subsequent input must be also '='.
+  assert_eq(""sv, as_string_view(base64::decode(balloc, "//79/A=A"sv)));
+
+  // additional '=' at the end is bad
+  assert_eq(""sv, as_string_view(base64::decode(balloc, "//79/A======"sv)));
+
+  // Chars with high bit set
+  assert_eq(""sv, as_string_view(base64::decode(balloc, "\xCA\xFE\xCA\xCE"sv)));
 }
 
 } // namespace nghttp2

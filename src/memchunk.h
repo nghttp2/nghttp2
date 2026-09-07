@@ -70,7 +70,7 @@ template <size_t N> struct Memchunk {
   uint8_t *pos, *last;
   Memchunk *knext;
   Memchunk *next{};
-  static const size_t size = N;
+  static constexpr size_t size = N;
 };
 
 template <typename T> struct Pool {
