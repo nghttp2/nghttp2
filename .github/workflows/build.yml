@@ -22,7 +22,7 @@ jobs:
   build-cache:
     strategy:
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-26, macos-15]
+        os: [ubuntu-26.04, ubuntu-26.04-arm, macos-26, macos-15]
 
     runs-on: ${{ matrix.os }}
 
@@ -228,7 +228,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-24.04, macos-26, macos-15]
+        os: [ubuntu-26.04, macos-26, macos-15]
         compiler: [gcc, clang]
         buildtool: [autotools, cmake]
         http3: [http3, no-http3]
@@ -263,17 +263,17 @@ jobs:
         - openssl: awslc
           compiler: gcc
         include:
-        - os: ubuntu-24.04
+        - os: ubuntu-26.04
           compiler: clang
           buildtool: distcheck
           http3: http3
           openssl: awslc
-        - os: ubuntu-24.04-arm
+        - os: ubuntu-26.04-arm
           compiler: clang
           buildtool: autotools
           http3: http3
           openssl: wolfssl
-        - os: ubuntu-24.04-arm
+        - os: ubuntu-26.04-arm
           compiler: gcc
           buildtool: autotools
           http3: http3
@@ -441,7 +441,7 @@ jobs:
 
         OPENSSL_CFLAGS="-I$PWD/include/"
         OPENSSL_LIBS="-L$PWD/build/ssl -lssl -L$PWD/build/crypto -lcrypto -pthread"
-        EXTRA_AUTOTOOLS_OPTS="$EXTRA_AUTOTOOLS_OPTS --without-neverbleed --without-jemalloc"
+        EXTRA_AUTOTOOLS_OPTS="$EXTRA_AUTOTOOLS_OPTS --without-neverbleed --without-jemalloc --disable-examples"
 
         echo 'OPENSSL_CFLAGS='"$OPENSSL_CFLAGS" >> $GITHUB_ENV
         echo 'OPENSSL_LIBS='"$OPENSSL_LIBS" >> $GITHUB_ENV
@@ -574,7 +574,7 @@ jobs:
       matrix:
         host: [x86_64-w64-mingw32, i686-w64-mingw32]
 
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     env:
       HOST: ${{ matrix.host }}
@@ -679,7 +679,7 @@ jobs:
     permissions:
       contents: write
 
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
     - uses: actions/checkout@v7
