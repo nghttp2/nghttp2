@@ -2068,13 +2068,8 @@ std::expected<size_t, Error> CertLookupTree::lookup(std::string_view hostname) {
     std::ranges::reverse_copy(hostname, std::ranges::begin(buf)).out};
 
   for (;;) {
-    size_t nread = 0;
-
-    auto maybe_wcidx =
-      rev_wildcard_router_.match_prefix(&nread, &last_node, rev_host);
-    if (!maybe_wcidx ||
-        // '*' must match at least one byte
-        nread == rev_host.size()) {
+    auto rv = rev_wildcard_router_.match_prefix(last_node, rev_host);
+    if (!rv) {
       if (best_idx == -1) {
         return std::unexpected{Error::ENTITY_NOT_FOUND};
       }
@@ -2082,15 +2077,22 @@ std::expected<size_t, Error> CertLookupTree::lookup(std::string_view hostname) {
       return as_unsigned(best_idx);
     }
 
-    auto wcidx = *maybe_wcidx;
+    std::tie(last_node, rev_host) = *rv;
 
-    rev_host = std::string_view{std::ranges::begin(rev_host) + nread,
-                                std::ranges::end(rev_host)};
+    // '*' must match at least one byte
+    if (rev_host.empty()) {
+      if (best_idx == -1) {
+        return std::unexpected{Error::ENTITY_NOT_FOUND};
+      }
 
-    auto rev_prefix = std::string_view{std::ranges::begin(rev_host) + 1,
-                                       std::ranges::end(rev_host)};
+      return as_unsigned(best_idx);
+    }
 
-    auto &wpat = wildcard_patterns_[wcidx];
+    assert(last_node->index != -1);
+
+    auto rev_prefix = rev_host.substr(1);
+
+    auto &wpat = wildcard_patterns_[as_unsigned(last_node->index)];
     for (auto &wprefix : wpat.rev_prefix) {
       if (!util::ends_with(rev_prefix, wprefix.prefix)) {
         continue;

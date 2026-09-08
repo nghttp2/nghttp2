@@ -1567,19 +1567,14 @@ size_t match_downstream_addr_group_host(
     const RNode *last_node = nullptr;
 
     for (;;) {
-      size_t nread = 0;
-      auto maybe_wcidx =
-        rev_wildcard_router.match_prefix(&nread, &last_node, rev_host);
-      if (!maybe_wcidx) {
+      auto rv = rev_wildcard_router.match_prefix(last_node, rev_host);
+      if (!rv) {
         break;
       }
 
-      auto wcidx = *maybe_wcidx;
+      std::tie(last_node, rev_host) = *rv;
 
-      rev_host = std::string_view{std::ranges::begin(rev_host) + nread,
-                                  std::ranges::end(rev_host)};
-
-      auto &wc = wildcard_patterns[wcidx];
+      auto &wc = wildcard_patterns[as_unsigned(last_node->index)];
       if (auto maybe_group = wc.router.match(""sv, path); maybe_group) {
         best_group = *maybe_group;
 
