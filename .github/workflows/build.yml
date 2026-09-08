@@ -559,7 +559,7 @@ jobs:
     - uses: actions/setup-go@v7
       if: matrix.buildtool != 'distcheck'
       with:
-        go-version: "1.25"
+        go-version: "1.26"
     - name: Integration test
       # Integration tests for nghttpx; autotools erases build
       # artifacts.
