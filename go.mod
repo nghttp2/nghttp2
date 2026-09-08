@@ -1,6 +1,6 @@
 module github.com/nghttp2/nghttp2
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/bradfitz/gomemcache v0.0.0-20230905024940-24af94b03874
