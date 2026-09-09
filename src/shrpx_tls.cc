@@ -1718,46 +1718,21 @@ accept_connection(Worker *worker, int fd, const sockaddr *addr,
 }
 
 bool tls_hostname_match(std::string_view pattern, std::string_view hostname) {
-  auto ptWildcard = std::ranges::find(pattern, '*');
-  if (ptWildcard == std::ranges::end(pattern)) {
+  // Wildcard match requirements:
+  // - '*' must be the left most label on its own.
+  // - '*' must not be included more than once.
+  // - At least 2 dots are required to enable wildcard match.
+  if (!pattern.starts_with("*.") || pattern.substr(2).contains('*') ||
+      !pattern.substr(2).contains('.')) {
     return util::strieq(pattern, hostname);
   }
 
-  auto ptLeftLabelEnd = std::ranges::find(pattern, '.');
-  auto wildcardEnabled = true;
-  // Do case-insensitive match. At least 2 dots are required to enable
-  // wildcard match. Also wildcard must be in the left-most label.
-  // Don't attempt to match a presented identifier where the wildcard
-  // character is embedded within an A-label.
-  if (ptLeftLabelEnd == std::ranges::end(pattern) ||
-      !util::contains(ptLeftLabelEnd + 1, std::ranges::end(pattern), '.') ||
-      ptLeftLabelEnd < ptWildcard || util::istarts_with(pattern, "xn--"sv)) {
-    wildcardEnabled = false;
-  }
+  auto pos = hostname.find('.');
 
-  if (!wildcardEnabled) {
-    return util::strieq(pattern, hostname);
-  }
-
-  auto hnLeftLabelEnd = std::ranges::find(hostname, '.');
-  if (hnLeftLabelEnd == std::ranges::end(hostname) ||
-      !util::strieq(
-        std::string_view{ptLeftLabelEnd, std::ranges::end(pattern)},
-        std::string_view{hnLeftLabelEnd, std::ranges::end(hostname)})) {
-    return false;
-  }
-  // Perform wildcard match. Here '*' must match at least one
+  // Do case-insensitive match.  Also '*' must match at least a single
   // character.
-  if (hnLeftLabelEnd - std::ranges::begin(hostname) <
-      ptLeftLabelEnd - std::ranges::begin(pattern)) {
-    return false;
-  }
-  return util::istarts_with(
-           std::string_view{std::ranges::begin(hostname), hnLeftLabelEnd},
-           std::string_view{std::ranges::begin(pattern), ptWildcard}) &&
-         util::iends_with(
-           std::string_view{std::ranges::begin(hostname), hnLeftLabelEnd},
-           std::string_view{ptWildcard + 1, ptLeftLabelEnd});
+  return pos != std::string_view::npos && pos &&
+         util::strieq(pattern.substr(1), hostname.substr(pos));
 }
 
 namespace {

@@ -268,9 +268,10 @@ std::expected<SSL *, Error> create_ssl(SSL_CTX *ssl_ctx);
 bool upstream_tls_enabled(const ConnectionConfig &connconf);
 
 // Performs TLS hostname match.  |pattern| can contain wildcard
-// character '*', which matches prefix of target hostname.  There are
+// character '*' as its left most complete label, which matches the
+// single left most non-empty label of the target hostname.  There are
 // several restrictions to make wildcard work.  The matching algorithm
-// is based on RFC 6125.
+// is based on RFC 9525.
 bool tls_hostname_match(std::string_view pattern, std::string_view hostname);
 
 // Caches |session|.  |session| is serialized into ASN1
