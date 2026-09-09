@@ -174,40 +174,34 @@ void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void) {
   assert_ok_eq(3, tree.lookup("test.example.com"sv));
 }
 
-template <size_t N, size_t M>
-bool tls_hostname_match_wrapper(const char (&pattern)[N],
-                                const char (&hostname)[M]) {
-  return tls::tls_hostname_match(std::string_view{pattern, N},
-                                 std::string_view{hostname, M});
-}
-
 void test_shrpx_tls_tls_hostname_match(void) {
-  assert_true(tls_hostname_match_wrapper("example.com", "example.com"));
-  assert_true(tls_hostname_match_wrapper("example.com", "EXAMPLE.com"));
+  assert_true(tls::tls_hostname_match("example.com", "example.com"));
+  assert_true(tls::tls_hostname_match("example.com", "EXAMPLE.com"));
 
   // check wildcard
-  assert_true(tls_hostname_match_wrapper("*.example.com", "www.example.com"));
-  assert_true(tls_hostname_match_wrapper("*w.example.com", "www.example.com"));
-  assert_true(
-    tls_hostname_match_wrapper("www*.example.com", "www1.example.com"));
-  assert_true(
-    tls_hostname_match_wrapper("www*.example.com", "WWW12.EXAMPLE.com"));
+  assert_true(tls::tls_hostname_match("*.example.com", "www.example.com"));
+  // wildcard must be the left most label and it must occupy the label
+  // entirely.
+  assert_false(tls::tls_hostname_match("*w.example.com", "www.example.com"));
+  assert_false(tls::tls_hostname_match("www*.example.com", "www1.example.com"));
+  assert_false(
+    tls::tls_hostname_match("www*.example.com", "WWW12.EXAMPLE.com"));
+  assert_false(
+    tls::tls_hostname_match("client*.example.com", "server.example.com"));
   // at least 2 dots are required after '*'
-  assert_false(tls_hostname_match_wrapper("*.com", "example.com"));
-  assert_false(tls_hostname_match_wrapper("*", "example.com"));
+  assert_false(tls::tls_hostname_match("*.com", "example.com"));
+  assert_false(tls::tls_hostname_match("*", "example.com"));
+  // Multiple '*'s disable wildcard match.
+  assert_false(tls::tls_hostname_match("*.*.example.com", "www.*.example.com"));
   // '*' must be in left most label
   assert_false(
-    tls_hostname_match_wrapper("blog.*.example.com", "blog.my.example.com"));
-  // prefix is wrong
-  assert_false(
-    tls_hostname_match_wrapper("client*.example.com", "server.example.com"));
+    tls::tls_hostname_match("blog.*.example.com", "blog.my.example.com"));
   // '*' must match at least one character
-  assert_false(
-    tls_hostname_match_wrapper("www*.example.com", "www.example.com"));
+  assert_false(tls::tls_hostname_match("*.example.com", ".example.com"));
 
-  assert_false(tls_hostname_match_wrapper("example.com", "nghttp2.org"));
-  assert_false(tls_hostname_match_wrapper("www.example.com", "example.com"));
-  assert_false(tls_hostname_match_wrapper("example.com", "www.example.com"));
+  assert_false(tls::tls_hostname_match("example.com", "nghttp2.org"));
+  assert_false(tls::tls_hostname_match("www.example.com", "example.com"));
+  assert_false(tls::tls_hostname_match("example.com", "www.example.com"));
 }
 
 static X509 *load_cert(const char *path) {
