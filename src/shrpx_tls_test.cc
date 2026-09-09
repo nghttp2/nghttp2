@@ -56,9 +56,9 @@ void test_shrpx_tls_create_lookup_tree(void) {
   static constexpr auto hostnames = std::to_array({
     "example.com"sv,         // 0
     "www.example.org"sv,     // 1
-    "*www.example.org"sv,    // 2
-    "xy*.host.domain"sv,     // 3
-    "*yy.host.domain"sv,     // 4
+    "*.example.org"sv,       // 2; wildcard
+    "www*.host.domain"sv,    // 3; not wildcard
+    "*www.host.domain"sv,    // 4; not wildcard
     "nghttp2.example.net"sv, // 5
     "example.net"sv,         // 6
     "example.net"sv,         // 7, duplicate
@@ -75,19 +75,18 @@ void test_shrpx_tls_create_lookup_tree(void) {
   assert_ok_eq(0, tree->lookup(hostnames[0]));
   assert_ok_eq(1, tree->lookup(hostnames[1]));
   assert_ok_eq(2, tree->lookup("2www.example.org"sv));
-  assert_err(Error::ENTITY_NOT_FOUND, tree->lookup("www2.example.org"sv));
-  assert_ok_eq(3, tree->lookup("xy1.host.domain"sv));
-  // Does not match *yy.host.domain, because * must match at least 1
-  // character.
-  assert_err(Error::ENTITY_NOT_FOUND, tree->lookup("yy.host.domain"sv));
-  assert_ok_eq(4, tree->lookup("xyy.host.domain"sv));
+  assert_err(Error::ENTITY_NOT_FOUND, tree->lookup("example.org"sv));
+  assert_err(Error::ENTITY_NOT_FOUND, tree->lookup(".example.org"sv));
+  assert_ok_eq(3, tree->lookup("www*.host.domain"sv));
+  assert_err(Error::ENTITY_NOT_FOUND, tree->lookup("wwwz.host.domain"sv));
+  assert_ok_eq(4, tree->lookup("*www.host.domain"sv));
+  assert_err(Error::ENTITY_NOT_FOUND, tree->lookup("zwww.host.domain"sv));
   assert_err(Error::INVALID_ARGUMENT, tree->lookup(""sv));
   assert_ok_eq(5, tree->lookup(hostnames[5]));
   assert_ok_eq(6, tree->lookup(hostnames[6]));
-  static constexpr char h6[] = "pdylay.example.net";
-  for (size_t i = 0; i < 7; ++i) {
-    assert_err(Error::ENTITY_NOT_FOUND,
-               tree->lookup(std::string_view{h6 + i, str_size(h6) - i}));
+  static constexpr auto h6 = "pdylay.example.net"sv;
+  for (auto i = 0UZ; i < 7; ++i) {
+    assert_err(Error::ENTITY_NOT_FOUND, tree->lookup(h6.substr(i)));
   }
   assert_ok_eq(8, tree->lookup("x.foo.bar"sv));
   assert_ok_eq(9, tree->lookup(hostnames[9]));
@@ -101,11 +100,16 @@ void test_shrpx_tls_create_lookup_tree(void) {
 
   tree = std::make_unique<tls::CertLookupTree>();
   for (auto i = 0UZ; i < names.size(); ++i) {
-    assert_ok(tree->add_cert(names[i], i));
+    assert_ok_eq(i, tree->add_cert(names[i], i));
   }
   for (auto i = 0UZ; i < names.size(); ++i) {
     assert_ok_eq(i, tree->lookup(names[i]));
   }
+
+  tree = std::make_unique<tls::CertLookupTree>();
+
+  assert_err(Error::INVALID_ARGUMENT, tree->add_cert("", 0));
+  assert_err(Error::INVALID_ARGUMENT, tree->add_cert(".nghttp2.org", 0));
 }
 
 // We use cfssl to generate key pairs.
@@ -163,13 +167,13 @@ void test_shrpx_tls_cert_lookup_tree_add_ssl_ctx(void) {
 
   assert_err(Error::ENTITY_NOT_FOUND, tree.lookup("not-used.nghttp2.org"sv));
 #ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
-  assert_ok_eq(0, tree.lookup("www.test.nghttp2.org"sv));
+  assert_ok_eq(1, tree.lookup("www.test.nghttp2.org"sv));
   assert_ok_eq(1, tree.lookup("w.test.nghttp2.org"sv));
   assert_ok_eq(2, tree.lookup("test.nghttp2.org"sv));
 #else  // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
   assert_ok_eq(0, tree.lookup("test.nghttp2.org"sv));
   assert_ok_eq(1, tree.lookup("w.test.nghttp2.org"sv));
-  assert_ok_eq(2, tree.lookup("www.test.nghttp2.org"sv));
+  assert_ok_eq(1, tree.lookup("www.test.nghttp2.org"sv));
 #endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
   assert_ok_eq(3, tree.lookup("test.example.com"sv));
 }
