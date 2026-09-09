@@ -145,20 +145,19 @@ struct WildcardPattern {
 
 class CertLookupTree {
 public:
-  CertLookupTree();
+  CertLookupTree() = default;
 
   // Adds hostname pattern |hostname| to the lookup tree, associating
   // value |index|.  When the queried host matches this pattern,
-  // |index| is returned.  We support wildcard pattern.  The left most
-  // '*' is considered as wildcard character, and it must match at
-  // least one character.  If the same pattern has been already added,
-  // this function does not alter the tree, and returns the existing
-  // matching index.
+  // |index| is returned.  We support wildcard pattern.  If the left
+  // most complete label is '*', it is considered as wildcard
+  // character, and it must match at least one character.  The
+  // wildcard rule is subject to RFC 9525.  If the same pattern has
+  // been already added, this function does not alter the tree, and
+  // returns the existing matching index.
   //
   // The caller should lower-case |hostname| since this function does
   // do that, and lookup function performs case-sensitive match.
-  //
-  // TODO Treat wildcard pattern described as RFC 6125.
   //
   // This function returns the index.  It may fail with error (e.g.,
   // hostname is too long).  If the returned index equals to |index|,
@@ -168,9 +167,7 @@ public:
                                         size_t index);
 
   // Looks up index using the given |hostname|.  The exact match takes
-  // precedence over wildcard match.  For wildcard match, longest
-  // match (sum of matched suffix and prefix length in bytes) is
-  // preferred, breaking a tie with longer suffix.
+  // precedence over wildcard match.
   //
   // The caller should lower-case |hostname| since this function
   // performs case-sensitive match.
@@ -180,13 +177,21 @@ public:
   void dump() const;
 
 private:
-  // Exact match
-  Router router_;
-  // Wildcard reversed suffix match.  The returned index is into
-  // wildcard_patterns_.
-  Router rev_wildcard_router_;
-  // Stores wildcard suffix patterns.
-  std::vector<WildcardPattern> wildcard_patterns_;
+  struct Hash {
+    using is_transparent = void;
+
+    size_t operator()(std::string_view s) const noexcept {
+      return std::hash<std::string_view>{}(s);
+    }
+
+    size_t operator()(const std::string &s) const noexcept {
+      return std::hash<std::string_view>{}(s);
+    }
+  };
+  // patterns_ contains the server identities in TLS certificate.  If
+  // it starts with '.', it is a wildcard.  We do not add any identity
+  // that starts with '.' and is not wildcard.
+  std::unordered_map<std::string, size_t, Hash, std::equal_to<>> patterns_;
 };
 
 // Adds hostnames in certificate in |ssl_ctx| to lookup tree |lt|.

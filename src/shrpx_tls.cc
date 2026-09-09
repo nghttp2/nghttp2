@@ -1962,136 +1962,64 @@ std::expected<void, Error> check_cert(SSL *ssl, const DownstreamAddr *addr,
   return check_cert(ssl, raddr, hostname);
 }
 
-CertLookupTree::CertLookupTree() {}
-
 std::expected<size_t, Error> CertLookupTree::add_cert(std::string_view hostname,
                                                       size_t idx) {
-  std::array<char, NI_MAXHOST> buf;
-
   // NI_MAXHOST includes terminal NULL byte
-  if (hostname.empty() || hostname.size() + 1 > buf.size()) {
+  if (hostname.empty() || hostname.size() + 1 > NI_MAXHOST ||
+      hostname.starts_with('.')) {
     return std::unexpected{Error::INVALID_ARGUMENT};
   }
 
-  auto wildcard_it = std::ranges::find(hostname, '*');
-  if (wildcard_it != std::ranges::end(hostname) &&
-      wildcard_it + 1 != std::ranges::end(hostname)) {
-    auto wildcard_prefix =
-      std::string_view{std::ranges::begin(hostname), wildcard_it};
-    auto wildcard_suffix =
-      std::string_view{wildcard_it + 1, std::ranges::end(hostname)};
-
-    auto rev_suffix = std::string_view{
-      std::ranges::begin(buf),
-      std::ranges::reverse_copy(wildcard_suffix, std::ranges::begin(buf)).out};
-
-    WildcardPattern *wpat;
-
-    if (wildcard_patterns_.size() !=
-        rev_wildcard_router_.add_route(rev_suffix, wildcard_patterns_.size())) {
-      auto maybe_wcidx = rev_wildcard_router_.match(rev_suffix);
-
-      assert(maybe_wcidx.has_value());
-
-      wpat = &wildcard_patterns_[*maybe_wcidx];
-    } else {
-      wildcard_patterns_.emplace_back();
-      wpat = &wildcard_patterns_.back();
-    }
-
-    auto rev_prefix = std::string_view{
-      std::ranges::begin(buf),
-      std::ranges::reverse_copy(wildcard_prefix, std::ranges::begin(buf)).out};
-
-    for (auto &p : wpat->rev_prefix) {
-      if (p.prefix == rev_prefix) {
-        return p.idx;
-      }
-    }
-
-    wpat->rev_prefix.emplace_back(rev_prefix, idx);
-
-    return idx;
+  // Wildcard is enabled when the following conditions are all met.
+  if (hostname.starts_with("*.") && !hostname.substr(2).contains('*') &&
+      hostname.substr(2).contains('.')) {
+    hostname = hostname.substr(1);
   }
 
-  return router_.add_route(hostname, idx);
+  auto [it, ok] = patterns_.emplace(hostname, idx);
+  if (!ok) {
+    return (*it).second;
+  }
+
+  return idx;
 }
 
 std::expected<size_t, Error> CertLookupTree::lookup(std::string_view hostname) {
-  std::array<char, NI_MAXHOST> buf;
-
-  // NI_MAXHOST includes terminal NULL byte
-  if (hostname.empty() || hostname.size() + 1 > buf.size()) {
+  if (hostname.empty()) {
     return std::unexpected{Error::INVALID_ARGUMENT};
   }
 
-  // Always prefer exact match
-  if (auto maybe_idx = router_.match(hostname); maybe_idx) {
-    return *maybe_idx;
-  }
-
-  if (wildcard_patterns_.empty()) {
+  auto pos = hostname.find('.');
+  if (pos == 0) {
     return std::unexpected{Error::ENTITY_NOT_FOUND};
   }
 
-  ssize_t best_idx = -1;
-  size_t best_prefixlen = 0;
-  const RNode *last_node = nullptr;
-
-  auto rev_host = std::string_view{
-    std::ranges::begin(buf),
-    std::ranges::reverse_copy(hostname, std::ranges::begin(buf)).out};
-
-  for (;;) {
-    auto rv = rev_wildcard_router_.match_prefix(last_node, rev_host);
-    if (!rv) {
-      if (best_idx == -1) {
-        return std::unexpected{Error::ENTITY_NOT_FOUND};
-      }
-
-      return as_unsigned(best_idx);
-    }
-
-    std::tie(last_node, rev_host) = *rv;
-
-    // '*' must match at least one byte
-    if (rev_host.empty()) {
-      if (best_idx == -1) {
-        return std::unexpected{Error::ENTITY_NOT_FOUND};
-      }
-
-      return as_unsigned(best_idx);
-    }
-
-    assert(last_node->index != -1);
-
-    auto rev_prefix = rev_host.substr(1);
-
-    auto &wpat = wildcard_patterns_[as_unsigned(last_node->index)];
-    for (auto &wprefix : wpat.rev_prefix) {
-      if (!util::ends_with(rev_prefix, wprefix.prefix)) {
-        continue;
-      }
-
-      auto prefixlen =
-        wprefix.prefix.size() + as_unsigned(&rev_host[0] - &buf[0]);
-
-      // Breaking a tie with longer suffix
-      if (prefixlen < best_prefixlen) {
-        continue;
-      }
-
-      best_idx = as_signed(wprefix.idx);
-      best_prefixlen = prefixlen;
-    }
+  // Try exact match first.
+  if (auto it = patterns_.find(hostname); it != std::ranges::end(patterns_)) {
+    return (*it).second;
   }
+
+  // Then wildcard match.
+  if (pos == std::string_view::npos) {
+    return std::unexpected{Error::ENTITY_NOT_FOUND};
+  }
+
+  if (auto it = patterns_.find(hostname.substr(pos));
+      it != std::ranges::end(patterns_)) {
+    return (*it).second;
+  }
+
+  return std::unexpected{Error::ENTITY_NOT_FOUND};
 }
 
 void CertLookupTree::dump() const {
-  std::println(stderr, "exact:");
-  router_.dump();
-  std::println(stderr, "wildcard suffix (reversed):");
-  rev_wildcard_router_.dump();
+  for (auto &[key, value] : patterns_) {
+    if (key.starts_with('.')) {
+      std::println(stderr, "*{} => {}", key, value);
+    } else {
+      std::println(stderr, "{} => {}", key, value);
+    }
+  }
 }
 
 void cert_lookup_tree_add_ssl_ctx(
