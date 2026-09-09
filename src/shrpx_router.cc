@@ -32,8 +32,8 @@
 
 namespace shrpx {
 
-RNode::RNode(std::string_view s, ssize_t index, ssize_t wildcard_index)
-  : s(s), index(index), wildcard_index(wildcard_index) {}
+RNode::RNode(std::span<const char> s, ssize_t index, ssize_t wildcard_index)
+  : s{s}, index{index}, wildcard_index{wildcard_index} {}
 
 Router::~Router() {}
 
@@ -60,14 +60,15 @@ void add_next_node(RNode *node, std::unique_ptr<RNode> new_node) {
 }
 } // namespace
 
-void Router::add_node(RNode *node, std::string_view pattern, ssize_t index,
+void Router::add_node(RNode *node, std::span<const char> pattern, ssize_t index,
                       ssize_t wildcard_index) {
-  auto pat = make_string_ref(balloc_, pattern);
+  auto pat = make_string_ref(balloc_, as_string_view(pattern));
   auto new_node = std::make_unique<RNode>(pat, index, wildcard_index);
   add_next_node(node, std::move(new_node));
 }
 
-size_t Router::add_route(std::string_view pattern, size_t idx, bool wildcard) {
+size_t Router::add_route_internal(std::span<const char> pattern, size_t idx,
+                                  bool wildcard) {
   ssize_t index = -1, wildcard_index = -1;
   if (wildcard) {
     wildcard_index = as_signed(idx);
@@ -76,26 +77,23 @@ size_t Router::add_route(std::string_view pattern, size_t idx, bool wildcard) {
   }
 
   auto node = &root_;
-  size_t i = 0;
 
   for (;;) {
-    auto next_node = find_next_node(node, pattern[i]);
-    if (next_node == nullptr) {
-      add_node(node, pattern.substr(i), index, wildcard_index);
+    auto next_node = find_next_node(node, pattern[0]);
+    if (!next_node) {
+      add_node(node, pattern, index, wildcard_index);
       return idx;
     }
 
     node = next_node;
 
-    auto slen = pattern.size() - i;
-    auto s = pattern.data() + i;
-    auto n = std::min(node->s.size(), slen);
-    size_t j;
-    for (j = 0; j < n && node->s[j] == s[j]; ++j)
+    auto n = std::min(node->s.size(), pattern.size());
+    size_t i;
+    for (i = 0; i < n && node->s[i] == pattern[i]; ++i)
       ;
-    if (j == n) {
+    if (i == n) {
       // The common prefix was matched
-      if (slen == node->s.size()) {
+      if (pattern.size() == node->s.size()) {
         // Complete match
         if (index != -1) {
           if (node->index != -1) {
@@ -115,166 +113,158 @@ size_t Router::add_route(std::string_view pattern, size_t idx, bool wildcard) {
         return idx;
       }
 
-      if (slen > node->s.size()) {
+      if (pattern.size() > node->s.size()) {
         // We still have pattern to add
-        i += j;
+        pattern = pattern.subspan(n);
 
         continue;
       }
     }
 
-    if (node->s.size() > j) {
+    pattern = pattern.subspan(i);
+
+    if (node->s.size() > i) {
       // node must be split into 2 nodes.  new_node is now the child
       // of node.
-      auto new_node = std::make_unique<RNode>(node->s.substr(j), node->index,
+      auto new_node = std::make_unique<RNode>(node->s.subspan(i), node->index,
                                               node->wildcard_index);
       std::swap(node->next, new_node->next);
 
-      node->s = node->s.substr(0, j);
+      node->s = node->s.first(i);
       node->index = -1;
       node->wildcard_index = -1;
 
       add_next_node(node, std::move(new_node));
 
-      if (slen == j) {
+      if (pattern.empty()) {
         node->index = index;
         node->wildcard_index = wildcard_index;
         return idx;
       }
     }
 
-    i += j;
+    assert(!pattern.empty());
 
-    assert(pattern.size() > i);
-    add_node(node, pattern.substr(i), index, wildcard_index);
+    add_node(node, pattern, index, wildcard_index);
 
     return idx;
   }
 }
 
-namespace {
-const RNode *match_complete(size_t *offset, const RNode *node,
-                            const char *first, const char *last) {
-  *offset = 0;
+size_t Router::add_route(std::string_view pattern, size_t idx, bool wildcard) {
+  return add_route_internal(pattern, idx, wildcard);
+}
 
-  if (first == last) {
-    return node;
+namespace {
+std::expected<std::tuple<const RNode *, size_t>, Error>
+match_complete(const RNode *node, std::span<const char> pattern) {
+  if (pattern.empty()) {
+    return std::make_tuple(node, 0);
   }
 
-  auto p = first;
-
   for (;;) {
-    auto next_node = find_next_node(node, *p);
-    if (next_node == nullptr) {
-      return nullptr;
+    node = find_next_node(node, pattern[0]);
+    if (!node) {
+      return std::unexpected{Error::ENTITY_NOT_FOUND};
     }
 
-    node = next_node;
-
-    auto n = std::min(node->s.size(), static_cast<size_t>(last - p));
-    if (memcmp(node->s.data(), p, n) != 0) {
-      return nullptr;
+    auto n = std::min(node->s.size(), pattern.size());
+    if (memcmp(node->s.data(), pattern.data(), n) != 0) {
+      return std::unexpected{Error::ENTITY_NOT_FOUND};
     }
-    p += n;
-    if (p == last) {
-      *offset = n;
-      return node;
+
+    pattern = pattern.subspan(n);
+    if (pattern.empty()) {
+      return std::make_tuple(node, n);
     }
   }
 }
 } // namespace
 
 namespace {
-const RNode *match_partial(bool *pattern_is_wildcard, const RNode *node,
-                           size_t offset, const char *first, const char *last) {
-  *pattern_is_wildcard = false;
+std::expected<std::tuple<const RNode *, bool>, Error>
+match_partial(const RNode *node, size_t offset, std::span<const char> pattern) {
+  auto pattern_is_wildcard = false;
 
-  if (first == last) {
+  if (pattern.empty()) {
     if (node->s.size() == offset) {
-      return node;
+      return std::make_tuple(node, false);
     }
-    return nullptr;
+    return std::unexpected{Error::ENTITY_NOT_FOUND};
   }
-
-  auto p = first;
 
   const RNode *found_node = nullptr;
 
   if (offset > 0) {
-    auto n =
-      std::min(node->s.size() - offset, static_cast<size_t>(last - first));
-    if (memcmp(node->s.data() + offset, first, n) != 0) {
-      return nullptr;
+    auto n = std::min(node->s.size() - offset, pattern.size());
+    if (memcmp(node->s.data() + offset, pattern.data(), n) != 0) {
+      return std::unexpected{Error::ENTITY_NOT_FOUND};
     }
 
-    p += n;
+    pattern = pattern.subspan(n);
 
-    if (p == last) {
+    if (pattern.empty()) {
       if (node->s.size() == offset + n) {
         if (node->index != -1) {
-          return node;
+          return std::make_tuple(node, false);
         }
 
         // The last '/' handling, see below.
         node = find_next_node(node, '/');
-        if (node != nullptr && node->index != -1 && node->s.size() == 1) {
-          return node;
+        if (node && node->index != -1 && node->s.size() == 1) {
+          return std::make_tuple(node, false);
         }
 
-        return nullptr;
+        return std::unexpected{Error::ENTITY_NOT_FOUND};
       }
 
       // The last '/' handling, see below.
       if (node->index != -1 && offset + n + 1 == node->s.size() &&
           node->s[node->s.size() - 1] == '/') {
-        return node;
+        return std::make_tuple(node, false);
       }
 
-      return nullptr;
+      return std::unexpected{Error::ENTITY_NOT_FOUND};
     }
 
     if (node->wildcard_index != -1) {
       found_node = node;
-      *pattern_is_wildcard = true;
+      pattern_is_wildcard = true;
     } else if (node->index != -1 && node->s[node->s.size() - 1] == '/') {
       found_node = node;
-      *pattern_is_wildcard = false;
+      pattern_is_wildcard = false;
     }
 
     assert(node->s.size() == offset + n);
   }
 
   for (;;) {
-    auto next_node = find_next_node(node, *p);
-    if (next_node == nullptr) {
-      return found_node;
+    node = find_next_node(node, pattern[0]);
+    if (!node) {
+      return std::make_tuple(found_node, pattern_is_wildcard);
     }
 
-    node = next_node;
-
-    auto n = std::min(node->s.size(), static_cast<size_t>(last - p));
-    if (memcmp(node->s.data(), p, n) != 0) {
-      return found_node;
+    auto n = std::min(node->s.size(), pattern.size());
+    if (memcmp(node->s.data(), pattern.data(), n) != 0) {
+      return std::make_tuple(found_node, pattern_is_wildcard);
     }
 
-    p += n;
+    pattern = pattern.subspan(n);
 
-    if (p == last) {
+    if (pattern.empty()) {
       if (node->s.size() == n) {
         // Complete match with this node
         if (node->index != -1) {
-          *pattern_is_wildcard = false;
-          return node;
+          return std::make_tuple(node, false);
         }
 
         // The last '/' handling, see below.
         node = find_next_node(node, '/');
-        if (node != nullptr && node->index != -1 && node->s.size() == 1) {
-          *pattern_is_wildcard = false;
-          return node;
+        if (node && node->index != -1 && node->s.size() == 1) {
+          return std::make_tuple(node, false);
         }
 
-        return found_node;
+        return std::make_tuple(found_node, pattern_is_wildcard);
       }
 
       // We allow match without trailing "/" at the end of pattern.
@@ -284,21 +274,20 @@ const RNode *match_partial(bool *pattern_is_wildcard, const RNode *node,
       // pattern is "/foo/" and path is "/foo", we consider they
       // match.
       if (node->index != -1 && n + 1 == node->s.size() && node->s[n] == '/') {
-        *pattern_is_wildcard = false;
-        return node;
+        return std::make_tuple(node, false);
       }
 
-      return found_node;
+      return std::make_tuple(found_node, pattern_is_wildcard);
     }
 
     if (node->wildcard_index != -1) {
       found_node = node;
-      *pattern_is_wildcard = true;
+      pattern_is_wildcard = true;
     } else if (node->index != -1 && node->s[node->s.size() - 1] == '/') {
       // This is the case when pattern which ends with "/" is included
       // in query.
       found_node = node;
-      *pattern_is_wildcard = false;
+      pattern_is_wildcard = false;
     }
 
     assert(node->s.size() == n);
@@ -308,19 +297,22 @@ const RNode *match_partial(bool *pattern_is_wildcard, const RNode *node,
 
 std::expected<size_t, Error> Router::match(std::string_view host,
                                            std::string_view path) const {
-  const RNode *node;
-  size_t offset;
+  auto rv = match_complete(&root_, host);
+  if (!rv) {
+    return std::unexpected{rv.error()};
+  }
 
-  node = match_complete(&offset, &root_, std::ranges::begin(host),
-                        std::ranges::end(host));
-  if (node == nullptr) {
-    return std::unexpected{Error::ENTITY_NOT_FOUND};
+  auto [node, offset] = *rv;
+
+  auto prv = match_partial(node, offset, path);
+  if (!prv) {
+    return std::unexpected{prv.error()};
   }
 
   bool pattern_is_wildcard;
-  node = match_partial(&pattern_is_wildcard, node, offset,
-                       std::ranges::begin(path), std::ranges::end(path));
-  if (node == nullptr || node == &root_) {
+  std::tie(node, pattern_is_wildcard) = *prv;
+
+  if (!node || node == &root_) {
     return std::unexpected{Error::ENTITY_NOT_FOUND};
   }
 
@@ -333,14 +325,12 @@ std::expected<size_t, Error> Router::match(std::string_view host,
 }
 
 std::expected<size_t, Error> Router::match(std::string_view s) const {
-  const RNode *node;
-  size_t offset;
-
-  node =
-    match_complete(&offset, &root_, std::ranges::begin(s), std::ranges::end(s));
-  if (node == nullptr) {
-    return std::unexpected{Error::ENTITY_NOT_FOUND};
+  auto rv = match_complete(&root_, s);
+  if (!rv) {
+    return std::unexpected{rv.error()};
   }
+
+  auto [node, offset] = *rv;
 
   if (node->s.size() != offset || node->index == -1) {
     return std::unexpected{Error::ENTITY_NOT_FOUND};
@@ -350,67 +340,39 @@ std::expected<size_t, Error> Router::match(std::string_view s) const {
 }
 
 namespace {
-const RNode *match_prefix(size_t *nread, const RNode *node, const char *first,
-                          const char *last) {
-  if (first == last) {
-    return nullptr;
+std::expected<std::tuple<const RNode *, std::string_view>, Error>
+match_prefix(const RNode *node, std::span<const char> pattern) {
+  if (pattern.empty()) {
+    return std::unexpected{Error::ENTITY_NOT_FOUND};
   }
 
-  auto p = first;
-
   for (;;) {
-    auto next_node = find_next_node(node, *p);
-    if (next_node == nullptr) {
-      return nullptr;
+    node = find_next_node(node, pattern[0]);
+    if (!node || node->s.size() > pattern.size() ||
+        memcmp(node->s.data(), pattern.data(), node->s.size()) != 0) {
+      return std::unexpected{Error::ENTITY_NOT_FOUND};
     }
 
-    node = next_node;
+    pattern = pattern.subspan(node->s.size());
 
-    auto n = std::min(node->s.size(), static_cast<size_t>(last - p));
-    if (memcmp(node->s.data(), p, n) != 0) {
-      return nullptr;
+    if (node->index != -1) {
+      return std::make_tuple(node, as_string_view(pattern));
     }
 
-    p += n;
-
-    if (p != last) {
-      if (node->index != -1) {
-        *nread = as_unsigned(p - first);
-        return node;
-      }
-      continue;
+    if (pattern.empty()) {
+      return std::unexpected{Error::ENTITY_NOT_FOUND};
     }
-
-    if (node->s.size() == n) {
-      *nread = as_unsigned(p - first);
-      return node;
-    }
-
-    return nullptr;
   }
 }
 } // namespace
 
-std::expected<size_t, Error> Router::match_prefix(size_t *nread,
-                                                  const RNode **last_node,
-                                                  std::string_view s) const {
-  if (*last_node == nullptr) {
-    *last_node = &root_;
+std::expected<std::tuple<const RNode *, std::string_view>, Error>
+Router::match_prefix(const RNode *start_node, std::string_view s) const {
+  if (!start_node) {
+    start_node = &root_;
   }
 
-  auto node = ::shrpx::match_prefix(nread, *last_node, std::ranges::begin(s),
-                                    std::ranges::end(s));
-  if (node == nullptr) {
-    return std::unexpected{Error::ENTITY_NOT_FOUND};
-  }
-
-  *last_node = node;
-
-  if (node->index == -1) {
-    return std::unexpected{Error::ENTITY_NOT_FOUND};
-  }
-
-  return as_unsigned(node->index);
+  return ::shrpx::match_prefix(start_node, s);
 }
 
 namespace {

@@ -128,23 +128,36 @@ void test_shrpx_router_match_prefix(void) {
     router.add_route(p.pattern, p.idx);
   }
 
-  const RNode *node;
-  size_t nread;
+  const RNode *node = nullptr;
 
-  node = nullptr;
+  assert_ok(router.match_prefix(node, "gro.2ptthgn.gmi.ahpla.ovarb"sv)
+              .transform([&node](auto &&r) {
+                auto [nd, rest] = r;
+                node = nd;
 
-  assert_ok_eq(
-    0, router.match_prefix(&nread, &node, "gro.2ptthgn.gmi.ahpla.ovarb"sv));
-  assert_eq(12, nread);
+                assert_eq(0, node->index);
+                assert_eq("gmi.ahpla.ovarb"sv, rest);
+              }));
 
-  assert_ok_eq(2, router.match_prefix(&nread, &node, "gmi.ahpla.ovarb"sv));
-  assert_eq(4, nread);
+  assert_ok(
+    router.match_prefix(node, "gmi.ahpla.ovarb"sv).transform([&node](auto &&r) {
+      auto [nd, rest] = r;
+      node = nd;
 
-  assert_ok_eq(3, router.match_prefix(&nread, &node, "ahpla.ovarb"sv));
-  assert_eq(6, nread);
+      assert_eq(2, node->index);
+      assert_eq("ahpla.ovarb"sv, rest);
+    }));
 
-  assert_err(Error::ENTITY_NOT_FOUND,
-             router.match_prefix(&nread, &node, "c.b.c"sv));
+  assert_ok(
+    router.match_prefix(node, "ahpla.ovarb"sv).transform([&node](auto &&r) {
+      auto [nd, rest] = r;
+      node = nd;
+
+      assert_eq(3, node->index);
+      assert_eq("ovarb"sv, rest);
+    }));
+
+  assert_err(Error::ENTITY_NOT_FOUND, router.match_prefix(node, "c.b.c"sv));
 }
 
 } // namespace shrpx

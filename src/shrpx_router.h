@@ -30,6 +30,8 @@
 #include <vector>
 #include <memory>
 #include <expected>
+#include <span>
+#include <string_view>
 
 #include "allocator.h"
 #include "errors.h"
@@ -40,7 +42,7 @@ namespace shrpx {
 
 struct RNode {
   RNode() noexcept = default;
-  RNode(std::string_view s, ssize_t index, ssize_t wildcard_index);
+  RNode(std::span<const char> s, ssize_t index, ssize_t wildcard_index);
   RNode(RNode &&) noexcept = default;
   RNode(const RNode &) = delete;
   RNode &operator=(RNode &&) noexcept = default;
@@ -50,7 +52,7 @@ struct RNode {
   std::vector<std::unique_ptr<RNode>> next;
   // Stores pointer to the string this node represents.  Not
   // NULL-terminated.
-  std::string_view s;
+  std::span<const char> s;
   // Index of pattern if match ends in this node.  Note that we don't
   // store duplicated pattern.
   ssize_t index{-1};
@@ -82,24 +84,24 @@ public:
                                      std::string_view path) const;
   // Returns the matched index of pattern |s|.
   std::expected<size_t, Error> match(std::string_view s) const;
-  // Returns the matched index of pattern if a pattern is a suffix of
-  // |s|.  If |*last_node| is not nullptr, it specifies the first node
-  // to start matching.  If it is nullptr, match will start from
-  // scratch.  When the match was found, |*nread| has the number of
-  // bytes matched in |s|, and |*last_node| has the last matched node.
-  // One can continue to match the longer pattern using the returned
-  // |*last_node| to the another invocation of this function until it
-  // returns error.
-  std::expected<size_t, Error> match_prefix(size_t *nread,
-                                            const RNode **last_node,
-                                            std::string_view s) const;
-
-  void add_node(RNode *node, std::string_view pattern, ssize_t index,
-                ssize_t wildcard_index);
+  // Returns the matched RNode and the unmatched part of the |s| if
+  // the matching pattern is a suffix of |s|.  If |start_node| is not
+  // nullptr, it specifies the first node to start matching.  If it is
+  // nullptr, match will start from scratch.  One can continue to
+  // match the longer pattern using the returned RNode as |start_node|
+  // to the another invocation of this function until it returns
+  // error.
+  std::expected<std::tuple<const RNode *, std::string_view>, Error>
+  match_prefix(const RNode *start_node, std::string_view s) const;
 
   void dump() const;
 
 private:
+  void add_node(RNode *node, std::span<const char> pattern, ssize_t index,
+                ssize_t wildcard_index);
+  size_t add_route_internal(std::span<const char> pattern, size_t index,
+                            bool wildcard = false);
+
   BlockAllocator balloc_{1024, 1024};
   // The root node of Patricia tree.  This is special node and its s
   // field is nulptr, and len field is 0.
