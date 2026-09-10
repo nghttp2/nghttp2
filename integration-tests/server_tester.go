@@ -3,7 +3,6 @@ package nghttp2
 import (
 	"bufio"
 	"bytes"
-	"cmp"
 	"context"
 	"crypto/sha1"
 	"crypto/tls"
@@ -18,7 +17,6 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -677,18 +675,6 @@ loop:
 			if f.StreamEnded() && streamEnded(res, streams, sr) {
 				break loop
 			}
-		case *http2.PushPromiseFrame:
-			_, err := st.dec.Write(f.HeaderBlockFragment())
-			if err != nil {
-				return res, err
-			}
-
-			sr := &serverResponse{
-				streamID:  f.PromiseID,
-				reqHeader: cloneHeader(st.header),
-			}
-
-			streams[sr.streamID] = sr
 		case *http2.DataFrame:
 			sr, ok := streams[f.StreamID]
 			if !ok {
@@ -731,33 +717,23 @@ loop:
 		}
 	}
 
-	slices.SortFunc(res.pushResponse, func(a, b *serverResponse) int {
-		return cmp.Compare(a.streamID, b.streamID)
-	})
-
 	return res, nil
 }
 
 func streamEnded(mainSr *serverResponse, streams map[uint32]*serverResponse, sr *serverResponse) bool {
 	delete(streams, sr.streamID)
 
-	if mainSr.streamID != sr.streamID {
-		mainSr.pushResponse = append(mainSr.pushResponse, sr)
-	}
-
 	return len(streams) == 0
 }
 
 type serverResponse struct {
-	status       int               // HTTP status code
-	header       http.Header       // response header fields
-	body         []byte            // response body
-	streamID     uint32            // stream ID in HTTP/2
-	errCode      http2.ErrCode     // error code received in HTTP/2 RST_STREAM or GOAWAY
-	connErr      bool              // true if HTTP/2 connection error
-	connClose    bool              // Connection: close is included in response header in HTTP/1 test
-	reqHeader    http.Header       // http request header, currently only stores pushed request header
-	pushResponse []*serverResponse // pushed response
+	status    int           // HTTP status code
+	header    http.Header   // response header fields
+	body      []byte        // response body
+	streamID  uint32        // stream ID in HTTP/2
+	errCode   http2.ErrCode // error code received in HTTP/2 RST_STREAM or GOAWAY
+	connErr   bool          // true if HTTP/2 connection error
+	connClose bool          // Connection: close is included in response header in HTTP/1 test
 }
 
 func cloneHeader(h http.Header) http.Header {

@@ -88,11 +88,6 @@ public:
   virtual std::expected<void, Error>
   send_reply(Downstream *downstream, std::span<const uint8_t> body) = 0;
 
-  // Starts server push.  The |downstream| is an associated stream for
-  // the pushed resource.
-  virtual std::expected<void, Error> initiate_push(Downstream *downstream,
-                                                   std::string_view uri) = 0;
-
   // Fills response data in |iov| whose capacity is |iovcnt|.  Returns
   // the number of iovs filled.
   virtual std::span<struct iovec>
@@ -100,27 +95,6 @@ public:
   virtual std::span<const uint8_t> response_peek() const = 0;
   virtual void response_drain(size_t n) = 0;
   virtual bool response_empty() const = 0;
-
-  // Called when PUSH_PROMISE was started in downstream.  The
-  // associated downstream is given as |downstream|.  The promised
-  // stream ID is given as |promised_stream_id|.  If upstream supports
-  // server push for the corresponding upstream connection, it should
-  // return Downstream object for pushed stream.  Otherwise, returns
-  // nullptr.
-  virtual Downstream *
-  on_downstream_push_promise(Downstream *downstream,
-                             int32_t promised_stream_id) = 0;
-  // Called when PUSH_PROMISE frame was completely received in
-  // downstream.  The associated downstream is given as |downstream|.
-  virtual std::expected<void, Error>
-  on_downstream_push_promise_complete(Downstream *downstream,
-                                      Downstream *promised_downstream) = 0;
-  // Returns true if server push is enabled in upstream connection.
-  virtual bool push_enabled() const = 0;
-  // Cancels promised downstream.  This function is called when
-  // PUSH_PROMISE for |promised_downstream| is not submitted to
-  // upstream session.
-  virtual void cancel_premature_downstream(Downstream *promised_downstream) = 0;
 };
 
 } // namespace shrpx

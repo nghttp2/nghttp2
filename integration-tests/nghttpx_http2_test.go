@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"regexp"
-	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -1050,47 +1049,6 @@ func TestH2H1TLSXfp(t *testing.T) {
 
 	if got, want := res.status, http.StatusOK; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
-	}
-}
-
-// TestH2H1ServerPush tests server push using Link header field from
-// backend server.
-func TestH2H1ServerPush(t *testing.T) {
-	opts := options{
-		handler: func(w http.ResponseWriter, r *http.Request) {
-			// only resources marked as rel=preload are pushed
-			if !strings.HasPrefix(r.URL.Path, "/css/") {
-				w.Header().Add("Link", "</css/main.css>; rel=preload, </foo>, </css/theme.css>; rel=preload")
-			}
-		},
-	}
-
-	st := newServerTester(t, opts)
-	defer st.Close()
-
-	res, err := st.http2(requestParam{
-		name: "TestH2H1ServerPush",
-	})
-	if err != nil {
-		t.Fatalf("Error st.http2() = %v", err)
-	}
-
-	if got, want := res.status, http.StatusOK; got != want {
-		t.Errorf("res.status: %v; want %v", got, want)
-	}
-
-	if got, want := len(res.pushResponse), 2; got != want {
-		t.Fatalf("len(res.pushResponse): %v; want %v", got, want)
-	}
-
-	mainCSS := res.pushResponse[0]
-	if got, want := mainCSS.status, http.StatusOK; got != want {
-		t.Errorf("mainCSS.status: %v; want %v", got, want)
-	}
-
-	themeCSS := res.pushResponse[1]
-	if got, want := themeCSS.status, http.StatusOK; got != want {
-		t.Errorf("themeCSS.status: %v; want %v", got, want)
 	}
 }
 

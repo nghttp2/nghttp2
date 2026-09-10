@@ -1748,17 +1748,6 @@ void Http3Upstream::response_drain(size_t n) {}
 
 bool Http3Upstream::response_empty() const { return false; }
 
-Downstream *
-Http3Upstream::on_downstream_push_promise(Downstream *downstream,
-                                          int32_t promised_stream_id) {
-  return nullptr;
-}
-
-bool Http3Upstream::push_enabled() const { return false; }
-
-void Http3Upstream::cancel_premature_downstream(
-  Downstream *promised_downstream) {}
-
 std::expected<void, Error>
 Http3Upstream::on_read(const UpstreamAddr *faddr, const Address &remote_addr,
                        const Address &local_addr, const ngtcp2_pkt_info &pi,

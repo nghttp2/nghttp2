@@ -356,12 +356,6 @@ struct LinkHeader {
   auto operator<=>(const LinkHeader &) const = default;
 };
 
-// Returns next URI-reference in Link header field value |src|.  If no
-// URI-reference found after searching all input, returned uri field
-// is empty.  This imply that empty URI-reference is ignored during
-// parsing.
-std::vector<LinkHeader> parse_link_header(std::string_view src);
-
 // Constructs path by combining base path |base_path| with another
 // path |rel_path|.  The base path and another path can have optional
 // query component.  This function assumes |base_path| is normalized.
@@ -408,24 +402,6 @@ std::string normalize_path(std::string_view path, std::string_view query);
 
 std::string_view rewrite_clean_path(BlockAllocator &balloc,
                                     std::string_view src);
-
-// Returns path component of |uri|.  The returned path does not
-// include query component.  This function returns empty string if it
-// fails.
-std::string_view get_pure_path_component(std::string_view uri);
-
-struct PushComponent {
-  std::string_view scheme;
-  std::string_view authority;
-  std::string_view path;
-};
-
-// Deduces scheme, authority and path from given |uri|.  If |uri| is
-// relative path, path resolution takes place using path given in
-// |base|.
-std::expected<PushComponent, Error>
-construct_push_component(BlockAllocator &balloc, std::string_view base,
-                         std::string_view uri);
 
 // Returns true if te header field value |s| contains "trailers".
 bool contains_trailers(std::string_view s);

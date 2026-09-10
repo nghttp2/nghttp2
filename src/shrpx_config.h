@@ -943,7 +943,6 @@ struct Http2Config {
     size_t max_concurrent_streams;
   } downstream;
   bool no_cookie_crumbling;
-  bool no_server_push;
 };
 
 struct LoggingConfig {

@@ -208,13 +208,6 @@ public:
 
   const std::shared_ptr<DownstreamAddrGroup> &get_downstream_addr_group() const;
 
-  std::expected<void, Error>
-  handle_downstream_push_promise(Downstream *downstream,
-                                 int32_t promised_stream_id);
-  std::expected<void, Error>
-  handle_downstream_push_promise_complete(Downstream *downstream,
-                                          Downstream *promised_downstream);
-
   // Returns number of downstream connections, including pushed
   // streams.
   size_t get_num_dconns() const;

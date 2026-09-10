@@ -95,8 +95,6 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 
   // At this point, downstream read may be paused.
 
-  // If shrpx_downstream::push_request_headers() failed, the
-  // error is handled here.
   if (!upstream->remove_downstream(downstream)) {
     return NGHTTP2_ERR_CALLBACK_FAILURE;
   }
@@ -651,7 +649,6 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     verbose_on_frame_send_callback(session, frame, user_data);
   }
   auto upstream = static_cast<Http2Upstream *>(user_data);
-  auto handler = upstream->get_client_handler();
 
   switch (frame->hd.type) {
   case NGHTTP2_DATA:
@@ -691,92 +688,6 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
       upstream->start_settings_timer();
     }
     return 0;
-  case NGHTTP2_PUSH_PROMISE: {
-    auto promised_stream_id = frame->push_promise.promised_stream_id;
-
-    if (nghttp2_session_get_stream_user_data(session, promised_stream_id)) {
-      // In case of push from backend, downstream object was already
-      // created.
-      return 0;
-    }
-
-    auto promised_downstream = std::make_unique<Downstream>(
-      upstream, handler->get_mcpool(), promised_stream_id);
-    auto &req = promised_downstream->request();
-
-    // As long as we use nghttp2_session_mem_send2(), setting stream
-    // user data here should not fail.  This is because this callback
-    // is called just after frame was serialized.  So no worries about
-    // hanging Downstream.
-    nghttp2_session_set_stream_user_data(session, promised_stream_id,
-                                         promised_downstream.get());
-
-    promised_downstream->set_assoc_stream_id(frame->hd.stream_id);
-    promised_downstream->disable_upstream_rtimer();
-
-    req.http_major = 2;
-    req.http_minor = 0;
-
-    req.fs.content_length = 0;
-    req.http2_expect_body = false;
-
-    auto &promised_balloc = promised_downstream->get_block_allocator();
-
-    for (size_t i = 0; i < frame->push_promise.nvlen; ++i) {
-      auto &nv = frame->push_promise.nva[i];
-
-      auto name =
-        make_string_ref(promised_balloc, as_string_view(nv.name, nv.namelen));
-      auto value =
-        make_string_ref(promised_balloc, as_string_view(nv.value, nv.valuelen));
-
-      auto token = http2::lookup_token(name);
-      switch (token) {
-      case http2::HD__METHOD:
-        req.method = http2::lookup_method_token(value);
-        break;
-      case http2::HD__SCHEME:
-        req.scheme = value;
-        break;
-      case http2::HD__AUTHORITY:
-        req.authority = value;
-        break;
-      case http2::HD__PATH:
-        req.path = http2::rewrite_clean_path(promised_balloc, value);
-        break;
-      }
-      req.fs.add_header_token(name, value, nv.flags & NGHTTP2_NV_FLAG_NO_INDEX,
-                              token);
-    }
-
-    promised_downstream->inspect_http2_request();
-
-    promised_downstream->set_request_state(DownstreamState::MSG_COMPLETE);
-
-    // a bit weird but start_downstream() expects that given
-    // downstream is in pending queue.
-    auto ptr = promised_downstream.get();
-    upstream->add_pending_downstream(std::move(promised_downstream));
-
-#ifdef HAVE_MRUBY
-    auto worker = handler->get_worker();
-    auto mruby_ctx = worker->get_mruby_context();
-
-    if (!mruby_ctx->run_on_request_proc(ptr)) {
-      if (!upstream->error_reply(ptr, 500) &&
-          !upstream->rst_stream(ptr, NGHTTP2_INTERNAL_ERROR)) {
-        return NGHTTP2_ERR_CALLBACK_FAILURE;
-      }
-      return 0;
-    }
-#endif // defined(HAVE_MRUBY)
-
-    if (!upstream->start_downstream(ptr)) {
-      return NGHTTP2_ERR_CALLBACK_FAILURE;
-    }
-
-    return 0;
-  }
   case NGHTTP2_GOAWAY:
     if (log_enabled(INFO)) {
       auto debug_data = util::ascii_dump(frame->goaway.opaque_data,
@@ -1744,31 +1655,6 @@ Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
 
   auto &http2conf = config->http2;
 
-  // We need some conditions that must be fulfilled to initiate server
-  // push.
-  //
-  // * Server push is disabled for http2 proxy or client proxy, since
-  //   incoming headers are mixed origins.  We don't know how to
-  //   reliably determine the authority yet.
-  //
-  // * We need non-final response or 200 response code for associated
-  //   resource.  This is too restrictive, we will review this later.
-  //
-  // * We requires GET or POST for associated resource.  Probably we
-  //   don't want to push for HEAD request.  Not sure other methods
-  //   are also eligible for push.
-  if (!http2conf.no_server_push &&
-      nghttp2_session_get_remote_settings(session_,
-                                          NGHTTP2_SETTINGS_ENABLE_PUSH) == 1 &&
-      !config->http2_proxy && (downstream->get_stream_id() % 2) &&
-      resp.fs.header(http2::HD_LINK) &&
-      (downstream->get_non_final_response() || resp.http_status == 200) &&
-      (req.method == HTTP_GET || req.method == HTTP_POST)) {
-    if (!prepare_push_promise(downstream)) {
-      // Continue to send response even if push was failed.
-    }
-  }
-
   auto nva = std::vector<nghttp2_nv>();
   // 6 means :status and possible server, via, x-http2-push, alt-svc,
   // and set-cookie (for affinity cookie) header field.
@@ -2211,173 +2097,6 @@ fail:
   return {};
 }
 
-std::expected<void, Error>
-Http2Upstream::prepare_push_promise(Downstream *downstream) {
-  const auto &req = downstream->request();
-  auto &resp = downstream->response();
-
-  auto base = http2::get_pure_path_component(req.path);
-  if (base.empty()) {
-    return {};
-  }
-
-  auto &balloc = downstream->get_block_allocator();
-
-  for (auto &kv : resp.fs.headers()) {
-    if (kv.token != http2::HD_LINK) {
-      continue;
-    }
-    for (auto &link : http2::parse_link_header(kv.value)) {
-      auto maybe_push_comp =
-        http2::construct_push_component(balloc, base, link.uri);
-      if (!maybe_push_comp) {
-        continue;
-      }
-
-      auto push_comp = *maybe_push_comp;
-
-      if (push_comp.scheme.empty()) {
-        push_comp.scheme = req.scheme;
-      }
-
-      if (push_comp.authority.empty()) {
-        push_comp.authority = req.authority;
-      }
-
-      if (resp.is_resource_pushed(push_comp.scheme, push_comp.authority,
-                                  push_comp.path)) {
-        continue;
-      }
-
-      if (auto rv = submit_push_promise(push_comp.scheme, push_comp.authority,
-                                        push_comp.path, downstream);
-          !rv) {
-        return rv;
-      }
-
-      resp.resource_pushed(push_comp.scheme, push_comp.authority,
-                           push_comp.path);
-    }
-  }
-  return {};
-}
-
-std::expected<void, Error> Http2Upstream::submit_push_promise(
-  std::string_view scheme, std::string_view authority, std::string_view path,
-  Downstream *downstream) {
-  const auto &req = downstream->request();
-
-  std::vector<nghttp2_nv> nva;
-  // 4 for :method, :scheme, :path and :authority
-  nva.reserve(4 + req.fs.headers().size());
-
-  // just use "GET" for now
-  nva.push_back(http2::make_field(":method"sv, "GET"sv));
-  nva.push_back(http2::make_field(":scheme"sv, scheme));
-  nva.push_back(http2::make_field(":path"sv, path));
-  nva.push_back(http2::make_field(":authority"sv, authority));
-
-  for (auto &kv : req.fs.headers()) {
-    switch (kv.token) {
-    // TODO generate referer
-    case http2::HD__AUTHORITY:
-    case http2::HD__SCHEME:
-    case http2::HD__METHOD:
-    case http2::HD__PATH:
-      continue;
-    case http2::HD_ACCEPT_ENCODING:
-    case http2::HD_ACCEPT_LANGUAGE:
-    case http2::HD_CACHE_CONTROL:
-    case http2::HD_HOST:
-    case http2::HD_USER_AGENT:
-      nva.push_back(
-        http2::make_field(kv.name, kv.value, http2::no_index(kv.no_index)));
-      break;
-    }
-  }
-
-  auto promised_stream_id = nghttp2_submit_push_promise(
-    session_, NGHTTP2_FLAG_NONE,
-    static_cast<int32_t>(downstream->get_stream_id()), nva.data(), nva.size(),
-    nullptr);
-
-  if (promised_stream_id < 0) {
-    if (log_enabled(INFO)) {
-      Log{INFO, this} << "nghttp2_submit_push_promise() failed: "
-                      << nghttp2_strerror(promised_stream_id);
-    }
-    if (nghttp2_is_fatal(promised_stream_id)) {
-      return std::unexpected{Error::HTTP2};
-    }
-    return {};
-  }
-
-  if (log_enabled(INFO)) {
-    Log{INFO, this} << "HTTP push request headers. promised_stream_id="
-                    << promised_stream_id << "\n"
-                    << format_nva(nva);
-  }
-
-  return {};
-}
-
-bool Http2Upstream::push_enabled() const {
-  auto config = get_config();
-  return !(config->http2.no_server_push ||
-           nghttp2_session_get_remote_settings(
-             session_, NGHTTP2_SETTINGS_ENABLE_PUSH) == 0 ||
-           config->http2_proxy);
-}
-
-std::expected<void, Error> Http2Upstream::initiate_push(Downstream *downstream,
-                                                        std::string_view uri) {
-  if (uri.empty() || !push_enabled() ||
-      (downstream->get_stream_id() % 2) == 0) {
-    return {};
-  }
-
-  const auto &req = downstream->request();
-
-  auto base = http2::get_pure_path_component(req.path);
-  if (base.empty()) {
-    return std::unexpected{Error::INTERNAL};
-  }
-
-  auto &balloc = downstream->get_block_allocator();
-
-  auto maybe_push_comp = http2::construct_push_component(balloc, base, uri);
-  if (!maybe_push_comp) {
-    return std::unexpected{maybe_push_comp.error()};
-  }
-
-  auto push_comp = *maybe_push_comp;
-
-  if (push_comp.scheme.empty()) {
-    push_comp.scheme = req.scheme;
-  }
-
-  if (push_comp.authority.empty()) {
-    push_comp.authority = req.authority;
-  }
-
-  auto &resp = downstream->response();
-
-  if (resp.is_resource_pushed(push_comp.scheme, push_comp.authority,
-                              push_comp.path)) {
-    return {};
-  }
-
-  if (auto rv = submit_push_promise(push_comp.scheme, push_comp.authority,
-                                    push_comp.path, downstream);
-      !rv) {
-    return rv;
-  }
-
-  resp.resource_pushed(push_comp.scheme, push_comp.authority, push_comp.path);
-
-  return {};
-}
-
 std::span<struct iovec>
 Http2Upstream::response_riovec(std::span<struct iovec> iov) const {
   return wb_.riovec(iov);
@@ -2392,70 +2111,6 @@ void Http2Upstream::response_drain(size_t n) { wb_.drain(n); }
 bool Http2Upstream::response_empty() const { return wb_.rleft() == 0; }
 
 DefaultMemchunks *Http2Upstream::get_response_buf() { return &wb_; }
-
-Downstream *
-Http2Upstream::on_downstream_push_promise(Downstream *downstream,
-                                          int32_t promised_stream_id) {
-  // promised_stream_id is for backend HTTP/2 session, not for
-  // frontend.
-  auto promised_downstream =
-    std::make_unique<Downstream>(this, handler_->get_mcpool(), 0);
-  auto &promised_req = promised_downstream->request();
-
-  promised_downstream->set_downstream_stream_id(promised_stream_id);
-  // Set associated stream in frontend
-  promised_downstream->set_assoc_stream_id(downstream->get_stream_id());
-
-  promised_downstream->disable_upstream_rtimer();
-
-  promised_req.http_major = 2;
-  promised_req.http_minor = 0;
-
-  promised_req.fs.content_length = 0;
-  promised_req.http2_expect_body = false;
-
-  auto ptr = promised_downstream.get();
-  add_pending_downstream(std::move(promised_downstream));
-  downstream_queue_.mark_active(ptr);
-
-  return ptr;
-}
-
-std::expected<void, Error> Http2Upstream::on_downstream_push_promise_complete(
-  Downstream *downstream, Downstream *promised_downstream) {
-  std::vector<nghttp2_nv> nva;
-
-  const auto &promised_req = promised_downstream->request();
-  const auto &headers = promised_req.fs.headers();
-
-  nva.reserve(headers.size());
-
-  for (auto &kv : headers) {
-    nva.push_back(
-      http2::make_field_nv(kv.name, kv.value, http2::no_index(kv.no_index)));
-  }
-
-  auto promised_stream_id = nghttp2_submit_push_promise(
-    session_, NGHTTP2_FLAG_NONE,
-    static_cast<int32_t>(downstream->get_stream_id()), nva.data(), nva.size(),
-    promised_downstream);
-  if (promised_stream_id < 0) {
-    return std::unexpected{Error::HTTP2};
-  }
-
-  promised_downstream->set_stream_id(promised_stream_id);
-
-  return {};
-}
-
-void Http2Upstream::cancel_premature_downstream(
-  Downstream *promised_downstream) {
-  if (log_enabled(INFO)) {
-    Log{INFO, this} << "Remove premature promised stream "
-                    << promised_downstream;
-  }
-  downstream_queue_.remove_and_get_blocked(promised_downstream, false);
-}
 
 size_t Http2Upstream::get_max_buffer_size() const { return max_buffer_size_; }
 
