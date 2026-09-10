@@ -234,6 +234,10 @@ static const nghttp2_nv resnv[] = {
   MAKE_NV(":status", "200"),
 };
 
+static const nghttp2_nv not_found_resnv[] = {
+  MAKE_NV(":status", "404"),
+};
+
 static const nghttp2_nv trailernv[] = {
   /* from http://tools.ietf.org/html/rfc6249#section-7 */
   MAKE_NV("digest", "SHA-256="
@@ -4662,6 +4666,58 @@ void test_nghttp2_session_on_push_promise_received(void) {
 
   assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
   assert_uint32(NGHTTP2_CANCEL, ==, item->frame.rst_stream.error_code);
+
+  nghttp2_frame_push_promise_free(&frame.push_promise, mem);
+  nghttp2_session_del(session);
+
+  /* PUSH_PROMISE is received in CONNECT stream */
+  nghttp2_session_client_new(&session, &callbacks, &user_data);
+
+  stream = open_sent_stream(session, 1);
+
+  stream->http_flags |= NGHTTP2_HTTP_FLAG_METH_CONNECT;
+  stream->status_code = 200;
+
+  nghttp2_frame_push_promise_init(&frame.push_promise, NGHTTP2_FLAG_END_HEADERS,
+                                  1, 2, NULL, 0);
+
+  user_data = (my_user_data){0};
+
+  assert_int(NGHTTP2_ERR_IGN_HEADER_BLOCK, ==,
+             nghttp2_session_on_push_promise_received(session, &frame));
+  assert_int(0, ==, user_data.begin_headers_cb_called);
+  assert_size(0, ==, session->num_incoming_reserved_streams);
+  assert_null(nghttp2_session_get_stream(session, 2));
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+
+  nghttp2_frame_push_promise_free(&frame.push_promise, mem);
+  nghttp2_session_del(session);
+
+  /* PUSH_PROMISE is received in CONNECT stream before receiving 200
+     status code. */
+  nghttp2_session_client_new(&session, &callbacks, &user_data);
+
+  stream = open_sent_stream(session, 1);
+
+  stream->http_flags |= NGHTTP2_HTTP_FLAG_METH_CONNECT;
+
+  nghttp2_frame_push_promise_init(&frame.push_promise, NGHTTP2_FLAG_END_HEADERS,
+                                  1, 2, NULL, 0);
+
+  user_data = (my_user_data){0};
+
+  assert_int(0, ==, nghttp2_session_on_push_promise_received(session, &frame));
+  assert_int(1, ==, user_data.begin_headers_cb_called);
+  assert_size(1, ==, session->num_incoming_reserved_streams);
+  assert_not_null(nghttp2_session_get_stream(session, 2));
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_null(item);
 
   nghttp2_frame_push_promise_free(&frame.push_promise, mem);
   nghttp2_session_del(session);
@@ -11695,10 +11751,15 @@ void test_nghttp2_http_trailer_headers(void) {
   nghttp2_mem *mem;
   nghttp2_bufs bufs;
   nghttp2_ssize rv;
+  static const nghttp2_nv connect_reqnv[] = {
+    MAKE_NV(":method", "CONNECT"),
+    MAKE_NV(":authority", "nghttp2.org"),
+  };
   static const nghttp2_nv trailer_reqnv[] = {
     MAKE_NV("foo", "bar"),
   };
   nghttp2_outbound_item *item;
+  int32_t stream_id;
 
   mem = nghttp2_mem_default();
   frame_pack_bufs_init(&bufs);
@@ -11784,7 +11845,8 @@ void test_nghttp2_http_trailer_headers(void) {
 
   nghttp2_bufs_reset(&bufs);
 
-  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, reqnv,
+  rv = pack_headers(&bufs, &deflater, 1,
+                    NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_END_STREAM, reqnv,
                     ARRLEN(reqnv), mem);
   assert_ptrdiff(0, ==, rv);
 
@@ -11803,6 +11865,131 @@ void test_nghttp2_http_trailer_headers(void) {
 
   nghttp2_hd_deflate_free(&deflater);
 
+  nghttp2_session_del(session);
+
+  /* client: trailer in CONNECT stream */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  stream_id = nghttp2_submit_request2(session, NULL, connect_reqnv,
+                                      ARRLEN(connect_reqnv), NULL, NULL);
+
+  assert_int32(1, ==, stream_id);
+
+  rv = nghttp2_session_send(session);
+
+  assert_ptrdiff(0, ==, rv);
+
+  rv = pack_headers(&bufs, &deflater, stream_id, NGHTTP2_FLAG_END_HEADERS,
+                    resnv, ARRLEN(resnv), mem);
+  assert_ptrdiff(0, ==, rv);
+
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_buf_len(&bufs.head->buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
+  assert_null(nghttp2_session_get_next_ob_item(session));
+
+  nghttp2_bufs_reset(&bufs);
+
+  rv = pack_headers(&bufs, &deflater, stream_id,
+                    NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_END_STREAM,
+                    trailer_reqnv, ARRLEN(trailer_reqnv), mem);
+  assert_ptrdiff(0, ==, rv);
+
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_buf_len(&bufs.head->buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_int(0, ==, nghttp2_session_send(session));
+
+  nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  /* client: trailer in CONNECT stream after getting non-2xx
+     response. */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  stream_id = nghttp2_submit_request2(session, NULL, connect_reqnv,
+                                      ARRLEN(connect_reqnv), NULL, NULL);
+
+  assert_int32(1, ==, stream_id);
+
+  rv = nghttp2_session_send(session);
+
+  assert_ptrdiff(0, ==, rv);
+
+  rv = pack_headers(&bufs, &deflater, stream_id, NGHTTP2_FLAG_END_HEADERS,
+                    not_found_resnv, ARRLEN(not_found_resnv), mem);
+  assert_ptrdiff(0, ==, rv);
+
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_buf_len(&bufs.head->buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
+  assert_null(nghttp2_session_get_next_ob_item(session));
+
+  nghttp2_bufs_reset(&bufs);
+
+  rv = pack_headers(&bufs, &deflater, stream_id,
+                    NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_END_STREAM,
+                    trailer_reqnv, ARRLEN(trailer_reqnv), mem);
+  assert_ptrdiff(0, ==, rv);
+
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_buf_len(&bufs.head->buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_null(item);
+  assert_int(0, ==, nghttp2_session_send(session));
+
+  nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  /* server: trailer in CONNECT stream */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS,
+                    connect_reqnv, ARRLEN(connect_reqnv), mem);
+  assert_ptrdiff(0, ==, rv);
+
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_buf_len(&bufs.head->buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
+
+  nghttp2_bufs_reset(&bufs);
+
+  rv = pack_headers(&bufs, &deflater, 1,
+                    NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_END_STREAM,
+                    trailer_reqnv, ARRLEN(trailer_reqnv), mem);
+  assert_ptrdiff(0, ==, rv);
+
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_buf_len(&bufs.head->buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_int(0, ==, nghttp2_session_send(session));
+
+  nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);
 
   nghttp2_bufs_free(&bufs);
