@@ -229,41 +229,7 @@ struct Response {
     unconsumed_body_length -= len;
   }
 
-  // returns true if a resource denoted by scheme, authority, and path
-  // has already been pushed.
-  bool is_resource_pushed(std::string_view scheme, std::string_view authority,
-                          std::string_view path) const {
-    if (!pushed_resources) {
-      return false;
-    }
-    return std::ranges::find(*pushed_resources,
-                             std::make_tuple(scheme, authority, path)) !=
-           std::ranges::end(*pushed_resources);
-  }
-
-  // remember that a resource denoted by scheme, authority, and path
-  // is pushed.
-  void resource_pushed(std::string_view scheme, std::string_view authority,
-                       std::string_view path) {
-    if (!pushed_resources) {
-      pushed_resources = std::make_unique<std::vector<
-        std::tuple<std::string_view, std::string_view, std::string_view>>>();
-    }
-    pushed_resources->emplace_back(scheme, authority, path);
-  }
-
   FieldStore fs;
-  // array of the tuple of scheme, authority, and path of pushed
-  // resource.  This is required because RFC 8297 says that server
-  // typically includes header fields appeared in non-final response
-  // header fields in final response header fields.  Without checking
-  // that a particular resource has already been pushed, or not, we
-  // end up pushing the same resource at least twice.  It is unknown
-  // that we should use more complex data structure (e.g., std::set)
-  // to find the resources faster.
-  std::unique_ptr<std::vector<
-    std::tuple<std::string_view, std::string_view, std::string_view>>>
-    pushed_resources;
   // the length of response body received so far
   int64_t recv_body_length{};
   // The number of bytes not consumed by the application yet.  This is
@@ -311,8 +277,6 @@ public:
   Upstream *get_upstream() const;
   void set_stream_id(int64_t stream_id);
   int64_t get_stream_id() const;
-  void set_assoc_stream_id(int64_t stream_id);
-  int64_t get_assoc_stream_id() const;
   void pause_read(IOCtrlReason reason);
   std::expected<void, Error> resume_read(IOCtrlReason reason, size_t consumed);
   void force_resume_read();
@@ -582,9 +546,6 @@ private:
   size_t num_retry_{};
   // The stream ID in frontend connection
   int64_t stream_id_;
-  // The associated stream ID in frontend connection if this is pushed
-  // stream.
-  int64_t assoc_stream_id_{-1};
   // stream ID in backend connection
   int64_t downstream_stream_id_{-1};
   // RST_STREAM error_code from downstream HTTP2 connection

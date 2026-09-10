@@ -3726,8 +3726,7 @@ std::expected<void, Error> parse_config(
         return {};
       });
   case SHRPX_OPTID_NO_SERVER_PUSH:
-    config->http2.no_server_push = util::strieq("yes"sv, optarg);
-
+    Log{WARN} << opt << ": deprecated.  It has no effect.";
     return {};
   case SHRPX_OPTID_BACKEND_HTTP2_CONNECTIONS_PER_WORKER:
     Log{WARN} << opt << ": deprecated.";

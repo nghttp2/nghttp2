@@ -1161,12 +1161,6 @@ DefaultMemchunks Downstream::pop_response_buf() {
   return std::move(response_buf_);
 }
 
-void Downstream::set_assoc_stream_id(int64_t stream_id) {
-  assoc_stream_id_ = stream_id;
-}
-
-int64_t Downstream::get_assoc_stream_id() const { return assoc_stream_id_; }
-
 BlockAllocator &Downstream::get_block_allocator() { return balloc_; }
 
 void Downstream::add_rcbuf(nghttp2_rcbuf *rcbuf) {

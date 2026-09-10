@@ -97,21 +97,11 @@ public:
                                                  bool no_retry) override;
   std::expected<void, Error> send_reply(Downstream *downstream,
                                         std::span<const uint8_t> body) override;
-  std::expected<void, Error> initiate_push(Downstream *downstream,
-                                           std::string_view uri) override;
   std::span<struct iovec>
   response_riovec(std::span<struct iovec> iov) const override;
   std::span<const uint8_t> response_peek() const override;
   void response_drain(size_t n) override;
   bool response_empty() const override;
-
-  Downstream *on_downstream_push_promise(Downstream *downstream,
-                                         int32_t promised_stream_id) override;
-  std::expected<void, Error>
-  on_downstream_push_promise_complete(Downstream *downstream,
-                                      Downstream *promised_downstream) override;
-  bool push_enabled() const override;
-  void cancel_premature_downstream(Downstream *promised_downstream) override;
 
   bool get_flow_control() const;
   // Perform HTTP/2 upgrade from |upstream|. On success, this object
@@ -129,12 +119,6 @@ public:
   void check_shutdown();
   // Starts graceful shutdown period.
   void start_graceful_shutdown();
-
-  std::expected<void, Error> prepare_push_promise(Downstream *downstream);
-  std::expected<void, Error> submit_push_promise(std::string_view scheme,
-                                                 std::string_view authority,
-                                                 std::string_view path,
-                                                 Downstream *downstream);
 
   // Called when new request has started.
   void on_start_request(const nghttp2_frame *frame);

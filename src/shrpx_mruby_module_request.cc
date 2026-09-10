@@ -314,19 +314,6 @@ mrb_value request_clear_headers(mrb_state *mrb, mrb_value self) {
 
 namespace {
 mrb_value request_push(mrb_state *mrb, mrb_value self) {
-  auto data = static_cast<MRubyAssocData *>(mrb->ud);
-  auto downstream = data->downstream;
-  auto upstream = downstream->get_upstream();
-
-  const char *uri;
-  mrb_int len;
-  mrb_get_args(mrb, "s", &uri, &len);
-
-  if (!upstream->initiate_push(
-        downstream, std::string_view{uri, static_cast<size_t>(len)})) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "initiating server push failed");
-  }
-
   return mrb_nil_value();
 }
 } // namespace

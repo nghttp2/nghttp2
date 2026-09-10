@@ -87,25 +87,11 @@ public:
   std::expected<void, Error> send_reply(Downstream *downstream,
                                         std::span<const uint8_t> body) override;
 
-  std::expected<void, Error> initiate_push(Downstream *downstream,
-                                           std::string_view uri) override {
-    return {};
-  }
-
   std::span<struct iovec>
   response_riovec(std::span<struct iovec> iov) const override;
   std::span<const uint8_t> response_peek() const override;
   void response_drain(size_t n) override;
   bool response_empty() const override;
-
-  Downstream *on_downstream_push_promise(Downstream *downstream,
-                                         int32_t promised_stream_id) override;
-  std::expected<void, Error> on_downstream_push_promise_complete(
-    Downstream *downstream, Downstream *promised_downstream) override {
-    return {};
-  }
-  bool push_enabled() const override;
-  void cancel_premature_downstream(Downstream *promised_downstream) override;
 
   std::expected<void, Error>
   init(const UpstreamAddr *faddr, const Address &remote_addr,
