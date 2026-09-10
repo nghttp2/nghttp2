@@ -4028,6 +4028,22 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
     return session_inflate_handle_invalid_connection(
       session, frame, NGHTTP2_ERR_STREAM_CLOSED, "HEADERS: stream closed");
   }
+
+  if ((stream->http_flags & NGHTTP2_HTTP_FLAG_METH_CONNECT) &&
+      (session->server || stream->status_code / 100 == 2)) {
+    rv = session_update_glitch_ratelim(session);
+    if (rv != 0) {
+      return rv;
+    }
+
+    if (session->iframe.state == NGHTTP2_IB_IGN_ALL) {
+      return 0;
+    }
+
+    return session_inflate_handle_invalid_stream(session, frame,
+                                                 NGHTTP2_ERR_PROTO);
+  }
+
   if (nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
     if (stream->state == NGHTTP2_STREAM_OPENED) {
       rv = session_call_on_begin_headers(session, frame);
@@ -4637,6 +4653,13 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
   if (stream->shut_flags & NGHTTP2_SHUT_RD) {
     return session_inflate_handle_invalid_connection(
       session, frame, NGHTTP2_ERR_STREAM_CLOSED, "PUSH_PROMISE: stream closed");
+  }
+
+  if ((stream->http_flags & NGHTTP2_HTTP_FLAG_METH_CONNECT) &&
+      stream->status_code / 100 == 2) {
+    return session_inflate_handle_invalid_connection(
+      session, frame, NGHTTP2_ERR_PROTO,
+      "PUSH_PROMISE: not allowed in CONNECT stream");
   }
 
   promised_stream = nghttp2_session_open_stream(
