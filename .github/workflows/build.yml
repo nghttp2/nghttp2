@@ -295,7 +295,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install \
           g++-15 \
-          clang-19 \
+          clang-21 \
           autoconf \
           automake \
           autotools-dev \
@@ -334,8 +334,8 @@ jobs:
     - name: Setup clang (Linux)
       if: runner.os == 'Linux' && matrix.compiler == 'clang'
       run: |
-        echo 'CC=clang-19' >> $GITHUB_ENV
-        echo 'CXX=clang++-19' >> $GITHUB_ENV
+        echo 'CC=clang-21' >> $GITHUB_ENV
+        echo 'CXX=clang++-21' >> $GITHUB_ENV
     - name: Setup clang (MacOS)
       if: runner.os == 'macOS' && matrix.compiler == 'clang'
       run: |
