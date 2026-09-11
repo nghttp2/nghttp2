@@ -58,7 +58,8 @@ char *strndup(const char *s, size_t size);
 #include <openssl/err.h>
 #include <openssl/conf.h>
 
-#include <event.h>
+#include <event2/buffer.h>
+#include <event2/bufferevent.h>
 #include <event2/event.h>
 #include <event2/bufferevent_ssl.h>
 #include <event2/dns.h>

@@ -285,10 +285,6 @@ the sample command like this:
     $ ./configure
     $ make
 
-If you want to compile the applications under ``examples/``, you need
-to remove or rename the ``event.h`` from libev's installation, because
-it conflicts with libevent's installation.
-
 Notes for installation on Linux systems
 --------------------------------------------
 After installing nghttp2 tool suite with ``make install`` one might experience a similar error:
