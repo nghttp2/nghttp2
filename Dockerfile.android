@@ -12,7 +12,7 @@
 
 
 # Only use standalone-toolchain for reduce size
-FROM ubuntu:24.04
+FROM ubuntu:26.04
 LABEL org.opencontainers.image.authors="Tatsuhiro Tsujikawa"
 
 ARG NDK_VERSION=r27c
