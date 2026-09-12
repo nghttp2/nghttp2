@@ -213,7 +213,7 @@ jobs:
         compiler: [gcc, clang]
         buildtool: [autotools, cmake]
         http3: [http3, no-http3]
-        openssl: [openssl1, openssl, boringssl, awslc, wolfssl]
+        openssl: [openssl, boringssl, awslc, wolfssl]
         exclude:
         - http3: no-http3
           openssl: openssl
@@ -259,6 +259,11 @@ jobs:
           buildtool: autotools
           http3: http3
           openssl: wolfssl
+        - os: ubuntu-26.04
+          compiler: clang
+          buildtool: autotools
+          http3: http3
+          openssl: openssl1
 
     runs-on: ${{ matrix.os }}
 
