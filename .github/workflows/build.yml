@@ -209,38 +209,16 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-26.04, macos-26, macos-15]
+        os: [ubuntu-26.04]
         compiler: [gcc, clang]
-        buildtool: [autotools, cmake]
+        buildtool: [autotools]
         http3: [http3, no-http3]
         openssl: [openssl, boringssl, awslc, wolfssl]
         exclude:
         - http3: no-http3
           openssl: openssl
-        - os: macos-26
-          compiler: gcc
-        - os: macos-15
-          compiler: gcc
-        - # disable macos cmake because of include path issue
-          os: macos-26
-          buildtool: cmake
-        - # disable macos cmake because of include path issue
-          os: macos-15
-          buildtool: cmake
-        - os: macos-26
-          openssl: boringssl
-        - os: macos-15
-          openssl: boringssl
-        - openssl: boringssl
-          buildtool: cmake
         - openssl: boringssl
           compiler: gcc
-        - os: macos-26
-          openssl: awslc
-        - os: macos-15
-          openssl: awslc
-        - openssl: awslc
-          buildtool: cmake
         - openssl: awslc
           compiler: gcc
         include:
@@ -264,6 +242,36 @@ jobs:
           buildtool: autotools
           http3: http3
           openssl: openssl1
+        - os: ubuntu-26.04
+          compiler: clang
+          buildtool: cmake
+          http3: http3
+          openssl: openssl
+        - os: ubuntu-26.04
+          compiler: clang
+          buildtool: cmake
+          http3: no-http3
+          openssl: wolfssl
+        - os: macos-26
+          compiler: clang
+          buildtool: autotools
+          http3: http3
+          openssl: openssl
+        - os: macos-26
+          compiler: clang
+          buildtool: autotools
+          http3: http3
+          openssl: wolfssl
+        - os: macos-15
+          compiler: clang
+          buildtool: autotools
+          http3: http3
+          openssl: openssl
+        - os: macos-15
+          compiler: clang
+          buildtool: autotools
+          http3: http3
+          openssl: wolfssl
 
     runs-on: ${{ matrix.os }}
 
