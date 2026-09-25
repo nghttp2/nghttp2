@@ -30,7 +30,7 @@
 #endif /* defined(HAVE_CONFIG_H) */
 #include <zlib.h>
 
-#include <nghttp2/nghttp2.h>
+#include <nghttp2v2/nghttp2.h>
 
 #ifdef __cplusplus
 extern "C" {

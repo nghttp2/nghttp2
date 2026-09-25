@@ -63,7 +63,7 @@ AM_CPPFLAGS = \
 	@DEFS@
 AM_LDFLAGS = @LIBTOOL_LDFLAGS@
 
-LDADD = $(top_builddir)/lib/libnghttp2.la \
+LDADD = $(top_builddir)/lib/libnghttp2v2.la \
 	$(top_builddir)/third-party/liburlparse.la \
 	$(top_builddir)/third-party/libllhttp.la \
 	@JEMALLOC_LIBS@ \
@@ -89,195 +89,48 @@ LDADD = $(top_builddir)/lib/libnghttp2.la \
 
 if ENABLE_APP
 
-bin_PROGRAMS += nghttp nghttpd nghttpx
+bin_PROGRAMS += nghttpd
 
 HELPER_OBJECTS = util.cc \
 	http2.cc timegm.c app_helper.cc nghttp2_gzip.c network.cc
 HELPER_HFILES = util.h \
 	http2.h timegm.h app_helper.h nghttp2_config.h \
-	nghttp2_gzip.h network.h errors.h
-
-HTML_PARSER_OBJECTS =
-HTML_PARSER_HFILES = HtmlParser.h
+	nghttp2_gzip.h network.h errors.h template.h allocator.h memchunk.h \
+	base64.h buffer.h
 
 if HAVE_LIBXML2
-HTML_PARSER_OBJECTS += HtmlParser.cc
 endif # HAVE_LIBXML2
-
-nghttp_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttp.cc nghttp.h \
-	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES} \
-	tls.cc tls.h ssl_compat.h
 
 nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
 	tls.cc tls.h ssl_compat.h \
 	HttpServer.cc HttpServer.h
 
-bin_PROGRAMS += h2load
-
-h2load_SOURCES = util.cc util.h \
-	http2.cc http2.h h2load.cc h2load.h \
-	timegm.c timegm.h \
-	tls.cc tls.h ssl_compat.h \
-	h2load_session.h \
-	h2load_http2_session.cc h2load_http2_session.h \
-	h2load_http1_session.cc h2load_http1_session.h \
-	network.cc network.h \
-	errors.h
-
 if ENABLE_HTTP3
-h2load_SOURCES += \
-	h2load_http3_session.cc h2load_http3_session.h \
-	h2load_quic.cc h2load_quic.h
 endif # ENABLE_HTTP3
 
-NGHTTPX_SRCS = \
-	util.cc util.h http2.cc http2.h timegm.c timegm.h base64.h \
-	app_helper.cc app_helper.h \
-	tls.cc tls.h ssl_compat.h \
-	network.cc network.h \
-	shrpx_config.cc shrpx_config.h \
-	shrpx_error.h \
-	shrpx_accept_handler.cc shrpx_accept_handler.h \
-	shrpx_connection_handler.cc shrpx_connection_handler.h \
-	shrpx_client_handler.cc shrpx_client_handler.h \
-	shrpx_upstream.h \
-	shrpx_http2_upstream.cc shrpx_http2_upstream.h \
-	shrpx_https_upstream.cc shrpx_https_upstream.h \
-	shrpx_downstream.cc shrpx_downstream.h \
-	shrpx_downstream_connection.cc shrpx_downstream_connection.h \
-	shrpx_http_downstream_connection.cc shrpx_http_downstream_connection.h \
-	shrpx_http2_downstream_connection.cc shrpx_http2_downstream_connection.h \
-	shrpx_http2_session.cc shrpx_http2_session.h \
-	shrpx_downstream_queue.cc shrpx_downstream_queue.h \
-	shrpx_log.cc shrpx_log.h \
-	shrpx_http.cc shrpx_http.h \
-	shrpx_io_control.cc shrpx_io_control.h \
-	shrpx_tls.cc shrpx_tls.h \
-	shrpx_worker.cc shrpx_worker.h \
-	shrpx_log_config.cc shrpx_log_config.h \
-	shrpx_connect_blocker.cc shrpx_connect_blocker.h \
-	shrpx_live_check.cc shrpx_live_check.h \
-	shrpx_downstream_connection_pool.cc shrpx_downstream_connection_pool.h \
-	shrpx_rate_limit.cc shrpx_rate_limit.h \
-	shrpx_connection.cc shrpx_connection.h \
-	shrpx_memcached_dispatcher.cc shrpx_memcached_dispatcher.h \
-	shrpx_memcached_connection.cc shrpx_memcached_connection.h \
-	shrpx_memcached_request.h \
-	shrpx_memcached_result.h \
-	shrpx_worker_process.cc shrpx_worker_process.h \
-	shrpx_process.h \
-	shrpx_signal.cc shrpx_signal.h \
-	shrpx_router.cc shrpx_router.h \
-	shrpx_api_downstream_connection.cc shrpx_api_downstream_connection.h \
-	shrpx_health_monitor_downstream_connection.cc \
-	shrpx_health_monitor_downstream_connection.h \
-	shrpx_null_downstream_connection.cc shrpx_null_downstream_connection.h \
-	shrpx_dns_resolver.cc shrpx_dns_resolver.h \
-	shrpx_dual_dns_resolver.cc shrpx_dual_dns_resolver.h \
-	shrpx_dns_tracker.cc shrpx_dns_tracker.h \
-	buffer.h memchunk.h template.h allocator.h \
-	errors.h \
-	xsi_strerror.c xsi_strerror.h
-
 if HAVE_MRUBY
-NGHTTPX_SRCS += \
-	shrpx_mruby.cc shrpx_mruby.h \
-	shrpx_mruby_module.cc shrpx_mruby_module.h \
-	shrpx_mruby_module_env.cc shrpx_mruby_module_env.h \
-	shrpx_mruby_module_request.cc shrpx_mruby_module_request.h \
-	shrpx_mruby_module_response.cc shrpx_mruby_module_response.h
 endif # HAVE_MRUBY
 
 if ENABLE_HTTP3
-NGHTTPX_SRCS += \
-	shrpx_quic.cc shrpx_quic.h \
-	shrpx_quic_listener.cc shrpx_quic_listener.h \
-	shrpx_quic_connection_handler.cc shrpx_quic_connection_handler.h \
-	shrpx_http3_upstream.cc shrpx_http3_upstream.h \
-	http3.cc http3.h \
-	siphash.cc siphash.h
 endif # ENABLE_HTTP3
 
-noinst_LIBRARIES = libnghttpx.a
-libnghttpx_a_SOURCES = ${NGHTTPX_SRCS}
-libnghttpx_a_CPPFLAGS = ${AM_CPPFLAGS}
-
-nghttpx_SOURCES = shrpx.cc shrpx.h
-nghttpx_CPPFLAGS = ${libnghttpx_a_CPPFLAGS}
-nghttpx_LDADD = libnghttpx.a ${LDADD}
-
 if HAVE_MRUBY
-libnghttpx_a_CPPFLAGS += \
-	-I${top_srcdir}/third-party/mruby/include \
-	-I${top_builddir}/third-party/mruby/build/include \
-	@LIBMRUBY_CFLAGS@
-nghttpx_LDADD += -L${top_builddir}/third-party/mruby/build/lib @LIBMRUBY_LIBS@
 endif # HAVE_MRUBY
 
 if HAVE_NEVERBLEED
-libnghttpx_a_CPPFLAGS += -I${top_srcdir}/third-party/neverbleed
-nghttpx_LDADD += ${top_builddir}/third-party/libneverbleed.la
 endif # HAVE_NEVERBLEED
 
-check_PROGRAMS += nghttpx-unittest
-nghttpx_unittest_SOURCES = shrpx-unittest.cc \
-	shrpx_tls_test.cc shrpx_tls_test.h \
-	shrpx_downstream_test.cc shrpx_downstream_test.h \
-	shrpx_config_test.cc shrpx_config_test.h \
-	shrpx_worker_test.cc shrpx_worker_test.h \
-	shrpx_http_test.cc shrpx_http_test.h \
-	shrpx_router_test.cc shrpx_router_test.h \
-	http2_test.cc http2_test.h \
-	util_test.cc util_test.h \
-	nghttp2_gzip_test.c nghttp2_gzip_test.h \
-	nghttp2_gzip.c nghttp2_gzip.h \
-	buffer_test.cc buffer_test.h \
-	memchunk_test.cc memchunk_test.h \
-	template_test.cc template_test.h \
-	base64_test.cc base64_test.h \
-	network_test.cc network_test.h \
-	allocator_test.cc allocator_test.h \
-	$(top_srcdir)/tests/munit/munit.c $(top_srcdir)/tests/munit/munit.h \
-	$(top_srcdir)/tests/munit/munitxx.h
 if ENABLE_HTTP3
-nghttpx_unittest_SOURCES += siphash_test.cc siphash_test.h
 endif # ENABLE_HTTP3
-nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS} \
-	-I$(top_srcdir)/tests/munit \
-	-DNGHTTP2_SRC_DIR=\"$(top_srcdir)/src\"
-nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} @TESTLDADD@
 
 if HAVE_MRUBY
-nghttpx_unittest_CPPFLAGS += \
-	-I${top_srcdir}/third-party/mruby/include \
-	-I${top_builddir}/third-party/mruby/build/include \
-	@LIBMRUBY_CFLAGS@
-nghttpx_unittest_LDADD += \
-	-L${top_builddir}/third-party/mruby/build/lib @LIBMRUBY_LIBS@
 endif # HAVE_MRUBY
 
 if HAVE_NEVERBLEED
-nghttpx_unittest_CPPFLAGS += -I${top_srcdir}/third-party/neverbleed
-nghttpx_unittest_LDADD += ${top_builddir}/third-party/libneverbleed.la
 endif # HAVE_NEVERBLEED
-
-TESTS += nghttpx-unittest
 
 endif # ENABLE_APP
 
 if ENABLE_HPACK_TOOLS
-
-bin_PROGRAMS += inflatehd deflatehd
-
-HPACK_TOOLS_COMMON_SRCS = \
-	comp_helper.c comp_helper.h \
-	util.cc util.h \
-	timegm.c timegm.h \
-	tls.cc tls.h \
-	network.cc network.h
-
-inflatehd_SOURCES = inflatehd.cc $(HPACK_TOOLS_COMMON_SRCS)
-
-deflatehd_SOURCES = deflatehd.cc $(HPACK_TOOLS_COMMON_SRCS)
 
 endif # ENABLE_HPACK_TOOLS

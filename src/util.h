@@ -57,6 +57,8 @@
 #  include <ev.h>
 #endif // defined(HAVE_LIBEV)
 
+#include <nghttp2v2/nghttp2.h>
+
 #include "urlparse.h"
 
 #include "template.h"
@@ -1379,6 +1381,8 @@ constexpr bool contains(I first, I last, const T &value) {
 // stream_error returns true if |f| is in error state.  EOF is not
 // considered as an error.
 bool stream_error(const std::ifstream &f);
+
+nghttp2_tstamp timestamp();
 
 #ifdef ENABLE_HTTP3
 std::expected<Address, Error> msghdr_get_local_addr(msghdr *msg, int family);

@@ -38,7 +38,7 @@
 #include <string>
 #include <print>
 
-#include <nghttp2/nghttp2.h>
+#include <nghttp2v2/nghttp2.h>
 
 #include "app_helper.h"
 #include "HttpServer.h"

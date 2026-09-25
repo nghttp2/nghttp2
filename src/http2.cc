@@ -310,15 +310,15 @@ void capitalize(DefaultMemchunks *buf, std::string_view s) {
 }
 
 Headers::value_type to_header(std::string_view name, std::string_view value,
-                              bool no_index, int32_t token) {
+                              bool never_index, int32_t token) {
   return Header(std::string{std::ranges::begin(name), std::ranges::end(name)},
                 std::string{std::ranges::begin(value), std::ranges::end(value)},
-                no_index, token);
+                never_index, token);
 }
 
 void add_header(Headers &nva, std::string_view name, std::string_view value,
-                bool no_index, int32_t token) {
-  nva.push_back(to_header(name, value, no_index, token));
+                bool never_index, int32_t token) {
+  nva.push_back(to_header(name, value, never_index, token));
 }
 
 const Headers::value_type *get_header(const Headers &nva,
@@ -431,8 +431,8 @@ void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
       it_via = it;
       break;
     }
-    nva.push_back(
-      make_field_flags(kv->name, kv->value, nv_flags | no_index(kv->no_index)));
+    nva.push_back(make_field_flags(kv->name, kv->value,
+                                   nv_flags | never_index(kv->never_index)));
   }
 }
 } // namespace
@@ -542,26 +542,6 @@ void build_http1_headers_from_headers(DefaultMemchunks *buf,
     buf->append(kv->value);
     buf->append("\r\n"sv);
   }
-}
-
-int32_t determine_window_update_transmission(nghttp2_session *session,
-                                             int32_t stream_id) {
-  int32_t recv_length, window_size;
-  if (stream_id == 0) {
-    recv_length = nghttp2_session_get_effective_recv_data_length(session);
-    window_size = nghttp2_session_get_effective_local_window_size(session);
-  } else {
-    recv_length =
-      nghttp2_session_get_stream_effective_recv_data_length(session, stream_id);
-    window_size = nghttp2_session_get_stream_effective_local_window_size(
-      session, stream_id);
-  }
-  if (recv_length != -1 && window_size != -1) {
-    if (recv_length >= window_size / 2) {
-      return recv_length;
-    }
-  }
-  return -1;
 }
 
 void dump_nv(FILE *out, const nghttp2_nv *nva, size_t nvlen) {
@@ -1628,7 +1608,7 @@ bool check_transfer_encoding(std::string_view s) {
   }
 }
 
-std::string encode_extpri(const nghttp2_extpri &extpri) {
+std::string encode_extpri(const nghttp2_pri &extpri) {
   std::string res = "u=";
 
   res += static_cast<char>(extpri.urgency) + '0';

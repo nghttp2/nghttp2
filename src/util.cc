@@ -75,7 +75,7 @@
 #  include <openssl/rand.h>
 #endif // !defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
 
-#include <nghttp2/nghttp2.h>
+#include <nghttp2v2/nghttp2.h>
 
 #include "timegm.h"
 #include "tls.h"
@@ -1854,6 +1854,13 @@ void secure_random(uint8_t *dest, size_t destlen) {
 
 bool stream_error(const std::ifstream &f) {
   return f.bad() || (!f.eof() && f.fail());
+}
+
+nghttp2_tstamp timestamp() {
+  return static_cast<nghttp2_tstamp>(
+    std::chrono::duration_cast<std::chrono::nanoseconds>(
+      std::chrono::steady_clock::now().time_since_epoch())
+      .count());
 }
 
 #ifdef ENABLE_HTTP3

@@ -36,7 +36,7 @@
 #include <expected>
 #include <format>
 
-#include <nghttp2/nghttp2.h>
+#include <nghttp2v2/nghttp2.h>
 
 #include "urlparse.h"
 
@@ -50,12 +50,12 @@
 namespace nghttp2 {
 
 struct Header {
-  constexpr Header(std::string name, std::string value, bool no_index = false,
-                   int32_t token = -1) noexcept
+  constexpr Header(std::string name, std::string value,
+                   bool never_index = false, int32_t token = -1) noexcept
     : name{std::move(name)},
       value{std::move(value)},
       token{token},
-      no_index{no_index} {}
+      never_index{never_index} {}
 
   constexpr Header() noexcept = default;
   constexpr Header(const Header &) = default;
@@ -80,13 +80,13 @@ struct Header {
   std::string name;
   std::string value;
   int32_t token{-1};
-  bool no_index{};
+  bool never_index{};
 };
 
 struct HeaderRef {
   constexpr HeaderRef(std::string_view name, std::string_view value,
-                      bool no_index = false, int32_t token = -1) noexcept
-    : name{name}, value{value}, token{token}, no_index{no_index} {}
+                      bool never_index = false, int32_t token = -1) noexcept
+    : name{name}, value{value}, token{token}, never_index{never_index} {}
 
   constexpr HeaderRef() noexcept = default;
   constexpr HeaderRef(const HeaderRef &) noexcept = default;
@@ -111,7 +111,7 @@ struct HeaderRef {
   std::string_view name;
   std::string_view value;
   int32_t token{-1};
-  bool no_index{};
+  bool never_index{};
 };
 
 using Headers = std::vector<Header>;
@@ -130,13 +130,13 @@ std::string_view stringify_status(BlockAllocator &balloc,
 void capitalize(DefaultMemchunks *buf, std::string_view s);
 
 Headers::value_type to_header(std::string_view name, std::string_view value,
-                              bool no_index, int32_t token);
+                              bool never_index, int32_t token);
 
-// Add name/value pairs to |nva|.  If |no_index| is true, this
+// Add name/value pairs to |nva|.  If |never_index| is true, this
 // name/value pair won't be indexed when it is forwarded to the next
 // hop.
 void add_header(Headers &nva, std::string_view name, std::string_view value,
-                bool no_index, int32_t token);
+                bool never_index, int32_t token);
 
 // Returns pointer to the entry in |nva| which has name |name|.  If
 // more than one entries which have the name |name|, last occurrence
@@ -185,10 +185,10 @@ inline nghttp2_nv make_field_nv(std::string_view name, std::string_view value,
   return make_field_flags(name, value, flags);
 }
 
-// Returns NGHTTP2_NV_FLAG_NO_INDEX if |no_index| is true, otherwise
+// Returns NGHTTP2_NV_FLAG_NEVER_INDEX if |never_index| is true, otherwise
 // NGHTTP2_NV_FLAG_NONE.
-inline uint8_t no_index(bool no_index) {
-  return no_index ? NGHTTP2_NV_FLAG_NO_INDEX : NGHTTP2_NV_FLAG_NONE;
+inline uint8_t never_index(bool never_index) {
+  return never_index ? NGHTTP2_NV_FLAG_NEVER_INDEX : NGHTTP2_NV_FLAG_NONE;
 }
 
 enum HeaderBuildOp {
@@ -249,15 +249,6 @@ void copy_headers_to_nva_nocopy(std::vector<nghttp2_nv> &nva,
 void build_http1_headers_from_headers(DefaultMemchunks *buf,
                                       std::span<const HeaderRef> headers,
                                       uint32_t flags);
-
-// Return positive window_size_increment if WINDOW_UPDATE should be
-// sent for the stream |stream_id|. If |stream_id| == 0, this function
-// determines the necessity of the WINDOW_UPDATE for a connection.
-//
-// If the function determines WINDOW_UPDATE is not necessary at the
-// moment, it returns -1.
-int32_t determine_window_update_transmission(nghttp2_session *session,
-                                             int32_t stream_id);
 
 // Dumps name/value pairs in |nva| of length |nvlen| to |out|.
 void dump_nv(FILE *out, const nghttp2_nv *nva, size_t nvlen);
@@ -425,7 +416,7 @@ bool legacy_http1(int major, int minor);
 bool check_transfer_encoding(std::string_view s);
 
 // Encodes |extpri| in the wire format.
-std::string encode_extpri(const nghttp2_extpri &extpri);
+std::string encode_extpri(const nghttp2_pri &extpri);
 
 } // namespace http2
 
@@ -434,8 +425,8 @@ std::string encode_extpri(const nghttp2_extpri &extpri);
 template <>
 struct std::formatter<nghttp2::Header> : public std::formatter<std::string> {
   auto format(const nghttp2::Header &h, auto &ctx) const {
-    auto s = std::format("Header{{name={} value={} token={} no_index={}}}",
-                         h.name, h.value, h.token, h.no_index);
+    auto s = std::format("Header{{name={} value={} token={} never_index={}}}",
+                         h.name, h.value, h.token, h.never_index);
 
     return std::formatter<std::string>::format(s, ctx);
   }
@@ -444,8 +435,9 @@ struct std::formatter<nghttp2::Header> : public std::formatter<std::string> {
 template <>
 struct std::formatter<nghttp2::HeaderRef> : public std::formatter<std::string> {
   auto format(const nghttp2::HeaderRef &h, auto &ctx) const {
-    auto s = std::format("HeaderRef{{name={} value={} token={} no_index={}}}",
-                         h.name, h.value, h.token, h.no_index);
+    auto s =
+      std::format("HeaderRef{{name={} value={} token={} never_index={}}}",
+                  h.name, h.value, h.token, h.never_index);
 
     return std::formatter<std::string>::format(s, ctx);
   }

@@ -52,7 +52,7 @@
 #include <ev.h>
 
 #define NGHTTP2_NO_SSIZE_T
-#include <nghttp2/nghttp2.h>
+#include <nghttp2v2/nghttp2.h>
 
 #include "http2.h"
 #include "buffer.h"
@@ -114,8 +114,10 @@ struct FileEntry {
       content_type(content_type),
       fd(fd),
       stale(stale) {}
+  void map_file();
   std::string path;
   std::unordered_multimap<std::string, std::unique_ptr<FileEntry>>::iterator it;
+  void *map{};
   int64_t length;
   int64_t mtime;
   std::chrono::steady_clock::time_point last_valid;
@@ -151,6 +153,7 @@ struct Stream {
   RequestHeader header{};
   Http2Handler *handler;
   FileEntry *file_ent{};
+  bool static_file_ent{};
   ev_timer rtimer;
   ev_timer wtimer;
   int64_t body_length{};
@@ -158,9 +161,9 @@ struct Stream {
   // Total amount of bytes (sum of name and value length) used in
   // headers.
   size_t header_buffer_size{};
-  int32_t stream_id;
+  int64_t stream_id;
   bool echo_upload{};
-  Stream(Http2Handler *handler, int32_t stream_id);
+  Stream(Http2Handler *handler, int64_t stream_id);
   ~Stream();
 };
 
@@ -182,19 +185,19 @@ public:
   submit_file_response(std::string_view status, Stream *stream,
                        time_t last_modified, off_t file_length,
                        const std::string *content_type,
-                       nghttp2_data_provider2 *data_prd);
+                       const nghttp2_data_reader *dr);
 
   std::expected<void, Error> submit_response(std::string_view status,
-                                             int32_t stream_id,
-                                             nghttp2_data_provider2 *data_prd);
+                                             int64_t stream_id,
+                                             const nghttp2_data_reader *dr);
 
   std::expected<void, Error> submit_response(std::string_view status,
-                                             int32_t stream_id,
+                                             int64_t stream_id,
                                              const HeaderRefs &headers,
-                                             nghttp2_data_provider2 *data_prd);
+                                             const nghttp2_data_reader *dr);
 
   std::expected<void, Error>
-  submit_non_final_response(const std::string &status, int32_t stream_id);
+  submit_non_final_response(const std::string &status, int64_t stream_id);
 
   std::expected<void, Error> submit_push_promise(Stream *stream,
                                                  std::string_view push_path);
@@ -202,16 +205,18 @@ public:
   std::expected<void, Error> submit_rst_stream(Stream *stream,
                                                uint32_t error_code);
 
-  void add_stream(int32_t stream_id, std::unique_ptr<Stream> stream);
-  void remove_stream(int32_t stream_id);
-  Stream *get_stream(int32_t stream_id);
+  void add_stream(int64_t stream_id, std::unique_ptr<Stream> stream);
+  void remove_stream(int64_t stream_id);
+  Stream *get_stream(int64_t stream_id);
   int64_t session_id() const;
   Sessions *get_sessions() const;
   const Config *get_config() const;
   void remove_settings_timer();
   void terminate_session(uint32_t error_code);
+  void set_timeout();
+  std::expected<void, Error> on_timeout();
 
-  std::expected<void, Error> fill_wb();
+  std::expected<void, Error> fill_wb(nghttp2_tstamp ts);
 
   std::expected<void, Error> read_clear();
   std::expected<void, Error> write_clear();
@@ -223,21 +228,22 @@ public:
 
   using WriteBuf = Buffer<64_k>;
 
-  WriteBuf *get_wb();
-
 private:
   ev_io wev_;
   ev_io rev_;
   ev_timer settings_timerev_;
-  std::unordered_map<int32_t, std::unique_ptr<Stream>> id2stream_;
-  WriteBuf wb_;
+  std::unordered_map<int64_t, std::unique_ptr<Stream>> id2stream_;
   std::function<std::expected<void, Error>(Http2Handler &)> read_, write_;
   int64_t session_id_;
-  nghttp2_session *session_{};
+  nghttp2_conn *conn_{};
   Sessions *sessions_;
   SSL *ssl_;
   std::span<const uint8_t> data_pending_;
   int fd_;
+  struct {
+    std::span<const uint8_t> data;
+  } tx_{};
+  std::array<uint8_t, 16_k> txbuf_;
 };
 
 struct StatusPage {
@@ -257,10 +263,10 @@ private:
   const Config *config_;
 };
 
-nghttp2_ssize file_read_callback(nghttp2_session *session, int32_t stream_id,
-                                 uint8_t *buf, size_t length,
-                                 uint32_t *data_flags,
-                                 nghttp2_data_source *source, void *user_data);
+nghttp2_ssize file_read_callback(nghttp2_conn *conn, int64_t stream_id,
+                                 nghttp2_vec *vec, size_t veccnt,
+                                 uint32_t *pflags, void *conn_user_data,
+                                 void *stream_user_data);
 
 } // namespace nghttp2
 
