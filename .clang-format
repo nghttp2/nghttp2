@@ -285,6 +285,7 @@ StatementMacros:
   - munit_void_test_decl
   - nghttp2_max_def
   - nghttp2_min_def
+  - nghttp2_static_ringbuf_def
 TableGenBreakInsideDAGArg: DontBreak
 TabWidth:        8
 UseTab:          Never

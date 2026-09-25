@@ -114,3 +114,13 @@
 
 /* Define to 1 if you have `wolfssl` library. */
 #cmakedefine HAVE_WOLFSSL 1
+
+/* Define to 1 if you have the `be64toh' function, otherwise 0. */
+#cmakedefine01 HAVE_DECL_BE64TOH
+
+/* Define to 1 if you have the `bswap_64' function, otherwise 0. */
+#cmakedefine01 HAVE_DECL_BSWAP_64
+
+/* Define WORDS_BIGENDIAN to 1 if target architecture is big
+   endian. */
+#cmakedefine WORDS_BIGENDIAN 1

@@ -1,7 +1,7 @@
 /*
- * nghttp2 - HTTP/2 C Library
+ * nghttp2
  *
- * Copyright (c) 2016 Tatsuhiro Tsujikawa
+ * Copyright (c) 2026 nghttp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -24,14 +24,13 @@
  */
 #include "nghttp2_rcbuf.h"
 
-#include <string.h>
 #include <assert.h>
 
 #include "nghttp2_mem.h"
-#include "nghttp2_helper.h"
+#include "nghttp2_str.h"
 
 int nghttp2_rcbuf_new(nghttp2_rcbuf **rcbuf_ptr, size_t size,
-                      nghttp2_mem *mem) {
+                      const nghttp2_mem *mem) {
   uint8_t *p;
 
   p = nghttp2_mem_malloc(mem, sizeof(nghttp2_rcbuf) + size);
@@ -41,20 +40,18 @@ int nghttp2_rcbuf_new(nghttp2_rcbuf **rcbuf_ptr, size_t size,
 
   *rcbuf_ptr = (void *)p;
 
-  **rcbuf_ptr = (nghttp2_rcbuf){
-    .mem_user_data = mem->mem_user_data,
-    .free = mem->free,
-    .base = p + sizeof(nghttp2_rcbuf),
-    .len = size,
-    .ref = 1,
-  };
+  (*rcbuf_ptr)->mem = mem;
+  (*rcbuf_ptr)->base = p + sizeof(nghttp2_rcbuf);
+  (*rcbuf_ptr)->len = size;
+  (*rcbuf_ptr)->ref = 1;
 
   return 0;
 }
 
 int nghttp2_rcbuf_new2(nghttp2_rcbuf **rcbuf_ptr, const uint8_t *src,
-                       size_t srclen, nghttp2_mem *mem) {
+                       size_t srclen, const nghttp2_mem *mem) {
   int rv;
+  uint8_t *p;
 
   rv = nghttp2_rcbuf_new(rcbuf_ptr, srclen + 1, mem);
   if (rv != 0) {
@@ -62,7 +59,13 @@ int nghttp2_rcbuf_new2(nghttp2_rcbuf **rcbuf_ptr, const uint8_t *src,
   }
 
   (*rcbuf_ptr)->len = srclen;
-  *nghttp2_cpymem((*rcbuf_ptr)->base, src, srclen) = '\0';
+  p = (*rcbuf_ptr)->base;
+
+  if (srclen) {
+    p = nghttp2_cpymem(p, src, srclen);
+  }
+
+  *p = '\0';
 
   return 0;
 }
@@ -71,7 +74,7 @@ int nghttp2_rcbuf_new2(nghttp2_rcbuf **rcbuf_ptr, const uint8_t *src,
  * Frees |rcbuf| itself, regardless of its reference cout.
  */
 void nghttp2_rcbuf_del(nghttp2_rcbuf *rcbuf) {
-  nghttp2_mem_free2(rcbuf->free, rcbuf, rcbuf->mem_user_data);
+  nghttp2_mem_free(rcbuf->mem, rcbuf);
 }
 
 void nghttp2_rcbuf_incref(nghttp2_rcbuf *rcbuf) {
@@ -94,7 +97,7 @@ void nghttp2_rcbuf_decref(nghttp2_rcbuf *rcbuf) {
   }
 }
 
-nghttp2_vec nghttp2_rcbuf_get_buf(nghttp2_rcbuf *rcbuf) {
+nghttp2_vec nghttp2_rcbuf_get_buf(const nghttp2_rcbuf *rcbuf) {
   nghttp2_vec res = {rcbuf->base, rcbuf->len};
   return res;
 }

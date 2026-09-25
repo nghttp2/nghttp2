@@ -1,6 +1,6 @@
 # nghttp2 - HTTP/2 C Library
 
-# Copyright (c) 2012, 2013 Tatsuhiro Tsujikawa
+# Copyright (c) 2026 nghttp2 contributors
 
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -22,7 +22,7 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SUBDIRS = includes
 
-EXTRA_DIST = Makefile.msvc CMakeLists.txt version.rc.in config.cmake.in
+EXTRA_DIST = CMakeLists.txt config.cmake.in
 
 AM_CFLAGS = $(WARNCFLAGS) $(EXTRACFLAG)
 AM_CPPFLAGS = -I$(srcdir)/includes -I$(builddir)/includes -DBUILDING_NGHTTP2 \
@@ -30,52 +30,40 @@ AM_CPPFLAGS = -I$(srcdir)/includes -I$(builddir)/includes -DBUILDING_NGHTTP2 \
 AM_LDFLAGS = @LIBTOOL_LDFLAGS@
 
 pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = libnghttp2.pc
+pkgconfig_DATA = libnghttp2v2.pc
 DISTCLEANFILES = $(pkgconfig_DATA)
 
-lib_LTLIBRARIES = libnghttp2.la
+lib_LTLIBRARIES = libnghttp2v2.la
 
-OBJECTS = nghttp2_pq.c nghttp2_map.c nghttp2_queue.c \
-	nghttp2_frame.c \
-	nghttp2_buf.c \
-	nghttp2_stream.c nghttp2_outbound_item.c \
-	nghttp2_session.c nghttp2_submit.c \
-	nghttp2_helper.c \
-	nghttp2_alpn.c \
-	nghttp2_hd.c nghttp2_hd_huffman.c nghttp2_hd_huffman_data.c \
-	nghttp2_version.c \
-	nghttp2_priority_spec.c \
-	nghttp2_option.c \
-	nghttp2_callbacks.c \
-	nghttp2_mem.c \
-	nghttp2_http.c \
-	nghttp2_rcbuf.c \
-	nghttp2_extpri.c \
-	nghttp2_ratelim.c \
-	nghttp2_time.c \
-	nghttp2_debug.c \
-	sfparse.c
-
-HFILES = nghttp2_pq.h nghttp2_int.h nghttp2_map.h nghttp2_queue.h \
-	nghttp2_frame.h \
-	nghttp2_buf.h \
-	nghttp2_session.h nghttp2_helper.h nghttp2_stream.h nghttp2_int.h \
-	nghttp2_alpn.h \
-	nghttp2_submit.h nghttp2_outbound_item.h \
+SOURCES = \
+	nghttp2_buf.c nghttp2_buf.h \
+	nghttp2_conn.c nghttp2_conn.h \
+	nghttp2_conv.c nghttp2_conv.h \
+	nghttp2_err.c nghttp2_err.h \
+	nghttp2_fmt.c nghttp2_fmt.h \
+	nghttp2_frame.c nghttp2_frame.h \
+	nghttp2_frame_reader.c nghttp2_frame_reader.h \
+	nghttp2_hpack.c nghttp2_hpack.h \
+	nghttp2_hpack_huffman.c nghttp2_hpack_huffman.h \
+	nghttp2_hpack_huffman_data.c \
+	nghttp2_http.c nghttp2_http.h \
+	nghttp2_http_writer.c nghttp2_http_writer.h \
+	nghttp2_log.c nghttp2_log.h \
+	nghttp2_macro.h \
+	nghttp2_map.c nghttp2_map.h \
+	nghttp2_mem.c nghttp2_mem.h \
 	nghttp2_net.h \
-	nghttp2_hd.h nghttp2_hd_huffman.h \
-	nghttp2_priority_spec.h \
-	nghttp2_option.h \
-	nghttp2_callbacks.h \
-	nghttp2_mem.h \
-	nghttp2_http.h \
-	nghttp2_rcbuf.h \
-	nghttp2_extpri.h \
-	nghttp2_ratelim.h \
-	nghttp2_time.h \
-	nghttp2_debug.h \
-	sfparse.h
+	nghttp2_pq.c nghttp2_pq.h \
+	nghttp2_ratelim.c nghttp2_ratelim.h \
+	nghttp2_rcbuf.c nghttp2_rcbuf.h \
+	nghttp2_ringbuf.c nghttp2_ringbuf.h \
+	nghttp2_settings.c nghttp2_settings.h \
+	nghttp2_str.c nghttp2_str.h \
+	nghttp2_stream.c nghttp2_stream.h \
+	nghttp2_unreachable.c nghttp2_unreachable.h \
+	nghttp2_vec.c nghttp2_vec.h \
+	sfparse/sfparse.c sfparse/sfparse.h
 
-libnghttp2_la_SOURCES = $(HFILES) $(OBJECTS)
-libnghttp2_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined \
+libnghttp2v2_la_SOURCES = $(SOURCES)
+libnghttp2v2_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE)

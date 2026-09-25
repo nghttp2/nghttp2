@@ -8,43 +8,41 @@ include_directories(
 add_definitions(-DBUILDING_NGHTTP2)
 
 set(NGHTTP2_SOURCES
-  nghttp2_pq.c nghttp2_map.c nghttp2_queue.c
-  nghttp2_frame.c
   nghttp2_buf.c
-  nghttp2_stream.c nghttp2_outbound_item.c
-  nghttp2_session.c nghttp2_submit.c
-  nghttp2_helper.c
-  nghttp2_alpn.c
-  nghttp2_hd.c nghttp2_hd_huffman.c nghttp2_hd_huffman_data.c
-  nghttp2_version.c
-  nghttp2_priority_spec.c
-  nghttp2_option.c
-  nghttp2_callbacks.c
-  nghttp2_mem.c
+  nghttp2_conn.c
+  nghttp2_conv.c
+  nghttp2_err.c
+  nghttp2_fmt.c
+  nghttp2_frame.c
+  nghttp2_frame_reader.c
+  nghttp2_hpack.c
+  nghttp2_hpack_huffman.c
+  nghttp2_hpack_huffman_data.c
   nghttp2_http.c
-  nghttp2_rcbuf.c
-  nghttp2_extpri.c
+  nghttp2_http_writer.c
+  nghttp2_log.c
+  nghttp2_macro.h
+  nghttp2_map.c
+  nghttp2_mem.c
+  nghttp2_net.h
+  nghttp2_pq.c
   nghttp2_ratelim.c
-  nghttp2_time.c
-  nghttp2_debug.c
-  sfparse.c
+  nghttp2_rcbuf.c
+  nghttp2_ringbuf.c
+  nghttp2_settings.c
+  nghttp2_str.c
+  nghttp2_stream.c
+  nghttp2_unreachable.c
+  nghttp2_vec.c
+  sfparse/sfparse.c
 )
 
 set(NGHTTP2_RES "")
-set(STATIC_LIB "nghttp2_static")
-set(SHARED_LIB "nghttp2")
+set(STATIC_LIB "nghttp2v2_static")
+set(SHARED_LIB "nghttp2v2")
 
 if(BUILD_SHARED_LIBS AND BUILD_STATIC_LIBS AND MSVC AND NOT STATIC_LIB_SUFFIX)
   set(STATIC_LIB_SUFFIX "_static")
-endif()
-
-if(WIN32)
-  configure_file(
-    version.rc.in
-    ${CMAKE_CURRENT_BINARY_DIR}/version.rc
-    @ONLY)
-
-  set(NGHTTP2_RES ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
 endif()
 
 set(NGHTTP2_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
@@ -127,5 +125,5 @@ endif()
 
 add_library(nghttp2 ALIAS ${LIB_SELECTED})
 
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libnghttp2.pc"
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libnghttp2v2.pc"
   DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")

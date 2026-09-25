@@ -24,13 +24,13 @@
 
 cmake_minimum_required(VERSION 3.14)
 # XXX using 1.8.90 instead of 1.9.0-DEV
-project(nghttp2 VERSION 1.70.90 LANGUAGES C)
+project(nghttp2 VERSION 2.0.0 LANGUAGES C)
 
 # See versioning rule:
 #  https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-set(LT_CURRENT  43)
-set(LT_REVISION 5)
-set(LT_AGE      29)
+set(LT_CURRENT  0)
+set(LT_REVISION 0)
+set(LT_AGE      0)
 
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 include(Version)
@@ -97,6 +97,9 @@ find_package(Jemalloc)
 set(WITH_JEMALLOC_DEFAULT   ${JEMALLOC_FOUND})
 
 include(CMakeOptions.txt)
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 
 if(ENABLE_LIB_ONLY AND (ENABLE_APP OR ENABLE_HPACK_TOOLS OR ENABLE_EXAMPLES))
   # Remember when disabled options are disabled for later diagnostics.
@@ -397,6 +400,19 @@ endif()
 
 check_symbol_exists(CLOCK_MONOTONIC "time.h" HAVE_DECL_CLOCK_MONOTONIC)
 
+if(HAVE_ENDIAN_H)
+  check_symbol_exists(be64toh "endian.h" HAVE_DECL_BE64TOH)
+endif()
+if(NOT HAVE_DECL_BE64TOH AND HAVE_SYS_ENDIAN_H)
+  check_symbol_exists(be64toh "sys/endian.h" HAVE_DECL_BE64TOH)
+endif()
+
+check_symbol_exists(bswap_64 "byteswap.h" HAVE_DECL_BSWAP_64)
+
+if(${CMAKE_C_BYTE_ORDER} STREQUAL "BIG_ENDIAN")
+  set(WORDS_BIGENDIAN 1)
+endif()
+
 set(WARNCFLAGS)
 set(WARNCXXFLAGS)
 if(CMAKE_C_COMPILER_ID MATCHES "MSVC")
@@ -442,7 +458,7 @@ file(RELATIVE_PATH top_srcdir   "${CMAKE_CURRENT_BINARY_DIR}/dir" "${CMAKE_CURRE
 file(RELATIVE_PATH top_builddir "${CMAKE_CURRENT_BINARY_DIR}/dir" "${CMAKE_CURRENT_BINARY_DIR}")
 set(abs_top_srcdir  "${CMAKE_CURRENT_SOURCE_DIR}")
 set(abs_top_builddir "${CMAKE_CURRENT_BINARY_DIR}")
-# libnghttp2.pc (pkg-config file)
+# libnghttp2v2.pc (pkg-config file)
 set(prefix          "${CMAKE_INSTALL_PREFIX}")
 set(exec_prefix     "${CMAKE_INSTALL_PREFIX}")
 set(libdir          "${CMAKE_INSTALL_FULL_LIBDIR}")
@@ -452,22 +468,10 @@ set(VERSION         "${PACKAGE_VERSION}")
 set(bindir          "${CMAKE_INSTALL_FULL_BINDIR}")
 set(sbindir         "${CMAKE_INSTALL_FULL_SBINDIR}")
 foreach(name
-   lib/libnghttp2.pc
-   lib/includes/nghttp2/nghttp2ver.h
+   lib/libnghttp2v2.pc
+   lib/includes/nghttp2v2/version.h
    integration-tests/config.go
    integration-tests/setenv
-   doc/conf.py
-   doc/index.rst
-   doc/package_README.rst
-   doc/tutorial-client.rst
-   doc/tutorial-server.rst
-   doc/tutorial-hpack.rst
-   doc/nghttpx-howto.rst
-   doc/h2load-howto.rst
-   doc/building-android-binary.rst
-   doc/nghttp2.h.rst
-   doc/nghttp2ver.h.rst
-   doc/contribute.rst
 )
   configure_file("${name}.in" "${name}" @ONLY)
 endforeach()
@@ -489,14 +493,10 @@ add_subdirectory(lib)
 #add_subdirectory(lib/includes)
 add_subdirectory(third-party)
 add_subdirectory(src)
-add_subdirectory(examples)
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
   add_subdirectory(tests)
   #add_subdirectory(tests/testdata)
   add_subdirectory(integration-tests)
-endif()
-if(ENABLE_DOC)
-  add_subdirectory(doc)
 endif()
 add_subdirectory(contrib)
 add_subdirectory(bpf)

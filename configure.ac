@@ -25,7 +25,7 @@ dnl Do not change user variables!
 dnl https://www.gnu.org/software/automake/manual/html_node/Flag-Variables-Ordering.html
 
 AC_PREREQ(2.61)
-AC_INIT([nghttp2], [1.71.0-DEV], [t-tujikawa@users.sourceforge.net])
+AC_INIT([nghttp2], [2.0.0-DEV], [t-tujikawa@users.sourceforge.net])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
@@ -44,9 +44,9 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 dnl See versioning rule:
 dnl  https://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-AC_SUBST(LT_CURRENT, 43)
-AC_SUBST(LT_REVISION, 5)
-AC_SUBST(LT_AGE, 29)
+AC_SUBST(LT_CURRENT, 0)
+AC_SUBST(LT_REVISION, 0)
+AC_SUBST(LT_AGE, 0)
 
 major=`echo $PACKAGE_VERSION |cut -d. -f1 | sed -e "s/[^0-9]//g"`
 minor=`echo $PACKAGE_VERSION |cut -d. -f2 | sed -e "s/[^0-9]//g"`
@@ -82,11 +82,6 @@ AC_ARG_ENABLE([hpack-tools],
                     [Build HPACK tools [default=check]])],
     [request_hpack_tools=$enableval], [request_hpack_tools=check])
 
-AC_ARG_ENABLE([examples],
-    [AS_HELP_STRING([--enable-examples],
-                    [Build examples [default=check]])],
-    [request_examples=$enableval], [request_examples=check])
-
 AC_ARG_ENABLE([failmalloc],
     [AS_HELP_STRING([--disable-failmalloc],
                     [Do not build failmalloc test program])],
@@ -94,7 +89,7 @@ AC_ARG_ENABLE([failmalloc],
 
 AC_ARG_ENABLE([lib-only],
     [AS_HELP_STRING([--enable-lib-only],
-                    [Build libnghttp2 only.  This is a short hand for --disable-app --disable-examples --disable-hpack-tools])],
+                    [Build libnghttp2 only.  This is a short hand for --disable-app --disable-hpack-tools])],
     [request_lib_only=$enableval], [request_lib_only=no])
 
 AC_ARG_ENABLE([http3],
@@ -216,7 +211,6 @@ AM_PATH_PYTHON([3.8],, [:])
 if [test "x$request_lib_only" = "xyes"]; then
   request_app=no
   request_hpack_tools=no
-  request_examples=no
   request_http3=no
   request_libxml2=no
   request_jansson=no
@@ -233,6 +227,8 @@ if [test "x$request_lib_only" = "xyes"]; then
   request_libnghttp3=no
   request_libbpf=no
 fi
+
+AM_CONDITIONAL([ENABLE_SHARED], [ test "x${enable_shared}" = "xyes" ])
 
 if test "x$GCC" = "xyes" -o "x$CC" = "xclang" ; then
   AC_DEFINE([NGHTTP2_NORETURN], [__attribute__((noreturn))], [Hint to the compiler that a function never return])
@@ -761,22 +757,6 @@ if test "x${have_libbrotlienc}" = "xyes" &&
             [Define to 1 if you have `libbrotlienc` and `libbrotlidec` libraries.])
 fi
 
-# libevent_openssl (for examples)
-# 2.0.8 is required because we use evconnlistener_set_error_cb()
-have_libevent_openssl=no
-if test "x${request_libevent_openssl}" != "xno"; then
-  PKG_CHECK_MODULES([LIBEVENT_OPENSSL], [libevent_openssl >= 2.0.8],
-                    [have_libevent_openssl=yes], [have_libevent_openssl=no])
-  if test "x${have_libevent_openssl}" = "xno"; then
-    AC_MSG_NOTICE($LIBEVENT_OPENSSL_PKG_ERRORS)
-  fi
-fi
-
-if test "x${request_libevent_openssl}" = "xyes" &&
-   test "x${have_libevent_openssl}" != "xyes"; then
-  AC_MSG_ERROR([libevent_openssl was requested (--with-libevent) but not found])
-fi
-
 # jansson (for src/nghttp, src/deflatehd and src/inflatehd)
 have_jansson=no
 if test "x${request_jansson}" != "xno"; then
@@ -921,28 +901,12 @@ fi
 
 AM_CONDITIONAL([ENABLE_HPACK_TOOLS], [ test "x${enable_hpack_tools}" = "xyes" ])
 
-# The example programs depend on OpenSSL and libevent_openssl
-enable_examples=no
-if test "x${request_examples}" != "xno" &&
-   test "x${have_openssl}" = "xyes" &&
-   test "x${have_libevent_openssl}" = "xyes"; then
-  enable_examples=yes
-fi
-
-if test "x${request_examples}" = "xyes" &&
-   test "x${enable_examples}" != "xyes"; then
-  AC_MSG_ERROR([examples were requested (--enable-examples) but dependencies are not met.])
-fi
-
-AM_CONDITIONAL([ENABLE_EXAMPLES], [ test "x${enable_examples}" = "xyes" ])
-
 # third-party only be built when needed
 
 enable_third_party=no
 have_mruby=no
 have_neverbleed=no
-if test "x${enable_examples}" = "xyes" ||
-   test "x${enable_app}" = "xyes" ||
+if test "x${enable_app}" = "xyes" ||
    test "x${enable_hpack_tools}" = "xyes"; then
   enable_third_party=yes
 
@@ -1121,6 +1085,19 @@ AC_CHECK_DECLS([CLOCK_MONOTONIC], [], [], [[
 #include <time.h>
 ]])
 
+AC_CHECK_DECLS([be64toh], [], [], [[
+#ifdef HAVE_ENDIAN_H
+#  include <endian.h>
+#endif
+#ifdef HAVE_SYS_ENDIAN_H
+#  include <sys/endian.h>
+#endif
+]])
+
+AC_CHECK_DECLS([bswap_64], [], [], [[
+#include <byteswap.h>
+]])
+
 save_CFLAGS=$CFLAGS
 save_CXXFLAGS=$CXXFLAGS
 
@@ -1232,32 +1209,17 @@ AC_SUBST([APPLDFLAGS])
 AC_CONFIG_FILES([
   Makefile
   lib/Makefile
-  lib/libnghttp2.pc
+  lib/libnghttp2v2.pc
   lib/includes/Makefile
-  lib/includes/nghttp2/nghttp2ver.h
+  lib/includes/nghttp2v2/version.h
   tests/Makefile
-  tests/testdata/Makefile
   third-party/Makefile
   src/Makefile
   src/testdata/Makefile
   bpf/Makefile
-  examples/Makefile
   integration-tests/Makefile
   integration-tests/config.go
   integration-tests/setenv
-  doc/Makefile
-  doc/conf.py
-  doc/index.rst
-  doc/package_README.rst
-  doc/tutorial-client.rst
-  doc/tutorial-server.rst
-  doc/tutorial-hpack.rst
-  doc/nghttpx-howto.rst
-  doc/h2load-howto.rst
-  doc/building-android-binary.rst
-  doc/nghttp2.h.rst
-  doc/nghttp2ver.h.rst
-  doc/contribute.rst
   contrib/Makefile
 ])
 AC_OUTPUT
@@ -1326,7 +1288,6 @@ AC_MSG_NOTICE([summary of build options:
     Features:
       Applications:   ${enable_app}
       HPACK tools:    ${enable_hpack_tools}
-      Examples:       ${enable_examples}
       Threading:      ${enable_threads}
       HTTP/3 (EXPERIMENTAL): ${enable_http3}
 ])

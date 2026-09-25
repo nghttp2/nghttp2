@@ -1,7 +1,7 @@
 /*
- * nghttp2 - HTTP/2 C Library
+ * nghttp2
  *
- * Copyright (c) 2023 nghttp2 contributors
+ * Copyright (c) 2026 nghttp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -29,29 +29,33 @@
 #  include <config.h>
 #endif /* defined(HAVE_CONFIG_H) */
 
-#include <nghttp2/nghttp2.h>
+#include <nghttp2v2/nghttp2.h>
+
+/* NGHTTP2_RATELIM_MAX_BURST is the maximum value of the burst. */
+#define NGHTTP2_RATELIM_MAX_BURST (UINT64_MAX / NGHTTP2_SECONDS)
 
 typedef struct nghttp2_ratelim {
-  /* burst is the maximum value of val. */
+  /* burst is the maximum number of tokens. */
   uint64_t burst;
-  /* rate is the amount of value that is regenerated per 1 tstamp. */
+  /* rate is the rate of token generation measured by token /
+     second. */
   uint64_t rate;
-  /* val is the amount of value available to drain. */
-  uint64_t val;
-  /* tstamp is the last timestamp in second resolution that is known
-     to this object. */
-  uint64_t tstamp;
+  /* tokens is the amount of tokens available to drain. */
+  uint64_t tokens;
+  /* carry is the partial token gained in sub-second period.  It is
+     added to the computation in the next update round. */
+  uint64_t carry;
+  /* ts is the last timestamp that is known to this object. */
+  nghttp2_tstamp ts;
 } nghttp2_ratelim;
 
-/* nghttp2_ratelim_init initializes |rl| with the given parameters. */
-void nghttp2_ratelim_init(nghttp2_ratelim *rl, uint64_t burst, uint64_t rate);
+/* nghttp2_ratelim_init initializes |rlim| with the given parameters.
+   |burst| is clamped to NGHTTP2_RATELIM_MAX_BURST. */
+void nghttp2_ratelim_init(nghttp2_ratelim *rlim, uint64_t burst, uint64_t rate,
+                          nghttp2_tstamp ts);
 
-/* nghttp2_ratelim_update updates rl->val with the current |tstamp|
-   given in second resolution. */
-void nghttp2_ratelim_update(nghttp2_ratelim *rl, uint64_t tstamp);
-
-/* nghttp2_ratelim_drain drains |n| from rl->val.  It returns 0 if it
-   succeeds, or -1. */
-int nghttp2_ratelim_drain(nghttp2_ratelim *rl, uint64_t n);
+/* nghttp2_ratelim_drain drains |n| from rlim->tokens.  It returns 0
+   if it succeeds, or -1. */
+int nghttp2_ratelim_drain(nghttp2_ratelim *rlim, uint64_t n, nghttp2_tstamp ts);
 
 #endif /* !defined(NGHTTP2_RATELIM_H) */

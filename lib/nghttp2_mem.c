@@ -1,7 +1,7 @@
 /*
- * nghttp2 - HTTP/2 C Library
+ * nghttp2
  *
- * Copyright (c) 2014 Tatsuhiro Tsujikawa
+ * Copyright (c) 2026 nghttp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -24,55 +24,99 @@
  */
 #include "nghttp2_mem.h"
 
-static void *default_malloc(size_t size, void *mem_user_data) {
-  (void)mem_user_data;
+#include <stdio.h>
+
+static void *default_malloc(size_t size, void *user_data) {
+  (void)user_data;
 
   return malloc(size);
 }
 
-static void default_free(void *ptr, void *mem_user_data) {
-  (void)mem_user_data;
+static void default_free(void *ptr, void *user_data) {
+  (void)user_data;
 
   free(ptr);
 }
 
-static void *default_calloc(size_t nmemb, size_t size, void *mem_user_data) {
-  (void)mem_user_data;
+static void *default_calloc(size_t nmemb, size_t size, void *user_data) {
+  (void)user_data;
 
   return calloc(nmemb, size);
 }
 
-static void *default_realloc(void *ptr, size_t size, void *mem_user_data) {
-  (void)mem_user_data;
+static void *default_realloc(void *ptr, size_t size, void *user_data) {
+  (void)user_data;
 
   return realloc(ptr, size);
 }
 
-static nghttp2_mem mem_default = {
-  .malloc = default_malloc,
-  .free = default_free,
-  .calloc = default_calloc,
-  .realloc = default_realloc,
-};
+static nghttp2_mem mem_default = {NULL, default_malloc, default_free,
+                                  default_calloc, default_realloc};
 
-nghttp2_mem *nghttp2_mem_default(void) { return &mem_default; }
+const nghttp2_mem *nghttp2_mem_default(void) { return &mem_default; }
 
-void *nghttp2_mem_malloc(nghttp2_mem *mem, size_t size) {
-  return mem->malloc(size, mem->mem_user_data);
+#ifndef MEMDEBUG
+void *nghttp2_mem_malloc(const nghttp2_mem *mem, size_t size) {
+  return mem->malloc(size, mem->user_data);
 }
 
-void nghttp2_mem_free(nghttp2_mem *mem, void *ptr) {
-  mem->free(ptr, mem->mem_user_data);
+void nghttp2_mem_free(const nghttp2_mem *mem, void *ptr) {
+  mem->free(ptr, mem->user_data);
 }
 
-void nghttp2_mem_free2(nghttp2_free free_func, void *ptr, void *mem_user_data) {
-  free_func(ptr, mem_user_data);
+void *nghttp2_mem_calloc(const nghttp2_mem *mem, size_t nmemb, size_t size) {
+  return mem->calloc(nmemb, size, mem->user_data);
 }
 
-void *nghttp2_mem_calloc(nghttp2_mem *mem, size_t nmemb, size_t size) {
-  return mem->calloc(nmemb, size, mem->mem_user_data);
+void *nghttp2_mem_realloc(const nghttp2_mem *mem, void *ptr, size_t size) {
+  return mem->realloc(ptr, size, mem->user_data);
+}
+#else  /* defined(MEMDEBUG) */
+void *nghttp2_mem_malloc_debug(const nghttp2_mem *mem, size_t size,
+                               const char *func, const char *file,
+                               size_t line) {
+  void *nptr = mem->malloc(size, mem->user_data);
+
+  fprintf(stderr, "malloc %p size=%zu in %s at %s:%zu\n", nptr, size, func,
+          file, line);
+
+  return nptr;
 }
 
-void *nghttp2_mem_realloc(nghttp2_mem *mem, void *ptr, size_t size) {
-  return mem->realloc(ptr, size, mem->mem_user_data);
+void nghttp2_mem_free_debug(const nghttp2_mem *mem, void *ptr, const char *func,
+                            const char *file, size_t line) {
+  fprintf(stderr, "free ptr=%p in %s at %s:%zu\n", ptr, func, file, line);
+
+  mem->free(ptr, mem->user_data);
 }
+
+void nghttp2_mem_free2_debug(const nghttp2_free free_func, void *ptr,
+                             void *user_data, const char *func,
+                             const char *file, size_t line) {
+  fprintf(stderr, "free ptr=%p in %s at %s:%zu\n", ptr, func, file, line);
+
+  free_func(ptr, user_data);
+}
+
+void *nghttp2_mem_calloc_debug(const nghttp2_mem *mem, size_t nmemb,
+                               size_t size, const char *func, const char *file,
+                               size_t line) {
+  void *nptr = mem->calloc(nmemb, size, mem->user_data);
+
+  fprintf(stderr, "calloc %p nmemb=%zu size=%zu in %s at %s:%zu\n", nptr, nmemb,
+          size, func, file, line);
+
+  return nptr;
+}
+
+void *nghttp2_mem_realloc_debug(const nghttp2_mem *mem, void *ptr, size_t size,
+                                const char *func, const char *file,
+                                size_t line) {
+  void *nptr = mem->realloc(ptr, size, mem->user_data);
+
+  fprintf(stderr, "realloc %p ptr=%p size=%zu in %s at %s:%zu\n", nptr, ptr,
+          size, func, file, line);
+
+  return nptr;
+}
+#endif /* defined(MEMDEBUG) */

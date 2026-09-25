@@ -1,7 +1,7 @@
 /*
- * nghttp2 - HTTP/2 C Library
+ * nghttp2
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2026 nghttp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -26,187 +26,324 @@
 
 #include <assert.h>
 
-#include "nghttp2_session.h"
-#include "nghttp2_helper.h"
-#include "nghttp2_debug.h"
-#include "nghttp2_frame.h"
+#include "nghttp2_http.h"
+#include "nghttp2_unreachable.h"
+#include "nghttp2_macro.h"
 
-void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
-                         uint8_t flags, nghttp2_stream_state initial_state,
-                         int32_t remote_initial_window_size,
-                         int32_t local_initial_window_size,
-                         void *stream_user_data) {
+void nghttp2_stream_init(nghttp2_stream *stream, int64_t stream_id,
+                         const nghttp2_stream_callbacks *callbacks,
+                         uint32_t flags, uint64_t max_rx_offset,
+                         uint64_t max_tx_offset, void *user_data,
+                         const nghttp2_mem *mem) {
   *stream = (nghttp2_stream){
-    .state = initial_state,
-    .content_length = -1,
-    .stream_user_data = stream_user_data,
+    .mem = mem,
     .stream_id = stream_id,
-    .remote_window_size = remote_initial_window_size,
-    .local_window_size = local_initial_window_size,
-    .status_code = -1,
-    .http_flags = NGHTTP2_HTTP_FLAG_NONE,
+    .rx =
+      {
+        .max_offset = max_rx_offset,
+        .unsent_max_offset = max_rx_offset,
+        .http =
+          {
+            .status_code = -1,
+            .content_length = -1,
+            .pri.urgency = NGHTTP2_DEFAULT_URGENCY,
+          },
+      },
+    .tx =
+      {
+        .max_offset = max_tx_offset,
+      },
+    .sched =
+      {
+        .pe.index = NGHTTP2_PQ_BAD_INDEX,
+        .pri.urgency = NGHTTP2_DEFAULT_URGENCY,
+      },
+    .user_data = user_data,
     .flags = flags,
-    .shut_flags = NGHTTP2_SHUT_NONE,
-    .extpri = NGHTTP2_EXTPRI_DEFAULT_URGENCY,
-    .http_extpri = NGHTTP2_EXTPRI_DEFAULT_URGENCY,
   };
+
+  nghttp2_http_writer_init(&stream->tx.hw, callbacks->write_stream_data_offset,
+                           mem);
 }
 
-void nghttp2_stream_free(nghttp2_stream *stream) { (void)stream; }
-
-void nghttp2_stream_shutdown(nghttp2_stream *stream, uint8_t flag) {
-  stream->shut_flags = (uint8_t)(stream->shut_flags | flag);
-}
-
-void nghttp2_stream_attach_item(nghttp2_stream *stream,
-                                nghttp2_outbound_item *item) {
-  assert((stream->flags & NGHTTP2_STREAM_FLAG_DEFERRED_ALL) == 0);
-  assert(stream->item == NULL);
-
-  DEBUGF("stream: stream=%d attach item=%p\n", stream->stream_id, item);
-
-  stream->item = item;
-}
-
-void nghttp2_stream_detach_item(nghttp2_stream *stream) {
-  DEBUGF("stream: stream=%d detach item=%p\n", stream->stream_id, stream->item);
-
-  stream->item = NULL;
-  stream->flags = (uint8_t)(stream->flags & ~NGHTTP2_STREAM_FLAG_DEFERRED_ALL);
-}
-
-void nghttp2_stream_defer_item(nghttp2_stream *stream, uint8_t flags) {
-  assert(stream->item);
-
-  DEBUGF("stream: stream=%d defer item=%p cause=%02x\n", stream->stream_id,
-         stream->item, flags);
-
-  stream->flags |= flags;
-}
-
-void nghttp2_stream_resume_deferred_item(nghttp2_stream *stream,
-                                         uint8_t flags) {
-  assert(stream->item);
-
-  DEBUGF("stream: stream=%d resume item=%p flags=%02x\n", stream->stream_id,
-         stream->item, flags);
-
-  stream->flags = (uint8_t)(stream->flags & ~flags);
-}
-
-int nghttp2_stream_check_deferred_item(nghttp2_stream *stream) {
-  return stream->item && (stream->flags & NGHTTP2_STREAM_FLAG_DEFERRED_ALL);
-}
-
-int nghttp2_stream_check_deferred_by_flow_control(nghttp2_stream *stream) {
-  return stream->item &&
-         (stream->flags & NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL);
-}
-
-static int update_initial_window_size(int32_t *window_size_ptr,
-                                      int32_t new_initial_window_size,
-                                      int32_t old_initial_window_size) {
-  int64_t new_window_size = (int64_t)(*window_size_ptr) +
-                            new_initial_window_size - old_initial_window_size;
-  if (INT32_MIN > new_window_size ||
-      new_window_size > NGHTTP2_MAX_WINDOW_SIZE) {
-    return -1;
+void nghttp2_stream_free(nghttp2_stream *stream) {
+  if (!stream) {
+    return;
   }
-  *window_size_ptr = (int32_t)new_window_size;
+
+  nghttp2_stream_free_client_pri(stream);
+  nghttp2_http_writer_free(&stream->tx.hw);
+}
+
+int nghttp2_stream_transit_rx_http_state(nghttp2_stream *stream,
+                                         nghttp2_stream_http_event event) {
+  int rv;
+
+  switch (stream->rx.hstate) {
+  case NGHTTP2_HTTP_STATE_NONE:
+    nghttp2_unreachable();
+  case NGHTTP2_HTTP_STATE_REQ_INITIAL:
+    if (event != NGHTTP2_HTTP_EVENT_HEADERS_BEGIN) {
+      return NGHTTP2_ERR_PROTO;
+    }
+
+    stream->rx.hstate = NGHTTP2_HTTP_STATE_REQ_HEADERS_BEGIN;
+
+    return 0;
+  case NGHTTP2_HTTP_STATE_REQ_HEADERS_BEGIN:
+    assert(NGHTTP2_HTTP_EVENT_HEADERS_END == event);
+    stream->rx.hstate = NGHTTP2_HTTP_STATE_REQ_HEADERS_END;
+    return 0;
+  case NGHTTP2_HTTP_STATE_REQ_HEADERS_END:
+    switch (event) {
+    case NGHTTP2_HTTP_EVENT_HEADERS_BEGIN:
+      /* TODO Better to check status code */
+      if (stream->rx.http.flags & NGHTTP2_HTTP_FLAG_METH_CONNECT) {
+        return NGHTTP2_ERR_PROTO;
+      }
+      stream->rx.hstate = NGHTTP2_HTTP_STATE_REQ_TRAILERS_BEGIN;
+      return 0;
+    case NGHTTP2_HTTP_EVENT_DATA_BEGIN:
+      stream->rx.hstate = NGHTTP2_HTTP_STATE_REQ_DATA_BEGIN;
+      return 0;
+    case NGHTTP2_HTTP_EVENT_MSG_END:
+      rv = nghttp2_http_on_remote_end_stream(stream);
+      if (rv != 0) {
+        return rv;
+      }
+      stream->rx.hstate = NGHTTP2_HTTP_STATE_REQ_END;
+      return 0;
+    default:
+      nghttp2_unreachable();
+    }
+  case NGHTTP2_HTTP_STATE_REQ_DATA_BEGIN:
+    assert(NGHTTP2_HTTP_EVENT_DATA_END == event);
+    stream->rx.hstate = NGHTTP2_HTTP_STATE_REQ_DATA_END;
+    return 0;
+  case NGHTTP2_HTTP_STATE_REQ_DATA_END:
+    switch (event) {
+    case NGHTTP2_HTTP_EVENT_DATA_BEGIN:
+      stream->rx.hstate = NGHTTP2_HTTP_STATE_REQ_DATA_BEGIN;
+      return 0;
+    case NGHTTP2_HTTP_EVENT_HEADERS_BEGIN:
+      /* TODO Better to check status code */
+      if (stream->rx.http.flags & NGHTTP2_HTTP_FLAG_METH_CONNECT) {
+        return NGHTTP2_ERR_PROTO;
+      }
+      stream->rx.hstate = NGHTTP2_HTTP_STATE_REQ_TRAILERS_BEGIN;
+      return 0;
+    case NGHTTP2_HTTP_EVENT_MSG_END:
+      rv = nghttp2_http_on_remote_end_stream(stream);
+      if (rv != 0) {
+        return rv;
+      }
+      stream->rx.hstate = NGHTTP2_HTTP_STATE_REQ_END;
+      return 0;
+    default:
+      nghttp2_unreachable();
+    }
+  case NGHTTP2_HTTP_STATE_REQ_TRAILERS_BEGIN:
+    assert(NGHTTP2_HTTP_EVENT_HEADERS_END == event);
+    stream->rx.hstate = NGHTTP2_HTTP_STATE_REQ_TRAILERS_END;
+    return 0;
+  case NGHTTP2_HTTP_STATE_REQ_TRAILERS_END:
+    if (event != NGHTTP2_HTTP_EVENT_MSG_END) {
+      /* TODO Should ignore unexpected frame in this state as per
+         spec. */
+      return NGHTTP2_ERR_PROTO;
+    }
+    rv = nghttp2_http_on_remote_end_stream(stream);
+    if (rv != 0) {
+      return rv;
+    }
+    stream->rx.hstate = NGHTTP2_HTTP_STATE_REQ_END;
+    return 0;
+  case NGHTTP2_HTTP_STATE_REQ_END:
+    return NGHTTP2_ERR_PROTO;
+  case NGHTTP2_HTTP_STATE_RESP_INITIAL:
+    if (event != NGHTTP2_HTTP_EVENT_HEADERS_BEGIN) {
+      return NGHTTP2_ERR_PROTO;
+    }
+    stream->rx.hstate = NGHTTP2_HTTP_STATE_RESP_HEADERS_BEGIN;
+    return 0;
+  case NGHTTP2_HTTP_STATE_RESP_HEADERS_BEGIN:
+    assert(NGHTTP2_HTTP_EVENT_HEADERS_END == event);
+    stream->rx.hstate = NGHTTP2_HTTP_STATE_RESP_HEADERS_END;
+    return 0;
+  case NGHTTP2_HTTP_STATE_RESP_HEADERS_END:
+    switch (event) {
+    case NGHTTP2_HTTP_EVENT_HEADERS_BEGIN:
+      if (stream->rx.http.status_code == -1) {
+        stream->rx.hstate = NGHTTP2_HTTP_STATE_RESP_HEADERS_BEGIN;
+        return 0;
+      }
+      if ((stream->rx.http.flags & NGHTTP2_HTTP_FLAG_METH_CONNECT) &&
+          stream->rx.http.status_code / 100 == 2) {
+        return NGHTTP2_ERR_PROTO;
+      }
+      stream->rx.hstate = NGHTTP2_HTTP_STATE_RESP_TRAILERS_BEGIN;
+      return 0;
+    case NGHTTP2_HTTP_EVENT_DATA_BEGIN:
+      if (stream->rx.http.flags & NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE) {
+        return NGHTTP2_ERR_PROTO;
+      }
+      stream->rx.hstate = NGHTTP2_HTTP_STATE_RESP_DATA_BEGIN;
+      return 0;
+    case NGHTTP2_HTTP_EVENT_MSG_END:
+      rv = nghttp2_http_on_remote_end_stream(stream);
+      if (rv != 0) {
+        return rv;
+      }
+      stream->rx.hstate = NGHTTP2_HTTP_STATE_RESP_END;
+      return 0;
+    default:
+      nghttp2_unreachable();
+    }
+  case NGHTTP2_HTTP_STATE_RESP_DATA_BEGIN:
+    assert(NGHTTP2_HTTP_EVENT_DATA_END == event);
+    stream->rx.hstate = NGHTTP2_HTTP_STATE_RESP_DATA_END;
+    return 0;
+  case NGHTTP2_HTTP_STATE_RESP_DATA_END:
+    switch (event) {
+    case NGHTTP2_HTTP_EVENT_DATA_BEGIN:
+      stream->rx.hstate = NGHTTP2_HTTP_STATE_RESP_DATA_BEGIN;
+      return 0;
+    case NGHTTP2_HTTP_EVENT_HEADERS_BEGIN:
+      if ((stream->rx.http.flags & NGHTTP2_HTTP_FLAG_METH_CONNECT) &&
+          stream->rx.http.status_code / 100 == 2) {
+        return NGHTTP2_ERR_PROTO;
+      }
+      stream->rx.hstate = NGHTTP2_HTTP_STATE_RESP_TRAILERS_BEGIN;
+      return 0;
+    case NGHTTP2_HTTP_EVENT_MSG_END:
+      rv = nghttp2_http_on_remote_end_stream(stream);
+      if (rv != 0) {
+        return rv;
+      }
+      stream->rx.hstate = NGHTTP2_HTTP_STATE_RESP_END;
+      return 0;
+    default:
+      nghttp2_unreachable();
+    }
+  case NGHTTP2_HTTP_STATE_RESP_TRAILERS_BEGIN:
+    assert(NGHTTP2_HTTP_EVENT_HEADERS_END == event);
+    stream->rx.hstate = NGHTTP2_HTTP_STATE_RESP_TRAILERS_END;
+    return 0;
+  case NGHTTP2_HTTP_STATE_RESP_TRAILERS_END:
+    if (event != NGHTTP2_HTTP_EVENT_MSG_END) {
+      return NGHTTP2_ERR_PROTO;
+    }
+    rv = nghttp2_http_on_remote_end_stream(stream);
+    if (rv != 0) {
+      return rv;
+    }
+    stream->rx.hstate = NGHTTP2_HTTP_STATE_RESP_END;
+    return 0;
+  case NGHTTP2_HTTP_STATE_RESP_END:
+    return NGHTTP2_ERR_PROTO;
+  default:
+    nghttp2_unreachable();
+  }
+}
+
+int nghttp2_stream_empty_headers_allowed(const nghttp2_stream *stream) {
+  switch (stream->rx.hstate) {
+  case NGHTTP2_HTTP_STATE_REQ_TRAILERS_BEGIN:
+  case NGHTTP2_HTTP_STATE_RESP_TRAILERS_BEGIN:
+    return 0;
+  default:
+    return NGHTTP2_ERR_MALFORMED_HTTP_MESSAGING;
+  }
+}
+
+void nghttp2_stream_set_error_code(nghttp2_stream *stream,
+                                   uint32_t error_code) {
+  if (stream->flags & NGHTTP2_STREAM_FLAG_ERROR_CODE_SET) {
+    return;
+  }
+
+  stream->flags |= NGHTTP2_STREAM_FLAG_ERROR_CODE_SET;
+  stream->error_code = error_code;
+}
+
+int nghttp2_stream_require_strmq(const nghttp2_stream *stream) {
+  return (!nghttp2_http_writer_empty(&stream->tx.hw) &&
+          !nghttp2_http_writer_frame_flow_controlled(&stream->tx.hw)) ||
+         (stream->flags & (NGHTTP2_STREAM_FLAG_SEND_RST_STREAM |
+                           NGHTTP2_STREAM_FLAG_SEND_WINDOW_UPDATE |
+                           NGHTTP2_STREAM_FLAG_SEND_PRIORITY_UPDATE));
+}
+
+int nghttp2_stream_require_schedule(const nghttp2_stream *stream) {
+  return !nghttp2_http_writer_empty(&stream->tx.hw) &&
+         !(stream->flags & (NGHTTP2_STREAM_FLAG_FC_BLOCKED |
+                            NGHTTP2_STREAM_FLAG_READ_DATA_BLOCKED));
+}
+
+static uint64_t pq_get_first_cycle(const nghttp2_pq *pq) {
+  nghttp2_stream *top;
+
+  if (nghttp2_pq_empty(pq)) {
+    return 0;
+  }
+
+  top = nghttp2_struct_of(nghttp2_pq_top(pq), nghttp2_stream, sched);
+
+  return top->sched.cycle;
+}
+
+int nghttp2_stream_schedule(nghttp2_stream *stream, nghttp2_pq *pq,
+                            uint64_t nwrite) {
+  uint64_t penalty = nghttp2_max(1, nwrite);
+
+  if (stream->sched.pe.index == NGHTTP2_PQ_BAD_INDEX) {
+    stream->sched.cycle =
+      pq_get_first_cycle(pq) +
+      ((nwrite == 0 || !stream->sched.pri.inc) ? 0 : penalty);
+  } else if (nwrite > 0) {
+    if (!stream->sched.pri.inc || nghttp2_pq_size(pq) == 1) {
+      return 0;
+    }
+
+    nghttp2_pq_remove(pq, &stream->sched.pe);
+    stream->sched.pe.index = NGHTTP2_PQ_BAD_INDEX;
+    stream->sched.cycle += penalty;
+  } else {
+    return 0;
+  }
+
+  return nghttp2_pq_push(pq, &stream->sched.pe);
+}
+
+void nghttp2_stream_unschedule(nghttp2_stream *stream, nghttp2_pq *pq) {
+  if (stream->sched.pe.index == NGHTTP2_PQ_BAD_INDEX) {
+    return;
+  }
+
+  nghttp2_pq_remove(pq, &stream->sched.pe);
+  stream->sched.pe.index = NGHTTP2_PQ_BAD_INDEX;
+}
+
+int nghttp2_stream_add_tx_max_offset(nghttp2_stream *stream, uint64_t delta) {
+  uint64_t max_offset;
+
+  max_offset = stream->tx.max_offset + delta;
+  if (max_offset > stream->tx.offset &&
+      max_offset - stream->tx.offset > NGHTTP2_MAX_WINDOW_SIZE) {
+    return NGHTTP2_ERR_FLOW_CONTROL;
+  }
+
+  stream->tx.max_offset = max_offset;
+
+  if ((stream->flags & NGHTTP2_STREAM_FLAG_FC_BLOCKED) &&
+      stream->tx.max_offset > stream->tx.offset) {
+    stream->flags &= ~NGHTTP2_STREAM_FLAG_FC_BLOCKED;
+  }
+
   return 0;
 }
 
-int nghttp2_stream_update_remote_initial_window_size(
-  nghttp2_stream *stream, int32_t new_initial_window_size,
-  int32_t old_initial_window_size) {
-  return update_initial_window_size(&stream->remote_window_size,
-                                    new_initial_window_size,
-                                    old_initial_window_size);
-}
-
-int nghttp2_stream_update_local_initial_window_size(
-  nghttp2_stream *stream, int32_t new_initial_window_size,
-  int32_t old_initial_window_size) {
-  return update_initial_window_size(&stream->local_window_size,
-                                    new_initial_window_size,
-                                    old_initial_window_size);
-}
-
-void nghttp2_stream_promise_fulfilled(nghttp2_stream *stream) {
-  stream->state = NGHTTP2_STREAM_OPENED;
-  stream->flags = (uint8_t)(stream->flags & ~NGHTTP2_STREAM_FLAG_PUSH);
-}
-
-nghttp2_stream_proto_state nghttp2_stream_get_state(nghttp2_stream *stream) {
-  if (stream == &nghttp2_stream_root) {
-    return NGHTTP2_STREAM_STATE_IDLE;
-  }
-
-  if (stream->flags & NGHTTP2_STREAM_FLAG_CLOSED) {
-    return NGHTTP2_STREAM_STATE_CLOSED;
-  }
-
-  if (stream->flags & NGHTTP2_STREAM_FLAG_PUSH) {
-    if (stream->shut_flags & NGHTTP2_SHUT_RD) {
-      return NGHTTP2_STREAM_STATE_RESERVED_LOCAL;
-    }
-
-    if (stream->shut_flags & NGHTTP2_SHUT_WR) {
-      return NGHTTP2_STREAM_STATE_RESERVED_REMOTE;
-    }
-  }
-
-  if (stream->shut_flags & NGHTTP2_SHUT_RD) {
-    return NGHTTP2_STREAM_STATE_HALF_CLOSED_REMOTE;
-  }
-
-  if (stream->shut_flags & NGHTTP2_SHUT_WR) {
-    return NGHTTP2_STREAM_STATE_HALF_CLOSED_LOCAL;
-  }
-
-  if (stream->state == NGHTTP2_STREAM_IDLE) {
-    return NGHTTP2_STREAM_STATE_IDLE;
-  }
-
-  return NGHTTP2_STREAM_STATE_OPEN;
-}
-
-nghttp2_stream *nghttp2_stream_get_parent(nghttp2_stream *stream) {
-  (void)stream;
-
-  return NULL;
-}
-
-nghttp2_stream *nghttp2_stream_get_next_sibling(nghttp2_stream *stream) {
-  (void)stream;
-
-  return NULL;
-}
-
-nghttp2_stream *nghttp2_stream_get_previous_sibling(nghttp2_stream *stream) {
-  (void)stream;
-
-  return NULL;
-}
-
-nghttp2_stream *nghttp2_stream_get_first_child(nghttp2_stream *stream) {
-  (void)stream;
-
-  return NULL;
-}
-
-int32_t nghttp2_stream_get_weight(nghttp2_stream *stream) {
-  (void)stream;
-
-  return NGHTTP2_DEFAULT_WEIGHT;
-}
-
-int32_t nghttp2_stream_get_sum_dependency_weight(nghttp2_stream *stream) {
-  (void)stream;
-
-  return 0;
-}
-
-int32_t nghttp2_stream_get_stream_id(nghttp2_stream *stream) {
-  return stream->stream_id;
+void nghttp2_stream_free_client_pri(nghttp2_stream *stream) {
+  nghttp2_mem_free(stream->mem, stream->tx.priority.client_pri.base);
+  stream->tx.priority.client_pri = (nghttp2_vec){0};
 }

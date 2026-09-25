@@ -1,7 +1,7 @@
 /*
- * nghttp2 - HTTP/2 C Library
+ * nghttp2
  *
- * Copyright (c) 2023 nghttp2 contributors
+ * Copyright (c) 2026 nghttp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -23,55 +23,61 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include "nghttp2_ratelim.h"
-#include "nghttp2_helper.h"
 
-void nghttp2_ratelim_init(nghttp2_ratelim *rl, uint64_t burst, uint64_t rate) {
-  *rl = (nghttp2_ratelim){
+#include <assert.h>
+
+#include "nghttp2_macro.h"
+
+void nghttp2_ratelim_init(nghttp2_ratelim *rlim, uint64_t burst, uint64_t rate,
+                          nghttp2_tstamp ts) {
+  burst = nghttp2_min(burst, NGHTTP2_RATELIM_MAX_BURST);
+
+  *rlim = (nghttp2_ratelim){
     .burst = burst,
     .rate = rate,
-    .val = burst,
+    .tokens = burst,
+    .ts = ts,
   };
 }
 
-void nghttp2_ratelim_update(nghttp2_ratelim *rl, uint64_t tstamp) {
-  uint64_t d, gain;
+/* ratelim_update updates rlim->tokens with the current |ts|. */
+static void ratelim_update(nghttp2_ratelim *rlim, nghttp2_tstamp ts) {
+  uint64_t d, gain, gps;
 
-  if (tstamp == rl->tstamp) {
+  assert(ts >= rlim->ts);
+
+  if (ts == rlim->ts) {
     return;
   }
 
-  if (tstamp > rl->tstamp) {
-    d = tstamp - rl->tstamp;
-  } else {
-    d = 1;
+  d = ts - rlim->ts;
+  rlim->ts = ts;
+
+  if (rlim->rate <= (UINT64_MAX - rlim->carry) / d) {
+    gain = rlim->rate * d + rlim->carry;
+    gps = gain / NGHTTP2_SECONDS;
+
+    if (gps < rlim->burst && rlim->tokens < rlim->burst - gps) {
+      rlim->tokens += gps;
+      rlim->carry = gain % NGHTTP2_SECONDS;
+
+      return;
+    }
   }
 
-  rl->tstamp = tstamp;
-
-  if (UINT64_MAX / d < rl->rate) {
-    rl->val = rl->burst;
-
-    return;
-  }
-
-  gain = rl->rate * d;
-
-  if (UINT64_MAX - gain < rl->val) {
-    rl->val = rl->burst;
-
-    return;
-  }
-
-  rl->val += gain;
-  rl->val = nghttp2_min_uint64(rl->val, rl->burst);
+  rlim->tokens = rlim->burst;
+  rlim->carry = 0;
 }
 
-int nghttp2_ratelim_drain(nghttp2_ratelim *rl, uint64_t n) {
-  if (rl->val < n) {
+int nghttp2_ratelim_drain(nghttp2_ratelim *rlim, uint64_t n,
+                          nghttp2_tstamp ts) {
+  ratelim_update(rlim, ts);
+
+  if (rlim->tokens < n) {
     return -1;
   }
 
-  rl->val -= n;
+  rlim->tokens -= n;
 
   return 0;
 }

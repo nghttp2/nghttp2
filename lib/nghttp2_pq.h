@@ -1,7 +1,7 @@
 /*
- * nghttp2 - HTTP/2 C Library
+ * nghttp2
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2026 nghttp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -29,43 +29,56 @@
 #  include <config.h>
 #endif /* defined(HAVE_CONFIG_H) */
 
-#include <nghttp2/nghttp2.h>
-#include "nghttp2_int.h"
+#include <nghttp2v2/nghttp2.h>
+
 #include "nghttp2_mem.h"
 
 /* Implementation of priority queue */
 
-typedef struct {
+/* NGHTTP2_PQ_BAD_INDEX is the priority queue index which indicates
+   that an entry is not queued.  Assigning this value to
+   nghttp2_pq_entry.index can check that the entry is queued or
+   not. */
+#define NGHTTP2_PQ_BAD_INDEX SIZE_MAX
+
+typedef struct nghttp2_pq_entry {
   size_t index;
 } nghttp2_pq_entry;
 
-typedef struct {
-  /* The pointer to the pointer to the item stored */
+/* nghttp2_pq_less is a "less" function, that returns nonzero if |lhs|
+   is considered to be less than |rhs|. */
+typedef int (*nghttp2_pq_less)(const nghttp2_pq_entry *lhs,
+                               const nghttp2_pq_entry *rhs);
+
+typedef struct nghttp2_pq {
+  /* q is a pointer to an array that stores the items. */
   nghttp2_pq_entry **q;
-  /* Memory allocator */
-  nghttp2_mem *mem;
-  /* The number of items stored */
+  /* mem is a memory allocator. */
+  const nghttp2_mem *mem;
+  /* length is the number of items stored. */
   size_t length;
-  /* The maximum number of items this pq can store. This is
-     automatically extended when length is reached to this value. */
+  /* capacity is the maximum number of items this queue can store.
+     This is automatically extended when length is reached to this
+     limit. */
   size_t capacity;
-  /* The less function between items */
-  nghttp2_less less;
+  /* less is the less function to compare items. */
+  nghttp2_pq_less less;
 } nghttp2_pq;
 
 /*
- * Initializes priority queue |pq| with compare function |cmp|.
+ * nghttp2_pq_init initializes |pq| with compare function |cmp|.
  */
-void nghttp2_pq_init(nghttp2_pq *pq, nghttp2_less less, nghttp2_mem *mem);
+void nghttp2_pq_init(nghttp2_pq *pq, nghttp2_pq_less less,
+                     const nghttp2_mem *mem);
 
 /*
- * Deallocates any resources allocated for |pq|.  The stored items are
- * not freed by this function.
+ * nghttp2_pq_free deallocates any resources allocated for |pq|.  The
+ * stored items are not freed by this function.
  */
 void nghttp2_pq_free(nghttp2_pq *pq);
 
 /*
- * Adds |item| to the priority queue |pq|.
+ * nghttp2_pq_push adds |item| to |pq|.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -76,49 +89,36 @@ void nghttp2_pq_free(nghttp2_pq *pq);
 int nghttp2_pq_push(nghttp2_pq *pq, nghttp2_pq_entry *item);
 
 /*
- * Returns item at the top of the queue |pq|. If the queue is empty,
- * this function returns NULL.
+ * nghttp2_pq_top returns item at the top of |pq|.  It is undefined if
+ * |pq| is empty.
  */
-nghttp2_pq_entry *nghttp2_pq_top(nghttp2_pq *pq);
+nghttp2_pq_entry *nghttp2_pq_top(const nghttp2_pq *pq);
 
 /*
- * Pops item at the top of the queue |pq|. The popped item is not
- * freed by this function.
+ * nghttp2_pq_pop pops item at the top of |pq|.  The popped item is
+ * not freed by this function.  It is undefined if |pq| is empty.
  */
 void nghttp2_pq_pop(nghttp2_pq *pq);
 
 /*
- * Returns nonzero if the queue |pq| is empty.
+ * nghttp2_pq_empty returns nonzero if |pq| is empty.
  */
-int nghttp2_pq_empty(nghttp2_pq *pq);
+int nghttp2_pq_empty(const nghttp2_pq *pq);
 
 /*
- * Returns the number of items in the queue |pq|.
+ * nghttp2_pq_size returns the number of items |pq| contains.
  */
-size_t nghttp2_pq_size(nghttp2_pq *pq);
-
-typedef int (*nghttp2_pq_item_cb)(nghttp2_pq_entry *item, void *arg);
+size_t nghttp2_pq_size(const nghttp2_pq *pq);
 
 /*
- * Updates each item in |pq| using function |fun| and re-construct
- * priority queue. The |fun| must return non-zero if it modifies the
- * item in a way that it affects ordering in the priority queue. The
- * |arg| is passed to the 2nd parameter of |fun|.
- */
-void nghttp2_pq_update(nghttp2_pq *pq, nghttp2_pq_item_cb fun, void *arg);
-
-/*
- * Applies |fun| to each item in |pq|.  The |arg| is passed as arg
- * parameter to callback function.  This function must not change the
- * ordering key.  If the return value from callback is nonzero, this
- * function returns 1 immediately without iterating remaining items.
- * Otherwise this function returns 0.
- */
-int nghttp2_pq_each(nghttp2_pq *pq, nghttp2_pq_item_cb fun, void *arg);
-
-/*
- * Removes |item| from priority queue.
+ * nghttp2_pq_remove removes |item| from |pq|.  |pq| must contain
+ * |item| otherwise the behavior is undefined.
  */
 void nghttp2_pq_remove(nghttp2_pq *pq, nghttp2_pq_entry *item);
+
+/*
+ * nghttp2_pq_clear removes all items from |pq|.
+ */
+void nghttp2_pq_clear(nghttp2_pq *pq);
 
 #endif /* !defined(NGHTTP2_PQ_H) */

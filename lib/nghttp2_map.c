@@ -1,8 +1,7 @@
 /*
- * nghttp2 - HTTP/2 C Library
+ * nghttp2
  *
- * Copyright (c) 2017 ngtcp2 contributors
- * Copyright (c) 2012 nghttp2 contributors
+ * Copyright (c) 2026 nghttp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -29,11 +28,11 @@
 #include <assert.h>
 #include <stdio.h>
 
-#include "nghttp2_helper.h"
+#include "nghttp2_conv.h"
 
 #define NGHTTP2_INITIAL_HASHBITS 4
 
-void nghttp2_map_init(nghttp2_map *map, uint64_t seed, nghttp2_mem *mem) {
+void nghttp2_map_init(nghttp2_map *map, uint64_t seed, const nghttp2_mem *mem) {
   *map = (nghttp2_map){
     .mem = mem,
     .seed = seed,
@@ -82,9 +81,7 @@ int nghttp2_map_each(const nghttp2_map *map, int (*func)(void *data, void *ptr),
    the high bits with the good distribution. */
 #define NGHTTP2_MAP_FIBO 0x9E3779B97F4A7C15ULL
 
-static size_t map_index(const nghttp2_map *map, nghttp2_map_key_type key32) {
-  uint64_t key = (uint64_t)key32;
-
+static size_t map_index(const nghttp2_map *map, nghttp2_map_key_type key) {
   key += map->seed;
   key *= NGHTTP2_MAP_HASHER;
   return (size_t)((key * NGHTTP2_MAP_FIBO) >> (64 - map->hashbits));
@@ -109,8 +106,8 @@ void nghttp2_map_print_distance(const nghttp2_map *map) {
     }
 
     idx = map_index(map, map->keys[i]);
-    fprintf(stderr, "@%zu key=%d base=%zu distance=%u\n", i, map->keys[i], idx,
-            map->psl[i] - 1);
+    fprintf(stderr, "@%zu key=%" PRIu64 " base=%zu distance=%u\n", i,
+            map->keys[i], idx, map->psl[i] - 1);
   }
 }
 #endif /* !defined(WIN32) */
@@ -276,7 +273,12 @@ int nghttp2_map_insert(nghttp2_map *map, nghttp2_map_key_type key, void *data) {
     return 0;
   }
 
-  return map_resize(map, map->hashbits + 1);
+  rv = map_resize(map, map->hashbits + 1);
+  if (rv != 0) {
+    nghttp2_map_remove(map, key);
+  }
+
+  return rv;
 }
 
 void *nghttp2_map_find(const nghttp2_map *map, nghttp2_map_key_type key) {

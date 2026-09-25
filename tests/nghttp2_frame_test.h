@@ -1,7 +1,7 @@
 /*
- * nghttp2 - HTTP/2 C Library
+ * nghttp2
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2026 nghttp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -27,7 +27,7 @@
 
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#endif /* defined(HAVE_CONFIG_H) */
 
 #define MUNIT_ENABLE_ASSERT_ALIASES
 
@@ -35,19 +35,14 @@
 
 extern const MunitSuite frame_suite;
 
-munit_void_test_decl(test_nghttp2_frame_pack_headers)
-munit_void_test_decl(test_nghttp2_frame_pack_headers_frame_too_large)
-munit_void_test_decl(test_nghttp2_frame_pack_priority)
-munit_void_test_decl(test_nghttp2_frame_pack_rst_stream)
-munit_void_test_decl(test_nghttp2_frame_pack_settings)
-munit_void_test_decl(test_nghttp2_frame_pack_push_promise)
-munit_void_test_decl(test_nghttp2_frame_pack_ping)
-munit_void_test_decl(test_nghttp2_frame_pack_goaway)
-munit_void_test_decl(test_nghttp2_frame_pack_window_update)
-munit_void_test_decl(test_nghttp2_frame_pack_altsvc)
-munit_void_test_decl(test_nghttp2_frame_pack_origin)
-munit_void_test_decl(test_nghttp2_frame_pack_priority_update)
-munit_void_test_decl(test_nghttp2_nv_array_copy)
-munit_void_test_decl(test_nghttp2_iv_check)
+munit_void_test_decl(test_nghttp2_frame_encode_data)
+munit_void_test_decl(test_nghttp2_frame_encode_headers)
+munit_void_test_decl(test_nghttp2_frame_encode_rst_stream)
+munit_void_test_decl(test_nghttp2_frame_encode_settings)
+munit_void_test_decl(test_nghttp2_frame_encode_ping)
+munit_void_test_decl(test_nghttp2_frame_encode_goaway)
+munit_void_test_decl(test_nghttp2_frame_encode_window_update)
+munit_void_test_decl(test_nghttp2_frame_encode_continuation)
+munit_void_test_decl(test_nghttp2_frame_encode_priority_update)
 
-#endif /* NGHTTP2_FRAME_TEST_H */
+#endif /* !defined(DWNX_FRAME_TEST_H) */

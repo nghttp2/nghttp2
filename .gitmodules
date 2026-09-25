@@ -5,9 +5,12 @@
 	path = third-party/neverbleed
 	url = https://github.com/tatsuhiro-t/neverbleed.git
 	branch = nghttp2
-[submodule "tests/munit"]
-	path = tests/munit
-	url = https://github.com/ngtcp2/munit
 [submodule "third-party/urlparse"]
 	path = third-party/urlparse
 	url = https://github.com/ngtcp2/urlparse
+[submodule "lib/sfparse"]
+	path = lib/sfparse
+	url = https://github.com/ngtcp2/sfparse
+[submodule "tests/munit"]
+	path = tests/munit
+	url = https://github.com/ngtcp2/munit

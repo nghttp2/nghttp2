@@ -1,8 +1,7 @@
 /*
- * nghttp2 - HTTP/2 C Library
+ * nghttp2
  *
- * Copyright (c) 2017 ngtcp2 contributors
- * Copyright (c) 2012 nghttp2 contributors
+ * Copyright (c) 2026 nghttp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -30,13 +29,13 @@
 #  include <config.h>
 #endif /* defined(HAVE_CONFIG_H) */
 
-#include <nghttp2/nghttp2.h>
+#include <nghttp2v2/nghttp2.h>
 
 #include "nghttp2_mem.h"
 
 /* Implementation of unordered map */
 
-typedef int32_t nghttp2_map_key_type;
+typedef uint64_t nghttp2_map_key_type;
 
 typedef struct nghttp2_map {
   nghttp2_map_key_type *keys;
@@ -45,7 +44,7 @@ typedef struct nghttp2_map {
      element is not stored at i-th position if psl[i] == 0.  Because
      of this, the actual psl value is psl[i] - 1 if psl[i] > 0. */
   uint8_t *psl;
-  nghttp2_mem *mem;
+  const nghttp2_mem *mem;
   uint64_t seed;
   size_t size;
   size_t hashbits;
@@ -54,7 +53,7 @@ typedef struct nghttp2_map {
 /*
  * nghttp2_map_init initializes the map |map|.
  */
-void nghttp2_map_init(nghttp2_map *map, uint64_t seed, nghttp2_mem *mem);
+void nghttp2_map_init(nghttp2_map *map, uint64_t seed, const nghttp2_mem *mem);
 
 /*
  * nghttp2_map_free deallocates any resources allocated for |map|.

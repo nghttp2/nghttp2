@@ -1,7 +1,7 @@
 /*
- * nghttp2 - HTTP/2 C Library
+ * nghttp2
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2026 nghttp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -24,40 +24,25 @@
  */
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
-#endif /* HAVE_CONFIG_H */
+#endif /* defined(HAVE_CONFIG_H) */
 
 #include "munit.h"
 
 /* include test cases' include files here */
-#include "nghttp2_pq_test.h"
-#include "nghttp2_map_test.h"
-#include "nghttp2_queue_test.h"
-#include "nghttp2_session_test.h"
+#include "nghttp2_conn_test.h"
 #include "nghttp2_frame_test.h"
-#include "nghttp2_stream_test.h"
-#include "nghttp2_hd_test.h"
-#include "nghttp2_alpn_test.h"
-#include "nghttp2_helper_test.h"
-#include "nghttp2_buf_test.h"
-#include "nghttp2_http_test.h"
-#include "nghttp2_extpri_test.h"
-#include "nghttp2_ratelim_test.h"
-
-extern int nghttp2_enable_strict_preface;
+#include "nghttp2_hpack_test.h"
+#include "nghttp2_log_test.h"
 
 int main(int argc, char *argv[]) {
   const MunitSuite suites[] = {
-    pq_suite,     map_suite,     queue_suite,  frame_suite, session_suite,
-    hd_suite,     alpn_suite,    helper_suite, buf_suite,   http_suite,
-    extpri_suite, ratelim_suite, {0},
+    conn_suite, frame_suite, hpack_suite, log_suite, {0},
   };
   const MunitSuite suite = {
     .prefix = "",
     .suites = suites,
     .iterations = 1,
   };
-
-  nghttp2_enable_strict_preface = 0;
 
   return munit_suite_main(&suite, NULL, argc, argv);
 }

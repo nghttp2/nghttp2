@@ -1,7 +1,7 @@
 /*
- * nghttp2 - HTTP/2 C Library
+ * nghttp2
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2026 nghttp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -29,265 +29,183 @@
 #  include <config.h>
 #endif /* defined(HAVE_CONFIG_H) */
 
-#include <nghttp2/nghttp2.h>
-#include "nghttp2_outbound_item.h"
-#include "nghttp2_map.h"
+#include <nghttp2v2/nghttp2.h>
+
 #include "nghttp2_pq.h"
-#include "nghttp2_int.h"
+#include "nghttp2_http_writer.h"
 
-/*
- * If local peer is stream initiator:
- * NGHTTP2_STREAM_OPENING : upon sending request HEADERS
- * NGHTTP2_STREAM_OPENED : upon receiving response HEADERS
- * NGHTTP2_STREAM_CLOSING : upon queuing RST_STREAM
- *
- * If remote peer is stream initiator:
- * NGHTTP2_STREAM_OPENING : upon receiving request HEADERS
- * NGHTTP2_STREAM_OPENED : upon sending response HEADERS
- * NGHTTP2_STREAM_CLOSING : upon queuing RST_STREAM
- */
-typedef enum {
-  /* Initial state */
-  NGHTTP2_STREAM_INITIAL,
-  /* For stream initiator: request HEADERS has been sent, but response
-     HEADERS has not been received yet.  For receiver: request HEADERS
-     has been received, but it does not send response HEADERS yet. */
-  NGHTTP2_STREAM_OPENING,
-  /* For stream initiator: response HEADERS is received. For receiver:
-     response HEADERS is sent. */
-  NGHTTP2_STREAM_OPENED,
-  /* RST_STREAM is received, but somehow we need to keep stream in
-     memory. */
-  NGHTTP2_STREAM_CLOSING,
-  /* PUSH_PROMISE is received or sent */
-  NGHTTP2_STREAM_RESERVED,
-  /* Stream is created in this state if it is used as anchor in
-     dependency tree. */
-  NGHTTP2_STREAM_IDLE
-} nghttp2_stream_state;
-
-#define NGHTTP2_SHUT_NONE 0x00U
-/* Indicates further receptions will be disallowed. */
-#define NGHTTP2_SHUT_RD 0x01U
-/* Indicates further transmissions will be disallowed. */
-#define NGHTTP2_SHUT_WR 0x02U
-/* Indicates both further receptions and transmissions will be
-   disallowed. */
-#define NGHTTP2_SHUT_RDWR (NGHTTP2_SHUT_RD | NGHTTP2_SHUT_WR)
+#define NGHTTP2_STREAM_MIN_WRITELEN (16384 - NGHTTP2_FRAME_HDLEN)
 
 #define NGHTTP2_STREAM_FLAG_NONE 0x00U
-/* Indicates that this stream is pushed stream and not opened yet. */
-#define NGHTTP2_STREAM_FLAG_PUSH 0x01U
-/* Indicates that this stream was closed */
-#define NGHTTP2_STREAM_FLAG_CLOSED 0x02U
-/* Indicates the item is deferred due to flow control. */
-#define NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL 0x04U
-/* Indicates the item is deferred by user callback */
-#define NGHTTP2_STREAM_FLAG_DEFERRED_USER 0x08U
-/* bitwise OR of NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL and
-   NGHTTP2_STREAM_FLAG_DEFERRED_USER. */
-#define NGHTTP2_STREAM_FLAG_DEFERRED_ALL                                       \
-  (NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL |                                 \
-   NGHTTP2_STREAM_FLAG_DEFERRED_USER)
-/* Ignore client RFC 9218 priority signal. */
-#define NGHTTP2_STREAM_FLAG_IGNORE_CLIENT_PRIORITIES 0x20U
-/* Indicates that RFC 9113 leading and trailing white spaces
-   validation against a field value is not performed. */
-#define NGHTTP2_STREAM_FLAG_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION 0x40U
+#define NGHTTP2_STREAM_FLAG_SHUT_RD 0x01U
+#define NGHTTP2_STREAM_FLAG_SHUT_WR 0x02U
+#define NGHTTP2_STREAM_FLAG_ERROR_CODE_SET 0x04U
+/* NGHTTP2_STREAM_FLAG_FC_BLOCKED indicates that stream is blocked by
+   stream-level flow control. */
+#define NGHTTP2_STREAM_FLAG_FC_BLOCKED 0x08U
+/* NGHTTP2_STREAM_FLAG_READ_DATA_BLOCKED indicates that application is
+   temporarily unable to provide data. */
+#define NGHTTP2_STREAM_FLAG_READ_DATA_BLOCKED 0x10U
+/* NGHTTP2_STREAM_FLAG_HEADERS_SUBMITTED indicates that the header
+   field (and data) has been submitted to this stream. */
+#define NGHTTP2_STREAM_FLAG_HEADERS_SUBMITTED 0x20U
+/* NGHTTP2_STREAM_FLAG_TRAILERS_SUBMITTED indicates that the trailer
+   field has been submitted to this stream. */
+#define NGHTTP2_STREAM_FLAG_TRAILERS_SUBMITTED 0x40U
+/* NGHTTP2_STREAM_FLAG_SEND_RST_STREAM indicates that RST_STREAM
+   should be sent in this stream. */
+#define NGHTTP2_STREAM_FLAG_SEND_RST_STREAM 0x80U
+/* NGHTTP2_STREAM_FLAG_RST_STREAM indicates that RST_STREAM has been
+   sent or received. */
+#define NGHTTP2_STREAM_FLAG_RST_STREAM 0x0100U
+/* NGHTTP2_STREAM_FLAG_RST_STREAM_RECVED indicates that RST_STREAM has
+   been received. */
+#define NGHTTP2_STREAM_FLAG_RST_STREAM_RECVED 0x0200U
+/* NGHTTP2_STREAM_FLAG_OPENED indicates that some activity has been
+   seen in this stream.  RST_STREAM can be sent to this stream. */
+#define NGHTTP2_STREAM_FLAG_OPENED 0x0400U
+/* NGHTTP2_STREAM_FLAG_REFUSED indicates that the stream is refused
+   and not processed in any way. */
+#define NGHTTP2_STREAM_FLAG_REFUSED 0x0800U
+/* NGHTTP2_STREAM_FLAG_SEND_WINDOW_UPDATE indicates that WINDOW_UPDATE
+   should be sent in this stream. */
+#define NGHTTP2_STREAM_FLAG_SEND_WINDOW_UPDATE 0x1000U
+/* NGHTTP2_STREAM_FLAG_SERVER_PRIORITY_SET is set when server
+   overrides stream priority with its own. */
+#define NGHTTP2_STREAM_FLAG_SERVER_PRIORITY_SET 0x2000U
+/* NGHTTP2_STREAM_FLAG_SEND_PRIORITY_UPDATE indicates that
+   PRIORITY_UPDATE should be sent for this stream. */
+#define NGHTTP2_STREAM_FLAG_SEND_PRIORITY_UPDATE 0x4000U
+/* NGHTTP2_STREAM_FLAG_PRIORITY_UPDATE_RECVED is set when
+   PRIORITY_UPDATE frame is received from client */
+#define NGHTTP2_STREAM_FLAG_PRIORITY_UPDATE_RECVED 0x8000U
 
-/* HTTP related flags to enforce HTTP semantics */
-#define NGHTTP2_HTTP_FLAG_NONE 0x00U
-/* header field seen so far */
-#define NGHTTP2_HTTP_FLAG__AUTHORITY 0x01U
-#define NGHTTP2_HTTP_FLAG__PATH 0x02U
-#define NGHTTP2_HTTP_FLAG__METHOD 0x04U
-#define NGHTTP2_HTTP_FLAG__SCHEME 0x08U
-/* host is not pseudo header, but we require either host or
-   :authority */
-#define NGHTTP2_HTTP_FLAG_HOST 0x10U
-#define NGHTTP2_HTTP_FLAG__STATUS 0x20U
-/* required header fields for HTTP request except for CONNECT
-   method. */
-#define NGHTTP2_HTTP_FLAG_REQ_HEADERS                                          \
-  (NGHTTP2_HTTP_FLAG__METHOD | NGHTTP2_HTTP_FLAG__PATH |                       \
-   NGHTTP2_HTTP_FLAG__SCHEME)
-#define NGHTTP2_HTTP_FLAG_PSEUDO_HEADER_DISALLOWED 0x40U
-/* HTTP method flags */
-#define NGHTTP2_HTTP_FLAG_METH_CONNECT 0x80U
-#define NGHTTP2_HTTP_FLAG_METH_HEAD 0x0100U
-#define NGHTTP2_HTTP_FLAG_METH_OPTIONS 0x0200U
-#define NGHTTP2_HTTP_FLAG_METH_UPGRADE_WORKAROUND 0x0400U
-#define NGHTTP2_HTTP_FLAG_METH_ALL                                             \
-  (NGHTTP2_HTTP_FLAG_METH_CONNECT | NGHTTP2_HTTP_FLAG_METH_HEAD |              \
-   NGHTTP2_HTTP_FLAG_METH_OPTIONS | NGHTTP2_HTTP_FLAG_METH_UPGRADE_WORKAROUND)
-/* :path category */
-/* path starts with "/" */
-#define NGHTTP2_HTTP_FLAG_PATH_REGULAR 0x0800U
-/* path "*" */
-#define NGHTTP2_HTTP_FLAG_PATH_ASTERISK 0x1000U
-/* scheme */
-/* "http" or "https" scheme */
-#define NGHTTP2_HTTP_FLAG_SCHEME_HTTP 0x2000U
-/* set if final response is expected */
-#define NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE 0x4000U
-#define NGHTTP2_HTTP_FLAG__PROTOCOL 0x8000U
-/* set if priority header field is received */
-#define NGHTTP2_HTTP_FLAG_PRIORITY 0x010000U
-/* set if an error is encountered while parsing priority header
-   field */
-#define NGHTTP2_HTTP_FLAG_BAD_PRIORITY 0x020000U
+typedef enum nghttp2_stream_http_state {
+  NGHTTP2_HTTP_STATE_NONE,
+  NGHTTP2_HTTP_STATE_REQ_INITIAL,
+  NGHTTP2_HTTP_STATE_REQ_HEADERS_BEGIN,
+  NGHTTP2_HTTP_STATE_REQ_HEADERS_END,
+  NGHTTP2_HTTP_STATE_REQ_DATA_BEGIN,
+  NGHTTP2_HTTP_STATE_REQ_DATA_END,
+  NGHTTP2_HTTP_STATE_REQ_TRAILERS_BEGIN,
+  NGHTTP2_HTTP_STATE_REQ_TRAILERS_END,
+  NGHTTP2_HTTP_STATE_REQ_END,
+  NGHTTP2_HTTP_STATE_RESP_INITIAL,
+  NGHTTP2_HTTP_STATE_RESP_HEADERS_BEGIN,
+  NGHTTP2_HTTP_STATE_RESP_HEADERS_END,
+  NGHTTP2_HTTP_STATE_RESP_DATA_BEGIN,
+  NGHTTP2_HTTP_STATE_RESP_DATA_END,
+  NGHTTP2_HTTP_STATE_RESP_TRAILERS_BEGIN,
+  NGHTTP2_HTTP_STATE_RESP_TRAILERS_END,
+  NGHTTP2_HTTP_STATE_RESP_END,
+} nghttp2_stream_http_state;
 
-struct nghttp2_stream {
-  nghttp2_stream_state state;
-  nghttp2_pq_entry pq_entry;
-  /* Content-Length of request/response body.  -1 if unknown. */
+typedef enum nghttp2_stream_http_event {
+  NGHTTP2_HTTP_EVENT_DATA_BEGIN,
+  NGHTTP2_HTTP_EVENT_DATA_END,
+  NGHTTP2_HTTP_EVENT_HEADERS_BEGIN,
+  NGHTTP2_HTTP_EVENT_HEADERS_END,
+  NGHTTP2_HTTP_EVENT_MSG_END,
+} nghttp2_stream_http_event;
+
+typedef struct nghttp2_http_state {
+  /* content_length is the value of received content-length header
+     field. */
   int64_t content_length;
-  /* Received body so far */
+  /* recv_content_length is the number of body bytes received so
+     far. */
   int64_t recv_content_length;
-  /* Next scheduled time to sent item */
-  uint64_t cycle;
-  /* Secondary key for prioritization to break a tie for cycle.  This
-     value is monotonically increased for single parent stream. */
-  uint64_t seq;
-  nghttp2_stream *closed_next;
-  /* The arbitrary data provided by user for this stream. */
-  void *stream_user_data;
-  /* Item to send */
-  nghttp2_outbound_item *item;
-  /* Last written length of frame payload */
-  size_t last_writelen;
-  /* stream ID */
-  int32_t stream_id;
-  /* Current remote window size. This value is computed against the
-     current initial window size of remote endpoint. */
-  int32_t remote_window_size;
-  /* Keep track of the number of bytes received without
-     WINDOW_UPDATE. This could be negative after submitting negative
-     value to WINDOW_UPDATE */
-  int32_t recv_window_size;
-  /* The number of bytes consumed by the application and now is
-     subject to WINDOW_UPDATE.  This is only used when auto
-     WINDOW_UPDATE is turned off. */
-  int32_t consumed_size;
-  /* The amount of recv_window_size cut using submitting negative
-     value to WINDOW_UPDATE */
-  int32_t recv_reduction;
-  /* window size for local flow control. It is initially set to
-     NGHTTP2_INITIAL_WINDOW_SIZE and could be increased/decreased by
-     submitting WINDOW_UPDATE. See nghttp2_submit_window_update(). */
-  int32_t local_window_size;
-  /* This is unpaid penalty (offset) when calculating cycle. */
-  uint32_t pending_penalty;
-  /* status code from remote server */
+  nghttp2_pri pri;
+  /* status_code is HTTP status code received.  This field is used
+     if connection is initialized as client. */
   int32_t status_code;
-  /* Bitwise OR of zero or more NGHTTP2_HTTP_FLAG_* values */
-  uint32_t http_flags;
-  /* This is bitwise-OR of 0 or more of NGHTTP2_STREAM_FLAG_*
-     values. */
-  uint8_t flags;
-  /* Bitwise OR of zero or more NGHTTP2_SHUT_* values. */
-  uint8_t shut_flags;
-  /* Nonzero if this stream has been queued to stream pointed by
-     dep_prev.  We maintain the invariant that if a stream is queued,
-     then its ancestors, except for root, are also queued.  This
-     invariant may break in fatal error condition. */
-  uint8_t queued;
-  /* This flag is used to reduce excessive queuing of WINDOW_UPDATE to
-     this stream.  The nonzero does not necessarily mean WINDOW_UPDATE
-     is not queued. */
-  uint8_t window_update_queued;
-  /* extpri is a stream priority produced by nghttp2_extpri_to_uint8
-     used by RFC 9218 extensible priorities. */
-  uint8_t extpri;
-  /* http_extpri is a stream priority received in HTTP request header
-     fields and produced by nghttp2_extpri_to_uint8. */
-  uint8_t http_extpri;
-};
+  uint32_t flags;
+} nghttp2_http_state;
 
-void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
-                         uint8_t flags, nghttp2_stream_state initial_state,
-                         int32_t remote_initial_window_size,
-                         int32_t local_initial_window_size,
-                         void *stream_user_data);
+typedef struct nghttp2_stream_callbacks {
+  nghttp2_write_stream_data_offset write_stream_data_offset;
+} nghttp2_stream_callbacks;
+
+typedef struct nghttp2_stream {
+  const nghttp2_mem *mem;
+  int64_t stream_id;
+  nghttp2_stream **strmq_prev;
+  nghttp2_stream *strmq_next;
+
+  struct {
+    nghttp2_stream_http_state hstate;
+    nghttp2_http_state http;
+    /* offset is the offset of stream data received for this stream so
+       far. */
+    uint64_t offset;
+    /* max_offset is the maximum offset that remote endpoint can send
+       to this stream. */
+    uint64_t max_offset;
+    /* unsent_max_offset is the maximum offset that remote endpoint
+       can send to this stream, and it is not notified to the remote
+       endpoint.  unsent_max_offset could be "negative" when window
+       size is reduced by SETTINGS.  It is negative if
+       unsent_max_offset - max_offset > NGHTTP2_MAX_WINDOW_SIZE. */
+    uint64_t unsent_max_offset;
+  } rx;
+
+  struct {
+    nghttp2_http_writer hw;
+
+    struct {
+      /* client_pri contains the value of priority field (RFC 9218) to
+         send in PRIORITY_UPDATE frame. */
+      nghttp2_vec client_pri;
+    } priority;
+
+    /* offset is the next offset of new outgoing data.  In other
+       words, it is the number of bytes sent in this stream without
+       duplication. */
+    uint64_t offset;
+    /* max_tx_offset is the maximum offset that local endpoint can
+       send for this stream. */
+    uint64_t max_offset;
+  } tx;
+
+  struct {
+    /* pe must be a first field of shced. */
+    nghttp2_pq_entry pe;
+    uint64_t cycle;
+    nghttp2_pri pri;
+    size_t unscheduled_nwrite;
+  } sched;
+
+  void *user_data;
+  uint32_t error_code;
+  uint32_t flags;
+} nghttp2_stream;
+
+void nghttp2_stream_init(nghttp2_stream *stream, int64_t stream_id,
+                         const nghttp2_stream_callbacks *callbacks,
+                         uint32_t flags, uint64_t max_rx_offset,
+                         uint64_t max_tx_offset, void *user_data,
+                         const nghttp2_mem *mem);
 
 void nghttp2_stream_free(nghttp2_stream *stream);
 
-/*
- * Disallow either further receptions or transmissions, or both.
- * |flag| is bitwise OR of one or more of NGHTTP2_SHUT_* values.
- */
-void nghttp2_stream_shutdown(nghttp2_stream *stream, uint8_t flag);
+int nghttp2_stream_transit_rx_http_state(nghttp2_stream *stream,
+                                         nghttp2_stream_http_event event);
 
-/*
- * Defer |stream->item|.  We won't call this function in the situation
- * where |stream->item| == NULL.  The |flags| is bitwise OR of zero or
- * more of NGHTTP2_STREAM_FLAG_DEFERRED_USER and
- * NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL.  The |flags| indicates
- * the reason of this action.
- */
-void nghttp2_stream_defer_item(nghttp2_stream *stream, uint8_t flags);
+int nghttp2_stream_empty_headers_allowed(const nghttp2_stream *stream);
 
-/*
- * Put back deferred data in this stream to active state.  The |flags|
- * are one or more of bitwise OR of the following values:
- * NGHTTP2_STREAM_FLAG_DEFERRED_USER and
- * NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL and given masks are
- * cleared if they are set.  So even if this function is called, if
- * one of flag is still set, data does not become active.
- */
-void nghttp2_stream_resume_deferred_item(nghttp2_stream *stream, uint8_t flags);
+void nghttp2_stream_set_error_code(nghttp2_stream *stream, uint32_t error_code);
 
-/*
- * Returns nonzero if item is deferred by whatever reason.
- */
-int nghttp2_stream_check_deferred_item(nghttp2_stream *stream);
+int nghttp2_stream_require_strmq(const nghttp2_stream *stream);
 
-/*
- * Returns nonzero if item is deferred by flow control.
- */
-int nghttp2_stream_check_deferred_by_flow_control(nghttp2_stream *stream);
+int nghttp2_stream_require_schedule(const nghttp2_stream *stream);
 
-/*
- * Updates the remote window size with the new value
- * |new_initial_window_size|. The |old_initial_window_size| is used to
- * calculate the current window size.
- *
- * This function returns 0 if it succeeds or -1. The failure is due to
- * overflow.
- */
-int nghttp2_stream_update_remote_initial_window_size(
-  nghttp2_stream *stream, int32_t new_initial_window_size,
-  int32_t old_initial_window_size);
+int nghttp2_stream_schedule(nghttp2_stream *stream, nghttp2_pq *pq,
+                            uint64_t nwrite);
 
-/*
- * Updates the local window size with the new value
- * |new_initial_window_size|. The |old_initial_window_size| is used to
- * calculate the current window size.
- *
- * This function returns 0 if it succeeds or -1. The failure is due to
- * overflow.
- */
-int nghttp2_stream_update_local_initial_window_size(
-  nghttp2_stream *stream, int32_t new_initial_window_size,
-  int32_t old_initial_window_size);
+void nghttp2_stream_unschedule(nghttp2_stream *stream, nghttp2_pq *pq);
 
-/*
- * Call this function if promised stream |stream| is replied with
- * HEADERS.  This function makes the state of the |stream| to
- * NGHTTP2_STREAM_OPENED.
- */
-void nghttp2_stream_promise_fulfilled(nghttp2_stream *stream);
+int nghttp2_stream_add_tx_max_offset(nghttp2_stream *stream, uint64_t delta);
 
-/*
- * Attaches |item| to |stream|.
- */
-void nghttp2_stream_attach_item(nghttp2_stream *stream,
-                                nghttp2_outbound_item *item);
-
-/*
- * Detaches |stream->item|.  This function does not free
- * |stream->item|.  The caller must free it.
- */
-void nghttp2_stream_detach_item(nghttp2_stream *stream);
+void nghttp2_stream_free_client_pri(nghttp2_stream *stream);
 
 #endif /* !defined(NGHTTP2_STREAM_H) */

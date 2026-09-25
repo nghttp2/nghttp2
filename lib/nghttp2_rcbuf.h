@@ -1,7 +1,7 @@
 /*
- * nghttp2 - HTTP/2 C Library
+ * nghttp2
  *
- * Copyright (c) 2016 Tatsuhiro Tsujikawa
+ * Copyright (c) 2026 nghttp2 contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -29,13 +29,12 @@
 #  include <config.h>
 #endif /* defined(HAVE_CONFIG_H) */
 
-#include <nghttp2/nghttp2.h>
+#include <nghttp2v2/nghttp2.h>
 
 struct nghttp2_rcbuf {
-  /* custom memory allocator belongs to the mem parameter when
-     creating this object. */
-  void *mem_user_data;
-  nghttp2_free free;
+  /* mem is the memory allocator that allocates memory for this
+     object. */
+  const nghttp2_mem *mem;
   /* The pointer to the underlying buffer */
   uint8_t *base;
   /* Size of buffer pointed by |base|. */
@@ -54,7 +53,8 @@ struct nghttp2_rcbuf {
  * NGHTTP2_ERR_NOMEM:
  *     Out of memory.
  */
-int nghttp2_rcbuf_new(nghttp2_rcbuf **rcbuf_ptr, size_t size, nghttp2_mem *mem);
+int nghttp2_rcbuf_new(nghttp2_rcbuf **rcbuf_ptr, size_t size,
+                      const nghttp2_mem *mem);
 
 /*
  * Like nghttp2_rcbuf_new(), but initializes the buffer with |src| of
@@ -70,7 +70,7 @@ int nghttp2_rcbuf_new(nghttp2_rcbuf **rcbuf_ptr, size_t size, nghttp2_mem *mem);
  *     Out of memory.
  */
 int nghttp2_rcbuf_new2(nghttp2_rcbuf **rcbuf_ptr, const uint8_t *src,
-                       size_t srclen, nghttp2_mem *mem);
+                       size_t srclen, const nghttp2_mem *mem);
 
 /*
  * Frees |rcbuf| itself, regardless of its reference cout.

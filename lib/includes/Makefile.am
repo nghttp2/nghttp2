@@ -1,6 +1,6 @@
 # nghttp2 - HTTP/2 C Library
 
-# Copyright (c) 2012 Tatsuhiro Tsujikawa
+# Copyright (c) 2026 nghttp2 contributors
 
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -20,7 +20,6 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
 EXTRA_DIST = CMakeLists.txt
 
-nobase_include_HEADERS = nghttp2/nghttp2.h nghttp2/nghttp2ver.h
+nobase_include_HEADERS = nghttp2v2/nghttp2.h nghttp2v2/version.h
