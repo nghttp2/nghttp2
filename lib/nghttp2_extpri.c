@@ -27,10 +27,18 @@
 #include "nghttp2_http.h"
 
 uint8_t nghttp2_extpri_to_uint8(const nghttp2_extpri *extpri) {
+  if (extpri == NULL) {
+    return 0;
+  }
+
   return (uint8_t)((uint32_t)extpri->inc << 7 | extpri->urgency);
 }
 
 void nghttp2_extpri_from_uint8(nghttp2_extpri *extpri, uint8_t u8extpri) {
+  if (extpri == NULL) {
+    return;
+  }
+
   *extpri = (nghttp2_extpri){
     .urgency = nghttp2_extpri_uint8_urgency(u8extpri),
     .inc = nghttp2_extpri_uint8_inc(u8extpri),

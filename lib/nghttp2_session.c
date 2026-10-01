@@ -442,6 +442,10 @@ static int session_new(nghttp2_session **session_ptr,
   size_t i;
   uint64_t map_seed;
 
+  if (session_ptr == NULL || callbacks == NULL) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
   if (mem == NULL) {
     mem = nghttp2_mem_default();
   }
@@ -682,6 +686,10 @@ int nghttp2_session_client_new3(nghttp2_session **session_ptr,
   int rv;
   nghttp2_session *session;
 
+  if (session_ptr == NULL) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
   rv = session_new(&session, callbacks, user_data, 0, option, mem);
 
   if (rv != 0) {
@@ -715,6 +723,10 @@ int nghttp2_session_server_new3(nghttp2_session **session_ptr,
                                 nghttp2_mem *mem) {
   int rv;
   nghttp2_session *session;
+
+  if (session_ptr == NULL) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
 
   rv = session_new(&session, callbacks, user_data, 1, option, mem);
 
