@@ -1516,6 +1516,11 @@ typedef struct nghttp2_callbacks {
  * :macro:`NGHTTP2_ERR_WOULDBLOCK`.  When it is ready to provide data,
  * call `nghttp2_conn_resume_stream`.
  *
+ * If the callback returns 0 or the sum of length in |vec| is 0, and
+ * |*pflags| does not have :macro:`NGHTTP2_READ_DATA_FLAG_EOF` not
+ * set, it is treated as if :macro:`NGHTTP2_ERR_CALLBACK_FAILURE` is
+ * returned.
+ *
  * The callback should return the number of objects in |vec| that the
  * application filled if it succeeds, or
  * :macro:`NGHTTP2_ERR_CALLBACK_FAILURE`.

@@ -282,7 +282,7 @@ int nghttp2_http_writer_write_data(nghttp2_http_writer *hw, nghttp2_buf *dest,
 
     if (hw->datacnt == 0) {
       if (!(hw->flags & NGHTTP2_HTTP_WRITER_FLAG_DATA_EOF)) {
-        return 0;
+        return NGHTTP2_ERR_CALLBACK_FAILURE;
       }
 
       if (!(hw->flags & NGHTTP2_HTTP_WRITER_FLAG_DATA_END_STREAM)) {
