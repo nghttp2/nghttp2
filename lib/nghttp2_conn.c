@@ -2843,7 +2843,7 @@ int nghttp2_conn_write_settings_ack(nghttp2_conn *conn, nghttp2_buf *dest) {
   }
 
   for (; conn->tx.settings.ack_left; --conn->tx.settings.ack_left) {
-    if (sizeof(settings_ack) < NGHTTP2_FRAME_HDLEN) {
+    if (nghttp2_buf_left(dest) < sizeof(settings_ack)) {
       return NGHTTP2_ERR_NOBUF;
     }
 
