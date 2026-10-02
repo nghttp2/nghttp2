@@ -1299,7 +1299,7 @@ typedef int (*nghttp2_end_fields)(nghttp2_conn *conn, int64_t stream_id,
  * :macro:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
 typedef int (*nghttp2_recv_data)(nghttp2_conn *conn, int64_t stream_id,
-                                 const uint8_t *data, size_t datalen, int fin,
+                                 const uint8_t *data, size_t datalen,
                                  void *conn_user_data, void *stream_user_data);
 
 /**

@@ -113,14 +113,14 @@ static int conn_call_end_trailers(nghttp2_conn *conn,
 }
 
 static int conn_call_recv_data(nghttp2_conn *conn, const nghttp2_stream *stream,
-                               const uint8_t *data, size_t datalen, int fin) {
+                               const uint8_t *data, size_t datalen) {
   int rv;
 
   if (!conn->callbacks.recv_data) {
     return 0;
   }
 
-  rv = conn->callbacks.recv_data(conn, stream->stream_id, data, datalen, fin,
+  rv = conn->callbacks.recv_data(conn, stream->stream_id, data, datalen,
                                  conn->user_data, stream->user_data);
   if (rv != 0) {
     return NGHTTP2_ERR_CALLBACK_FAILURE;
@@ -558,7 +558,7 @@ static int conn_on_end_data(nghttp2_conn *conn, nghttp2_stream *stream,
 }
 
 static int conn_on_data(nghttp2_conn *conn, const nghttp2_frame_data *fr,
-                        const uint8_t *data, size_t datalen, int fin) {
+                        const uint8_t *data, size_t datalen) {
   nghttp2_stream *stream;
   int rv;
 
@@ -572,7 +572,7 @@ static int conn_on_data(nghttp2_conn *conn, const nghttp2_frame_data *fr,
     return rv;
   }
 
-  return conn_call_recv_data(conn, stream, data, datalen, fin);
+  return conn_call_recv_data(conn, stream, data, datalen);
 }
 
 static int conn_recv_data(nghttp2_conn *conn, const nghttp2_frame_data *fr) {
@@ -593,7 +593,7 @@ static int conn_recv_data(nghttp2_conn *conn, const nghttp2_frame_data *fr) {
   }
 
   if ((fr->hd.flags & NGHTTP2_DATA_FLAG_END_STREAM) && fr->datalen == 0) {
-    rv = conn_call_recv_data(conn, stream, NULL, 0, /* fin = */ 1);
+    rv = conn_call_recv_data(conn, stream, NULL, 0);
     if (rv != 0) {
       return rv;
     }
@@ -683,7 +683,7 @@ static int conn_recv_data_hd(nghttp2_conn *conn, nghttp2_frame_data *fr,
   /* No need to validate flow control if the frame length is zero. */
 
   if (fr->hd.flags & NGHTTP2_DATA_FLAG_END_STREAM) {
-    rv = conn_call_recv_data(conn, stream, NULL, 0, /* fin = */ 1);
+    rv = conn_call_recv_data(conn, stream, NULL, 0);
     if (rv != 0) {
       return rv;
     }
@@ -1875,10 +1875,7 @@ int nghttp2_conn_read(nghttp2_conn *conn, const uint8_t *data, size_t datalen,
       frrd->field_left -= len;
       frrd->left -= len;
 
-      rv =
-        conn_on_data(conn, &frrd->fr.data, p, len,
-                     (frrd->fr.data.hd.flags & NGHTTP2_DATA_FLAG_END_STREAM) &&
-                       frrd->field_left == 0);
+      rv = conn_on_data(conn, &frrd->fr.data, p, len);
       if (rv != 0) {
         return nghttp2_conn_handle_error(conn, rv);
       }

@@ -522,8 +522,7 @@ int end_headers(nghttp2_conn *conn, int64_t stream_id, int fin, void *user_data,
 
 namespace {
 int recv_data(nghttp2_conn *conn, int64_t stream_id, const uint8_t *data,
-              size_t datalen, int fin, void *user_data,
-              void *stream_user_data) {
+              size_t datalen, void *user_data, void *stream_user_data) {
   auto hd = static_cast<Http2Handler *>(user_data);
 
   auto stream = hd->get_stream(stream_id);

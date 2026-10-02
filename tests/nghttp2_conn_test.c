@@ -192,7 +192,6 @@ typedef struct userdata {
     size_t ncalled;
     int64_t stream_id;
     size_t datalen;
-    int fin;
   } recv_data;
   struct {
     size_t ncalled;
@@ -356,7 +355,7 @@ static int recv_trailer(nghttp2_conn *conn, int64_t stream_id, int32_t token,
 }
 
 static int recv_data(nghttp2_conn *conn, int64_t stream_id, const uint8_t *data,
-                     size_t datalen, int fin, void *conn_user_data,
+                     size_t datalen, void *conn_user_data,
                      void *stream_user_data) {
   userdata *ud = conn_user_data;
   (void)conn;
@@ -366,7 +365,6 @@ static int recv_data(nghttp2_conn *conn, int64_t stream_id, const uint8_t *data,
   ++ud->recv_data.ncalled;
   ud->recv_data.stream_id = stream_id;
   ud->recv_data.datalen += datalen;
-  ud->recv_data.fin = fin;
 
   return 0;
 }
@@ -948,7 +946,6 @@ void test_nghttp2_conn_read_request(void) {
   assert_size(1, ==, ud.recv_data.ncalled);
   assert_int64(1, ==, ud.recv_data.stream_id);
   assert_size(77, ==, ud.recv_data.datalen);
-  assert_false(ud.recv_data.fin);
   assert_size(0, ==, ud.end_stream.ncalled);
 
   stream = nghttp2_conn_find_stream(conn, 1);
@@ -978,7 +975,6 @@ void test_nghttp2_conn_read_request(void) {
   assert_size(1, ==, ud.recv_data.ncalled);
   assert_int64(1, ==, ud.recv_data.stream_id);
   assert_size(22, ==, ud.recv_data.datalen);
-  assert_true(ud.recv_data.fin);
   assert_size(1, ==, ud.end_stream.ncalled);
   assert_int64(1, ==, ud.end_stream.stream_id);
 
@@ -1078,7 +1074,6 @@ void test_nghttp2_conn_read_request(void) {
   assert_size(1, ==, ud.recv_data.ncalled);
   assert_int64(1, ==, ud.recv_data.stream_id);
   assert_size(77, ==, ud.recv_data.datalen);
-  assert_false(ud.recv_data.fin);
   assert_size(0, ==, ud.end_stream.ncalled);
 
   stream = nghttp2_conn_find_stream(conn, 1);
@@ -3558,7 +3553,6 @@ void test_nghttp2_conn_recv_data(void) {
   assert_size(1, ==, ud.recv_data.ncalled);
   assert_int64(0x01, ==, ud.recv_data.stream_id);
   assert_size(111, ==, ud.recv_data.datalen);
-  assert_true(ud.recv_data.fin);
 
   stream = nghttp2_conn_find_stream(conn, 0x01);
 
@@ -3591,7 +3585,6 @@ void test_nghttp2_conn_recv_data(void) {
   assert_size(110, ==, ud.recv_data.ncalled);
   assert_int64(0x01, ==, ud.recv_data.stream_id);
   assert_size(110, ==, ud.recv_data.datalen);
-  assert_false(ud.recv_data.fin);
 
   for (i = nghttp2_buf_len(&buf) - 12; i < nghttp2_buf_len(&buf); ++i) {
     rv = nghttp2_conn_read(conn, buf.pos + i, 1, ++ts);
@@ -3604,7 +3597,6 @@ void test_nghttp2_conn_recv_data(void) {
   assert_size(111, ==, ud.recv_data.ncalled);
   assert_int64(0x01, ==, ud.recv_data.stream_id);
   assert_size(111, ==, ud.recv_data.datalen);
-  assert_true(ud.recv_data.fin);
 
   stream = nghttp2_conn_find_stream(conn, 0x01);
 
@@ -3678,7 +3670,6 @@ void test_nghttp2_conn_recv_data(void) {
   assert_size(1, ==, ud.recv_data.ncalled);
   assert_int64(0x01, ==, ud.recv_data.stream_id);
   assert_size(111, ==, ud.recv_data.datalen);
-  assert_false(ud.recv_data.fin);
 
   stream = nghttp2_conn_find_stream(conn, 0x01);
 
@@ -3752,7 +3743,6 @@ void test_nghttp2_conn_recv_data(void) {
   assert_size(1, ==, ud.recv_data.ncalled);
   assert_int64(0x01, ==, ud.recv_data.stream_id);
   assert_size(111, ==, ud.recv_data.datalen);
-  assert_true(ud.recv_data.fin);
 
   stream = nghttp2_conn_find_stream(conn, 0x01);
 
@@ -3930,7 +3920,6 @@ void test_nghttp2_conn_recv_data(void) {
   assert_size(1, ==, ud.recv_data.ncalled);
   assert_int64(0x01, ==, ud.recv_data.stream_id);
   assert_size(0, ==, ud.recv_data.datalen);
-  assert_true(ud.recv_data.fin);
 
   nghttp2_hpack_encoder_free(&enc);
   nghttp2_conn_del(conn);
