@@ -1267,7 +1267,7 @@ typedef int (*nghttp2_recv_field)(nghttp2_conn *conn, int64_t stream_id,
 /**
  * @functypedef
  *
- * :type:`nghttp2_end_headers` is a callback function which is invoked
+ * :type:`nghttp2_end_fields` is a callback function which is invoked
  * when an incoming HTTP field section has ended.
  *
  * If the stream ends with this HTTP field section, |fin| is set to
