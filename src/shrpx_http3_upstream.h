@@ -27,6 +27,8 @@
 
 #include "shrpx.h"
 
+#include <netinet/udp.h>
+
 #include <ngtcp2/ngtcp2.h>
 #include <nghttp3/nghttp3.h>
 
