@@ -98,11 +98,12 @@ static void AddRoundKey(__u8 round, state_t *state, const __u8 *RoundKey) {
 
 static __u8 xtime(__u8 x) { return ((x << 1) ^ (((x >> 7) & 1) * 0x1B)); }
 
-#define Multiply(x, y)                                                         \
-  (((y & 1) * x) ^ ((y >> 1 & 1) * xtime(x)) ^                                 \
-   ((y >> 2 & 1) * xtime(xtime(x))) ^                                          \
-   ((y >> 3 & 1) * xtime(xtime(xtime(x)))) ^                                   \
-   ((y >> 4 & 1) * xtime(xtime(xtime(xtime(x))))))
+static __noinline __u8 Multiply(__u8 x, __u8 y) {
+  return ((y & 1) * x) ^ ((y >> 1 & 1) * xtime(x)) ^
+         ((y >> 2 & 1) * xtime(xtime(x))) ^
+         ((y >> 3 & 1) * xtime(xtime(xtime(x)))) ^
+         ((y >> 4 & 1) * xtime(xtime(xtime(xtime(x)))));
+}
 
 #define getSBoxInvert(num) (rsbox[(num)])
 
