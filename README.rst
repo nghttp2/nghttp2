@@ -23,6 +23,11 @@ HTTP/2.  Now we are updating our code to implement `RFC 9113
 The nghttp2 code base was forked from the spdylay
 (https://github.com/tatsuhiro-t/spdylay) project.
 
+The new `nghttp2 version 2 <https://github.com/nghttp2/nghttp2-v2>`_
+(nghttp2-v2) development has begun.  It is a rewrite of nghttp2
+version 1 (this repository), aiming for better performance, security,
+and API ergonomics.
+
 Public Test Server
 ------------------
 
