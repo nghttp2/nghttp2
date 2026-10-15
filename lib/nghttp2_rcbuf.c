@@ -34,6 +34,14 @@ int nghttp2_rcbuf_new(nghttp2_rcbuf **rcbuf_ptr, size_t size,
                       nghttp2_mem *mem) {
   uint8_t *p;
 
+  if (rcbuf_ptr == NULL) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  if (size > SIZE_MAX - sizeof(nghttp2_rcbuf)) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+
   p = nghttp2_mem_malloc(mem, sizeof(nghttp2_rcbuf) + size);
   if (p == NULL) {
     return NGHTTP2_ERR_NOMEM;
@@ -56,6 +64,14 @@ int nghttp2_rcbuf_new2(nghttp2_rcbuf **rcbuf_ptr, const uint8_t *src,
                        size_t srclen, nghttp2_mem *mem) {
   int rv;
 
+  if (rcbuf_ptr == NULL || (srclen > 0 && src == NULL)) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  if (srclen == SIZE_MAX) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+
   rv = nghttp2_rcbuf_new(rcbuf_ptr, srclen + 1, mem);
   if (rv != 0) {
     return rv;
@@ -71,11 +87,15 @@ int nghttp2_rcbuf_new2(nghttp2_rcbuf **rcbuf_ptr, const uint8_t *src,
  * Frees |rcbuf| itself, regardless of its reference cout.
  */
 void nghttp2_rcbuf_del(nghttp2_rcbuf *rcbuf) {
+  if (rcbuf == NULL) {
+    return;
+  }
+
   nghttp2_mem_free2(rcbuf->free, rcbuf, rcbuf->mem_user_data);
 }
 
 void nghttp2_rcbuf_incref(nghttp2_rcbuf *rcbuf) {
-  if (rcbuf->ref == -1) {
+  if (rcbuf == NULL || rcbuf->ref == -1) {
     return;
   }
 
@@ -95,10 +115,10 @@ void nghttp2_rcbuf_decref(nghttp2_rcbuf *rcbuf) {
 }
 
 nghttp2_vec nghttp2_rcbuf_get_buf(nghttp2_rcbuf *rcbuf) {
-  nghttp2_vec res = {rcbuf->base, rcbuf->len};
+  nghttp2_vec res = {rcbuf ? rcbuf->base : NULL, rcbuf ? rcbuf->len : 0};
   return res;
 }
 
 int nghttp2_rcbuf_is_static(const nghttp2_rcbuf *rcbuf) {
-  return rcbuf->ref == -1;
+  return rcbuf != NULL && rcbuf->ref == -1;
 }

@@ -72,6 +72,10 @@ int nghttp2_buf_reserve(nghttp2_buf *buf, size_t new_cap, nghttp2_mem *mem) {
 }
 
 void nghttp2_buf_reset(nghttp2_buf *buf) {
+  if (buf == NULL) {
+    return;
+  }
+
   buf->pos = buf->last = buf->mark = buf->begin;
 }
 
@@ -228,6 +232,10 @@ int nghttp2_bufs_wrap_init2(nghttp2_bufs *bufs, const nghttp2_vec *vec,
 
   if (veclen == 0) {
     return nghttp2_bufs_wrap_init(bufs, NULL, 0, mem);
+  }
+
+  if (veclen > SIZE_MAX / sizeof(nghttp2_buf_chain)) {
+    return NGHTTP2_ERR_NOMEM;
   }
 
   head_chain = nghttp2_mem_malloc(mem, sizeof(nghttp2_buf_chain) * veclen);
@@ -428,6 +436,16 @@ nghttp2_ssize nghttp2_bufs_remove(nghttp2_bufs *bufs, uint8_t **out) {
   uint8_t *res;
   nghttp2_buf resbuf;
 
+  if (out == NULL) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  *out = NULL;
+
+  if (bufs == NULL) {
+    return 0;
+  }
+
   len = 0;
 
   for (chain = bufs->head; chain; chain = chain->next) {
@@ -435,7 +453,6 @@ nghttp2_ssize nghttp2_bufs_remove(nghttp2_bufs *bufs, uint8_t **out) {
   }
 
   if (len == 0) {
-    res = NULL;
     return 0;
   }
 
@@ -477,6 +494,10 @@ size_t nghttp2_bufs_remove_copy(nghttp2_bufs *bufs, uint8_t *out) {
 void nghttp2_bufs_reset(nghttp2_bufs *bufs) {
   nghttp2_buf_chain *chain, *ci;
   size_t k;
+
+  if (bufs == NULL) {
+    return;
+  }
 
   k = bufs->chunk_keep;
 
