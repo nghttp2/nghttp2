@@ -5176,7 +5176,8 @@ static int session_update_consumed_size(nghttp2_session *session,
   int32_t recv_size;
   int rv;
 
-  if ((size_t)*consumed_size_ptr > NGHTTP2_MAX_WINDOW_SIZE - delta_size) {
+  if (delta_size > (size_t)NGHTTP2_MAX_WINDOW_SIZE ||
+      (size_t)*consumed_size_ptr > (size_t)NGHTTP2_MAX_WINDOW_SIZE - delta_size) {
     return nghttp2_session_terminate_session(session,
                                              NGHTTP2_FLOW_CONTROL_ERROR);
   }

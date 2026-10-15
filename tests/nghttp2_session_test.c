@@ -85,6 +85,7 @@ static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_session_send_push_promise),
   munit_void_test(test_nghttp2_session_is_my_stream_id),
   munit_void_test(test_nghttp2_session_upgrade2),
+  munit_void_test(test_nghttp2_session_consume_connection_overflow),
   munit_void_test(test_nghttp2_submit_data),
   munit_void_test(test_nghttp2_submit_data_read_length_too_large),
   munit_void_test(test_nghttp2_submit_data_read_length_smallest),
@@ -5417,6 +5418,54 @@ void test_nghttp2_session_is_my_stream_id(void) {
   assert_false(nghttp2_session_is_my_stream_id(session, 0));
   assert_true(nghttp2_session_is_my_stream_id(session, 1));
   assert_false(nghttp2_session_is_my_stream_id(session, 2));
+
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_consume_connection_overflow(void) {
+  nghttp2_session *session;
+  nghttp2_option *option;
+  nghttp2_session_callbacks callbacks = {
+    .send_callback2 = null_send_callback,
+  };
+  const uint8_t *data;
+  nghttp2_ssize datalen;
+  uint32_t goaway_error_code = 0;
+
+  nghttp2_option_new(&option);
+  nghttp2_option_set_no_auto_window_update(option, 1);
+  nghttp2_session_server_new2(&session, &callbacks, NULL, option);
+  nghttp2_option_del(option);
+
+  assert_int(0, ==, nghttp2_session_consume_connection(session, 2147483647));
+
+  /* delta_size > NGHTTP2_MAX_WINDOW_SIZE underflows the guard in
+     session_update_consumed_size(); the connection must be terminated
+     with FLOW_CONTROL_ERROR instead of overflowing the consumed_size
+     counter.  NGHTTP2_MAX_WINDOW_SIZE + 1 keeps the test valid where
+     size_t is 32 bits wide. */
+  assert_int(0, ==, nghttp2_session_consume_connection(
+                     session, (size_t)NGHTTP2_MAX_WINDOW_SIZE + 1));
+  assert_int32(2147483647, ==, session->consumed_size);
+
+  /* The termination is observable: a GOAWAY carrying FLOW_CONTROL_ERROR
+     is queued and sent, and the session reports that it no longer
+     wants to read. */
+  assert_true(session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND);
+  for (;;) {
+    datalen = nghttp2_session_mem_send2(session, &data);
+    if (datalen <= 0) {
+      break;
+    }
+    /* GOAWAY payload: last_stream_id (4 bytes) + error_code (4 bytes) */
+    if (datalen >= 17 && data[3] == NGHTTP2_GOAWAY) {
+      goaway_error_code = ((uint32_t)data[13] << 24) |
+                          ((uint32_t)data[14] << 16) |
+                          ((uint32_t)data[15] << 8) | (uint32_t)data[16];
+    }
+  }
+  assert_uint32(NGHTTP2_FLOW_CONTROL_ERROR, ==, goaway_error_code);
+  assert_int(0, ==, nghttp2_session_want_read(session));
 
   nghttp2_session_del(session);
 }
