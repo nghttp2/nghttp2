@@ -362,8 +362,8 @@ static char *percent_decode(const uint8_t *value, size_t valuelen) {
         (char)((hex_to_uint(value[i + 1]) << 4) + hex_to_uint(value[i + 2]));
       i += 3;
     }
-    memcpy(&res[j], &value[i], 2);
-    res[j + 2] = '\0';
+    memcpy(&res[j], &value[i], valuelen - i);
+    res[j + valuelen - i] = '\0';
   } else {
     memcpy(res, value, valuelen);
     res[valuelen] = '\0';
