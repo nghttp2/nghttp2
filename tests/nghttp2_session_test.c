@@ -159,6 +159,8 @@ static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_session_no_rfc7540_priorities),
   munit_void_test(test_nghttp2_session_stream_reset_ratelim),
   munit_void_test(test_nghttp2_session_verify_iframe_state),
+  munit_void_test(test_nghttp2_session_consume_stream),
+  munit_void_test(test_nghttp2_session_consume_connection),
   munit_void_test(test_nghttp2_http_mandatory_headers),
   munit_void_test(test_nghttp2_http_content_length),
   munit_void_test(test_nghttp2_http_content_length_mismatch),
@@ -1408,6 +1410,132 @@ void test_nghttp2_session_recv_data_no_auto_flow_control(void) {
 
   nghttp2_session_del(session);
   nghttp2_option_del(option);
+}
+
+void test_nghttp2_session_consume_stream(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks *callbacks;
+  nghttp2_option *option;
+  int32_t stream_id;
+  nghttp2_ssize nwrite;
+  const uint8_t *data;
+  const nghttp2_outbound_item *item;
+  int rv;
+
+  nghttp2_session_callbacks_new(&callbacks);
+  nghttp2_option_new(&option);
+  nghttp2_option_set_no_auto_window_update(option, 1);
+
+  /* Stream window overflow: delta is too large */
+  nghttp2_session_client_new2(&session, callbacks, NULL, option);
+
+  stream_id =
+    nghttp2_submit_request2(session, NULL, reqnv, ARRLEN(reqnv), NULL, NULL);
+
+  assert_int32(1, ==, stream_id);
+
+  nwrite = nghttp2_session_mem_send2(session, &data);
+
+  assert_ptrdiff(0, <, nwrite);
+
+  rv =
+    nghttp2_session_consume_stream(session, stream_id, (size_t)INT32_MAX + 1);
+
+  assert_int(0, ==, rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_FLOW_CONTROL_ERROR, ==, item->frame.goaway.error_code);
+
+  nghttp2_session_del(session);
+
+  /* Stream window overflow: 2nd update causes overflow */
+  nghttp2_session_client_new2(&session, callbacks, NULL, option);
+
+  stream_id =
+    nghttp2_submit_request2(session, NULL, reqnv, ARRLEN(reqnv), NULL, NULL);
+
+  assert_int32(1, ==, stream_id);
+
+  nwrite = nghttp2_session_mem_send2(session, &data);
+
+  assert_ptrdiff(0, <, nwrite);
+
+  rv = nghttp2_session_consume_stream(session, stream_id, INT32_MAX);
+
+  assert_int(0, ==, rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+  assert_null(item);
+
+  rv = nghttp2_session_consume_stream(session, stream_id, 1);
+
+  assert_int(0, ==, rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_FLOW_CONTROL_ERROR, ==, item->frame.goaway.error_code);
+
+  nghttp2_session_del(session);
+
+  nghttp2_option_del(option);
+  nghttp2_session_callbacks_del(callbacks);
+}
+
+void test_nghttp2_session_consume_connection(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks *callbacks;
+  nghttp2_option *option;
+  const nghttp2_outbound_item *item;
+  int rv;
+
+  nghttp2_session_callbacks_new(&callbacks);
+  nghttp2_option_new(&option);
+  nghttp2_option_set_no_auto_window_update(option, 1);
+
+  /* Stream window overflow: delta is too large */
+  nghttp2_session_client_new2(&session, callbacks, NULL, option);
+
+  rv = nghttp2_session_consume_connection(session, (size_t)INT32_MAX + 1);
+
+  assert_int(0, ==, rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_FLOW_CONTROL_ERROR, ==, item->frame.goaway.error_code);
+
+  nghttp2_session_del(session);
+
+  /* Stream window overflow: 2nd update causes overflow */
+  nghttp2_session_client_new2(&session, callbacks, NULL, option);
+
+  rv = nghttp2_session_consume_connection(session, INT32_MAX);
+
+  assert_int(0, ==, rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+  assert_null(item);
+
+  rv = nghttp2_session_consume_connection(session, 1);
+
+  assert_int(0, ==, rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_FLOW_CONTROL_ERROR, ==, item->frame.goaway.error_code);
+
+  nghttp2_session_del(session);
+
+  nghttp2_option_del(option);
+  nghttp2_session_callbacks_del(callbacks);
 }
 
 void test_nghttp2_session_recv_continuation(void) {
