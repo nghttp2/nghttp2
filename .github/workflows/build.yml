@@ -256,7 +256,7 @@ jobs:
           compiler: clang
           buildtool: autotools
           http3: http3
-          openssl: openssl
+          openssl: awslc
         - os: macos-26
           compiler: clang
           buildtool: autotools
@@ -266,7 +266,7 @@ jobs:
           compiler: clang
           buildtool: autotools
           http3: http3
-          openssl: openssl
+          openssl: awslc
         - os: macos-15
           compiler: clang
           buildtool: autotools
