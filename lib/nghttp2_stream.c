@@ -127,9 +127,41 @@ int nghttp2_stream_update_remote_initial_window_size(
 int nghttp2_stream_update_local_initial_window_size(
   nghttp2_stream *stream, int32_t new_initial_window_size,
   int32_t old_initial_window_size) {
-  return update_initial_window_size(&stream->local_window_size,
-                                    new_initial_window_size,
-                                    old_initial_window_size);
+  int64_t credit, new_window_size;
+
+  /* The remote endpoint is allowed to send
+     stream->local_window_size - stream->recv_window_size bytes without
+     receiving WINDOW_UPDATE.  This is the flow control window that
+     RFC 9113 requires to stay within NGHTTP2_MAX_WINDOW_SIZE, whereas
+     stream->local_window_size also contains the bytes already received
+     but not yet returned to the remote endpoint.  Therefore
+     stream->local_window_size can legitimately exceed
+     NGHTTP2_MAX_WINDOW_SIZE after this update. */
+  credit = (int64_t)stream->local_window_size - stream->recv_window_size +
+           new_initial_window_size - old_initial_window_size;
+  if (credit > NGHTTP2_MAX_WINDOW_SIZE) {
+    return -1;
+  }
+
+  new_window_size = credit + stream->recv_window_size;
+  if (new_window_size < INT32_MIN) {
+    return -1;
+  }
+
+  if (new_window_size > NGHTTP2_MAX_WINDOW_SIZE) {
+    /* int32_t cannot represent this state.  Keep the window that the
+       remote endpoint sees, i.e.,
+       stream->local_window_size - stream->recv_window_size, unchanged
+       by moving the excess to stream->recv_window_size.  The excess
+       can never be returned because the remote endpoint is already
+       allowed to send NGHTTP2_MAX_WINDOW_SIZE bytes. */
+    stream->recv_window_size = (int32_t)(NGHTTP2_MAX_WINDOW_SIZE - credit);
+    new_window_size = NGHTTP2_MAX_WINDOW_SIZE;
+  }
+
+  stream->local_window_size = (int32_t)new_window_size;
+
+  return 0;
 }
 
 void nghttp2_stream_promise_fulfilled(nghttp2_stream *stream) {

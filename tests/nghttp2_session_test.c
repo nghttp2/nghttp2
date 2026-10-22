@@ -161,6 +161,7 @@ static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_session_verify_iframe_state),
   munit_void_test(test_nghttp2_session_consume_stream),
   munit_void_test(test_nghttp2_session_consume_connection),
+  munit_void_test(test_nghttp2_session_recv_settings_ack_iws_with_unacked_data),
   munit_void_test(test_nghttp2_http_mandatory_headers),
   munit_void_test(test_nghttp2_http_content_length),
   munit_void_test(test_nghttp2_http_content_length_mismatch),
@@ -1535,6 +1536,97 @@ void test_nghttp2_session_consume_connection(void) {
   nghttp2_session_del(session);
 
   nghttp2_option_del(option);
+  nghttp2_session_callbacks_del(callbacks);
+}
+
+/*
+ * Tests that a SETTINGS ACK raising SETTINGS_INITIAL_WINDOW_SIZE is
+ * applied even when a stream has bytes that are received but not yet
+ * returned to the remote endpoint.  These bytes are not part of the
+ * flow control window that the remote endpoint is allowed to use, so
+ * they must not count towards NGHTTP2_MAX_WINDOW_SIZE.
+ */
+void test_nghttp2_session_recv_settings_ack_iws_with_unacked_data(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks *callbacks;
+  nghttp2_stream *stream;
+  nghttp2_frame ack_frame;
+  nghttp2_mem *mem;
+  nghttp2_outbound_item *item;
+  const uint8_t *data;
+  int32_t stream_id;
+  int rv;
+  static const nghttp2_settings_entry iv = {
+    .settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE,
+    .value = NGHTTP2_MAX_WINDOW_SIZE,
+  };
+
+  mem = nghttp2_mem_default();
+
+  nghttp2_session_callbacks_new(&callbacks);
+
+  nghttp2_session_client_new(&session, callbacks, NULL);
+
+  stream_id =
+    nghttp2_submit_request2(session, NULL, reqnv, ARRLEN(reqnv), NULL, NULL);
+
+  assert_int32(1, ==, stream_id);
+
+  while (nghttp2_session_mem_send2(session, &data) > 0)
+    ;
+
+  /* Increase the stream window by 10000, so that the remote endpoint
+     can send 75535 bytes */
+  assert_int(
+    0, ==,
+    nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, stream_id, 10000));
+
+  while (nghttp2_session_mem_send2(session, &data) > 0)
+    ;
+
+  stream = nghttp2_session_get_stream(session, stream_id);
+
+  assert_not_null(stream);
+
+  /* Receive 20000 bytes, which is within the window */
+  assert_int(
+    0, ==,
+    nghttp2_session_update_recv_stream_window_size(session, stream, 20000, 0));
+
+  assert_int32(75535, ==, stream->local_window_size);
+  assert_int32(20000, ==, stream->recv_window_size);
+
+  /* Raise the local SETTINGS_INITIAL_WINDOW_SIZE to the maximum.  The
+     remote endpoint is still allowed to send NGHTTP2_MAX_WINDOW_SIZE -
+     10000 bytes, therefore the connection must survive. */
+  assert_int(0, ==,
+             nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, &iv, 1));
+
+  while (nghttp2_session_mem_send2(session, &data) > 0)
+    ;
+
+  nghttp2_frame_settings_init(&ack_frame.settings, NGHTTP2_FLAG_ACK, NULL, 0);
+
+  rv = nghttp2_session_on_settings_received(session, &ack_frame, 0);
+
+  assert_int(0, ==, rv);
+
+  nghttp2_frame_settings_free(&ack_frame.settings, mem);
+
+  /* The connection must survive, i.e., GOAWAY must not be queued. */
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_null(item);
+  assert_true(nghttp2_session_want_read(session));
+
+  assert_uint32(NGHTTP2_MAX_WINDOW_SIZE, ==,
+                session->local_settings.initial_window_size);
+
+  assert_int32(
+    (int32_t)NGHTTP2_MAX_WINDOW_SIZE - 10000, ==,
+    nghttp2_session_get_stream_local_window_size(session, stream_id));
+
+  nghttp2_session_del(session);
   nghttp2_session_callbacks_del(callbacks);
 }
 
