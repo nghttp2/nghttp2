@@ -4221,6 +4221,11 @@ static int update_local_initial_window_size_func(void *entry, void *ptr) {
     return NGHTTP2_ERR_FLOW_CONTROL;
   }
 
+  if ((int64_t)stream->local_window_size - (int64_t)stream->recv_window_size >
+      NGHTTP2_MAX_WINDOW_SIZE) {
+    return NGHTTP2_ERR_FLOW_CONTROL;
+  }
+
   if (stream->window_update_queued) {
     return 0;
   }
@@ -7756,13 +7761,13 @@ nghttp2_session_get_stream_effective_local_window_size(nghttp2_session *session,
 int32_t nghttp2_session_get_stream_local_window_size(nghttp2_session *session,
                                                      int32_t stream_id) {
   nghttp2_stream *stream;
-  int32_t size;
+  int64_t size;
   stream = nghttp2_session_get_stream(session, stream_id);
   if (stream == NULL) {
     return -1;
   }
 
-  size = stream->local_window_size - stream->recv_window_size;
+  size = (int64_t)stream->local_window_size - (int64_t)stream->recv_window_size;
 
   /* size could be negative if local endpoint reduced
      SETTINGS_INITIAL_WINDOW_SIZE */
@@ -7770,7 +7775,13 @@ int32_t nghttp2_session_get_stream_local_window_size(nghttp2_session *session,
     return 0;
   }
 
-  return size;
+  /* In this case, GOAWAY with NGHTTP2_FLOW_CONTROL_ERROR has already
+     been queued or sent */
+  if (size > NGHTTP2_MAX_WINDOW_SIZE) {
+    return NGHTTP2_MAX_WINDOW_SIZE;
+  }
+
+  return (int32_t)size;
 }
 
 int32_t
