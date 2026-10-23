@@ -122,6 +122,9 @@ static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_session_stop_data_with_rst_stream),
   munit_void_test(test_nghttp2_session_defer_data),
   munit_void_test(test_nghttp2_session_flow_control),
+  munit_void_test(test_nghttp2_session_partial_data_window_update),
+  munit_void_test(test_nghttp2_session_partial_data_cancel),
+  munit_void_test(test_nghttp2_session_no_copy_window),
   munit_void_test(test_nghttp2_session_flow_control_data_recv),
   munit_void_test(test_nghttp2_session_flow_control_data_with_padding_recv),
   munit_void_test(test_nghttp2_session_data_read_temporal_failure),
@@ -7976,6 +7979,249 @@ void test_nghttp2_session_defer_data(void) {
   assert_size(ud.data_source_length, ==, 0);
 
   nghttp2_session_del(session);
+}
+
+static nghttp2_ssize partial_data_send_callback(nghttp2_session *session,
+                                                const uint8_t *data, size_t len,
+                                                int flags, void *user_data) {
+  my_user_data *ud = user_data;
+  size_t n = nghttp2_min_size(len, ud->fixed_sendlen);
+  (void)session;
+  (void)data;
+  (void)flags;
+
+  if (n == 0) {
+    return NGHTTP2_ERR_WOULDBLOCK;
+  }
+  ud->fixed_sendlen -= n;
+  return (nghttp2_ssize)n;
+}
+
+void test_nghttp2_session_partial_data_window_update(void) {
+  const size_t splits[] = {0, NGHTTP2_FRAME_HDLEN, NGHTTP2_FRAME_HDLEN + 1, 1};
+  nghttp2_session *session;
+  static const nghttp2_session_callbacks callbacks = {
+    .send_callback2 = partial_data_send_callback,
+    .on_invalid_frame_recv_callback = on_invalid_frame_recv_callback,
+    .select_padding_callback2 = select_padding_callback,
+  };
+  nghttp2_data_provider2 prd = {
+    .read_callback = fixed_length_data_source_read_callback,
+  };
+  nghttp2_stream *stream;
+  nghttp2_frame frame;
+  nghttp2_outbound_item *item;
+  my_user_data ud;
+  size_t i, completed, padded;
+  int32_t payloadlen, committed, received, remaining, target, updated_window;
+
+  /* A receiver can credit the full declared payload after reading its
+     header, even while the rest of that frame is still pending here. */
+  for (padded = 0; padded < 2; ++padded) {
+    for (completed = 0; completed < (padded ? 1 : 2); ++completed) {
+      for (i = 0; i < ARRLEN(splits); ++i) {
+        for (target = 0; target <= 1; ++target) {
+          memset(&ud, 0, sizeof(ud));
+          ud.padlen = padded ? 16 : 0;
+          ud.data_source_length = padded ? 1024 : 32768;
+          payloadlen = padded ? 1040 : 16384;
+          committed = (int32_t)completed * payloadlen;
+          received = committed;
+          ud.fixed_sendlen =
+            completed * (NGHTTP2_FRAME_HDLEN + (size_t)payloadlen) + splits[i];
+          if (splits[i]) {
+            committed += payloadlen;
+          }
+          if (splits[i] >= NGHTTP2_FRAME_HDLEN) {
+            received += payloadlen;
+          }
+          remaining = (padded ? 1040 : 32768) - committed;
+          updated_window = NGHTTP2_MAX_WINDOW_SIZE - (committed - received);
+
+          assert_int(0, ==,
+                     nghttp2_session_client_new(&session, &callbacks, &ud));
+          session->remote_window_size = 65536;
+          session->remote_settings.initial_window_size = 65536;
+          stream = open_sent_stream(session, 1);
+          assert_int(0, ==,
+                     nghttp2_submit_data2(session, NGHTTP2_FLAG_NONE, 1, &prd));
+          assert_int(0, ==, nghttp2_session_send(session));
+
+          /* Repeated WOULD_BLOCK must not consume additional credit. */
+          assert_int(0, ==, nghttp2_session_send(session));
+          nghttp2_frame_window_update_init(
+            &frame.window_update, NGHTTP2_FLAG_NONE, target,
+            NGHTTP2_MAX_WINDOW_SIZE - (65536 - received));
+          assert_int(
+            0, ==, nghttp2_session_on_window_update_received(session, &frame));
+          assert_int(0, ==, ud.invalid_frame_recv_cb_called);
+          assert_int32(target ? 65536 - committed : updated_window, ==,
+                       session->remote_window_size);
+          assert_int32(target ? updated_window : 65536 - committed, ==,
+                       stream->remote_window_size);
+
+          /* Resuming must finish the upload without charging the partial
+             frame twice, including any padding bytes. */
+          ud.fixed_sendlen = 65536;
+          assert_int(0, ==, nghttp2_session_send(session));
+          assert_size(0, ==, ud.data_source_length);
+          assert_int32(target ? updated_window - remaining
+                              : 65536 - committed - remaining,
+                       ==, stream->remote_window_size);
+          assert_int32(target ? 65536 - committed - remaining
+                              : updated_window - remaining,
+                       ==, session->remote_window_size);
+
+          /* A real overflow must still fail at stream and connection level. */
+          frame.window_update.window_size_increment =
+            NGHTTP2_MAX_WINDOW_SIZE - updated_window + remaining + 1;
+          assert_int(
+            0, ==, nghttp2_session_on_window_update_received(session, &frame));
+          item = nghttp2_session_get_next_ob_item(session);
+          assert_not_null(item);
+          assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+          assert_uint32(NGHTTP2_FLOW_CONTROL_ERROR, ==,
+                        item->frame.goaway.error_code);
+          nghttp2_session_del(session);
+        }
+      }
+    }
+  }
+}
+
+void test_nghttp2_session_partial_data_cancel(void) {
+  nghttp2_session *session;
+  static const nghttp2_session_callbacks callbacks = {
+    .send_callback2 = partial_data_send_callback,
+  };
+  nghttp2_data_provider2 prd = {
+    .read_callback = fixed_length_data_source_read_callback,
+  };
+  nghttp2_frame frame;
+  nghttp2_settings_entry iv = {NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, 0};
+  my_user_data ud;
+  const uint8_t *data;
+  size_t mode;
+
+  for (mode = 0; mode < 3; ++mode) {
+    memset(&ud, 0, sizeof(ud));
+    ud.data_source_length = 32768;
+    ud.fixed_sendlen = NGHTTP2_FRAME_HDLEN + 1;
+    assert_int(0, ==, nghttp2_session_client_new(&session, &callbacks, &ud));
+    open_sent_stream(session, 1);
+    assert_int(0, ==,
+               nghttp2_submit_data2(session, NGHTTP2_FLAG_NONE, 1, &prd));
+    assert_int(0, ==, nghttp2_session_send(session));
+
+    /* A settings decrease can make credit negative while the committed
+       frame is pending. It must not prevent that frame from finishing. */
+    nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE,
+                                dup_iv(&iv, 1), 1);
+    assert_int(0, ==, nghttp2_session_on_settings_received(session, &frame, 0));
+    nghttp2_frame_settings_free(&frame.settings, nghttp2_mem_default());
+    assert_int32(-16384, ==,
+                 nghttp2_session_get_stream(session, 1)->remote_window_size);
+
+    if (mode == 0) {
+      nghttp2_frame_rst_stream_init(&frame.rst_stream, 1, NGHTTP2_CANCEL);
+      assert_int(0, ==,
+                 nghttp2_session_on_rst_stream_received(session, &frame));
+    } else if (mode == 1) {
+      assert_int(0, ==,
+                 nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 1,
+                                           NGHTTP2_CANCEL));
+    }
+
+    ud.fixed_sendlen = 65536;
+    assert_int(0, ==, nghttp2_session_send(session));
+    assert_size(16384, ==, ud.data_source_length);
+    assert_int32(NGHTTP2_INITIAL_WINDOW_SIZE - 16384, ==,
+                 session->remote_window_size);
+    if (mode == 2) {
+      assert_int32(-16384, ==,
+                   nghttp2_session_get_stream(session, 1)->remote_window_size);
+    }
+
+    /* An unrelated stream can still send. Use the memory-send API to
+       check its completion path accounts the payload exactly once too. */
+    open_sent_stream(session, 3);
+    nghttp2_frame_window_update_init(&frame.window_update, NGHTTP2_FLAG_NONE, 3,
+                                     1024);
+    assert_int(0, ==,
+               nghttp2_session_on_window_update_received(session, &frame));
+    ud.data_source_length = 1024;
+    assert_int(0, ==,
+               nghttp2_submit_data2(session, NGHTTP2_FLAG_NONE, 3, &prd));
+    assert_ptrdiff(NGHTTP2_FRAME_HDLEN + 1024, ==,
+                   nghttp2_session_mem_send2(session, &data));
+    assert_ptrdiff(0, ==, nghttp2_session_mem_send2(session, &data));
+    assert_int32(0, ==,
+                 nghttp2_session_get_stream_remote_window_size(session, 3));
+    assert_int32(NGHTTP2_INITIAL_WINDOW_SIZE - 16384 - 1024, ==,
+                 session->remote_window_size);
+    nghttp2_session_del(session);
+  }
+}
+
+static int controlled_send_data_callback(nghttp2_session *session,
+                                         nghttp2_frame *frame,
+                                         const uint8_t *framehd, size_t length,
+                                         nghttp2_data_source *source,
+                                         void *user_data) {
+  my_user_data *ud = user_data;
+  if (ud->not_sent_error == 0 || ud->not_sent_error == NGHTTP2_ERR_PAUSE) {
+    assert_int(
+      0, ==,
+      send_data_callback(session, frame, framehd, length, source, user_data));
+  }
+  return ud->not_sent_error;
+}
+
+void test_nghttp2_session_no_copy_window(void) {
+  const int results[] = {0, NGHTTP2_ERR_PAUSE,
+                         NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE};
+  nghttp2_session *session;
+  static const nghttp2_session_callbacks callbacks = {
+    .send_callback2 = null_send_callback,
+    .send_data_callback = controlled_send_data_callback,
+  };
+  nghttp2_data_provider2 prd = {
+    .read_callback = no_copy_data_source_read_callback,
+  };
+  my_user_data ud;
+  accumulator acc;
+  size_t i;
+
+  for (i = 0; i < ARRLEN(results); ++i) {
+    memset(&ud, 0, sizeof(ud));
+    acc.length = 0;
+    ud.acc = &acc;
+    ud.data_source_length = 1024;
+    ud.not_sent_error = NGHTTP2_ERR_WOULDBLOCK;
+    assert_int(0, ==, nghttp2_session_client_new(&session, &callbacks, &ud));
+    open_sent_stream(session, 1);
+    assert_int(0, ==,
+               nghttp2_submit_data2(session, NGHTTP2_FLAG_NONE, 1, &prd));
+    assert_int(0, ==, nghttp2_session_send(session));
+    assert_int(0, ==, nghttp2_session_send(session));
+    assert_int32(NGHTTP2_INITIAL_WINDOW_SIZE, ==, session->remote_window_size);
+    assert_int32(NGHTTP2_INITIAL_WINDOW_SIZE, ==,
+                 nghttp2_session_get_stream_remote_window_size(session, 1));
+    assert_size(0, ==, acc.length);
+
+    ud.not_sent_error = results[i];
+    assert_int(0, ==, nghttp2_session_send(session));
+    assert_int(0, ==, nghttp2_session_send(session));
+    assert_int32(
+      NGHTTP2_INITIAL_WINDOW_SIZE -
+        (results[i] == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE ? 0 : 1024),
+      ==, session->remote_window_size);
+    assert_size(results[i] == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE
+                  ? 0
+                  : NGHTTP2_FRAME_HDLEN + 1024,
+                ==, acc.length);
+    nghttp2_session_del(session);
+  }
 }
 
 void test_nghttp2_session_flow_control(void) {
