@@ -4596,6 +4596,8 @@ NGHTTP2_EXTERN int32_t nghttp2_submit_request(
  *     reached.
  * :enum:`nghttp2_error.NGHTTP2_ERR_PROTO`
  *     The |session| is server session.
+ * :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The required memory for |nva| of length |nvlen| is too large.
  *
  * .. warning::
  *
@@ -4739,7 +4741,8 @@ nghttp2_submit_response(nghttp2_session *session, int32_t stream_id,
  * :enum:`nghttp2_error.NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  * :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |stream_id| is 0.
+ *     The |stream_id| is 0; The required memory for |nva| of length
+ *     |nvlen| is too large.
  * :enum:`nghttp2_error.NGHTTP2_ERR_DATA_EXIST`
  *     DATA or HEADERS has been already submitted and not fully
  *     processed yet.  Normally, this does not happen, but when
@@ -4809,7 +4812,8 @@ nghttp2_submit_response2(nghttp2_session *session, int32_t stream_id,
  * :enum:`nghttp2_error.NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  * :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |stream_id| is 0.
+ *     The |stream_id| is 0; The required memory for |nva| of length
+ *     |nvlen| is too large.
  */
 NGHTTP2_EXTERN int nghttp2_submit_trailer(nghttp2_session *session,
                                           int32_t stream_id,
@@ -4875,7 +4879,8 @@ NGHTTP2_EXTERN int nghttp2_submit_trailer(nghttp2_session *session,
  *     No stream ID is available because maximum stream ID was
  *     reached.
  * :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |stream_id| is 0.
+ *     The |stream_id| is 0; The required memory for |nva| of length
+ *     |nvlen| is too large.
  * :enum:`nghttp2_error.NGHTTP2_ERR_DATA_EXIST`
  *     DATA or HEADERS has been already submitted and not fully
  *     processed yet.  This happens if stream denoted by |stream_id|
@@ -5177,7 +5182,8 @@ NGHTTP2_EXTERN int nghttp2_submit_settings(nghttp2_session *session,
  *     reached.
  * :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_ARGUMENT`
  *     The |stream_id| is 0; The |stream_id| does not designate stream
- *     that peer initiated.
+ *     that peer initiated; The required memory for |nva| of length
+ *     |nvlen| is too large.
  * :enum:`nghttp2_error.NGHTTP2_ERR_STREAM_CLOSED`
  *     The stream was already closed; or the |stream_id| is invalid.
  *
