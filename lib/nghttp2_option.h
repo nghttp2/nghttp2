@@ -74,6 +74,7 @@
 #define NGHTTP2_OPT_MAX_CONTINUATIONS 0x010000U
 #define NGHTTP2_OPT_GLITCH_RATE_LIMIT 0x020000U
 #define NGHTTP2_OPT_MAX_OUTBOUND_QUEUE_SIZE 0x040000U
+#define NGHTTP2_OPT_CLIENT_INCREMENTAL_SCHEDULING 0x080000U
 
 /**
  * Struct to store option values for nghttp2_session.
@@ -158,6 +159,10 @@ struct nghttp2_option {
    * NGHTTP2_OPT_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION
    */
   int no_rfc9113_leading_and_trailing_ws_validation;
+  /**
+   * NGHTTP2_OPT_CLIENT_INCREMENTAL_SCHEDULING
+   */
+  int client_incremental_scheduling;
   /**
    * NGHTTP2_OPT_USER_RECV_EXT_TYPES
    */
