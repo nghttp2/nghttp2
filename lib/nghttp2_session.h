@@ -55,6 +55,7 @@ extern nghttp2_stream nghttp2_stream_root;
 #define NGHTTP2_OPTMASK_NO_HTTP_MESSAGING 0x04U
 #define NGHTTP2_OPTMASK_NO_AUTO_PING_ACK 0x08U
 #define NGHTTP2_OPTMASK_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION 0x40U
+#define NGHTTP2_OPTMASK_CLIENT_INCREMENTAL_SCHEDULING 0x80U
 
 /*
  * bitmask for built-in type to enable the default handling for that

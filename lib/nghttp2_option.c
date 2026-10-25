@@ -144,6 +144,12 @@ void nghttp2_option_set_no_rfc9113_leading_and_trailing_ws_validation(
   option->no_rfc9113_leading_and_trailing_ws_validation = val;
 }
 
+void nghttp2_option_set_client_incremental_scheduling(nghttp2_option *option,
+                                                      int val) {
+  option->opt_set_mask |= NGHTTP2_OPT_CLIENT_INCREMENTAL_SCHEDULING;
+  option->client_incremental_scheduling = val;
+}
+
 void nghttp2_option_set_stream_reset_rate_limit(nghttp2_option *option,
                                                 uint64_t burst, uint64_t rate) {
   option->opt_set_mask |= NGHTTP2_OPT_STREAM_RESET_RATE_LIMIT;

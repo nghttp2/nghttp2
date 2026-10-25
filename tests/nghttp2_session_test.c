@@ -158,6 +158,7 @@ static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_session_set_stream_user_data),
   munit_void_test(test_nghttp2_session_no_rfc7540_priorities),
   munit_void_test(test_nghttp2_session_stream_reset_ratelim),
+  munit_void_test(test_nghttp2_session_client_incremental_scheduling),
   munit_void_test(test_nghttp2_session_verify_iframe_state),
   munit_void_test(test_nghttp2_session_consume_stream),
   munit_void_test(test_nghttp2_session_consume_connection),
@@ -10479,6 +10480,73 @@ void test_nghttp2_session_no_rfc7540_priorities(void) {
     nghttp2_priority_spec_check_default(&item->frame.headers.pri_spec));
 
   nghttp2_session_del(session);
+}
+
+static nghttp2_ssize cis_data_source_read_callback(
+  nghttp2_session *session, int32_t stream_id, uint8_t *buf, size_t len,
+  uint32_t *data_flags, nghttp2_data_source *source, void *user_data) {
+  (void)session;
+  (void)stream_id;
+  (void)buf;
+  (void)source;
+  (void)user_data;
+  (void)data_flags;
+
+  return (nghttp2_ssize)nghttp2_min_size(len, 100);
+}
+
+static int cis_on_frame_send_callback(nghttp2_session *session,
+                                      const nghttp2_frame *frame,
+                                      void *user_data) {
+  my_user_data *ud = user_data;
+  (void)session;
+
+  if (frame->hd.type == NGHTTP2_DATA) {
+    ud->block_count = ud->block_count * 10 + (size_t)frame->hd.stream_id;
+  }
+
+  return 0;
+}
+
+void test_nghttp2_session_client_incremental_scheduling(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_option *option;
+  my_user_data ud;
+  nghttp2_data_provider2 data_prd;
+  const nghttp2_nv nv = MAKE_NV(":method", "POST");
+  int i;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+  callbacks.send_callback2 = null_send_callback;
+  callbacks.on_frame_send_callback = cis_on_frame_send_callback;
+
+  data_prd.read_callback = cis_data_source_read_callback;
+
+  for (i = 0; i < 2; ++i) {
+    memset(&ud, 0, sizeof(ud));
+
+    nghttp2_option_new(&option);
+    nghttp2_option_set_client_incremental_scheduling(option, i);
+
+    nghttp2_session_client_new2(&session, &callbacks, &ud, option);
+    nghttp2_option_del(option);
+
+    assert_int32(1, ==,
+                 nghttp2_submit_request2(session, NULL, &nv, 1, &data_prd, NULL));
+    assert_int32(3, ==,
+                 nghttp2_submit_request2(session, NULL, &nv, 1, &data_prd, NULL));
+
+    /* 6 DATA frames of 100 bytes fit in the connection window. */
+    session->remote_window_size = 600;
+    assert_int(0, ==, nghttp2_session_send(session));
+
+    /* With the option, streams interleave.  Without it, stream 1
+       monopolizes the connection. */
+    assert_size(i ? 131313 : 111111, ==, ud.block_count);
+
+    nghttp2_session_del(session);
+  }
 }
 
 void test_nghttp2_session_stream_reset_ratelim(void) {

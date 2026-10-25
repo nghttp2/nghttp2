@@ -3216,6 +3216,21 @@ nghttp2_option_set_no_rfc9113_leading_and_trailing_ws_validation(
 /**
  * @function
  *
+ * This option, if set to nonzero, makes a client session reschedule
+ * a stream after each DATA frame is packed, just like a server
+ * session does.  By default, a client does not do this, and a stream
+ * that has DATA to send keeps being served until it is deferred or
+ * completed.  With this option, when multiple streams have DATA
+ * available, each of them gets the opportunity to send DATA in turn,
+ * which improves fairness among them.
+ */
+NGHTTP2_EXTERN void
+nghttp2_option_set_client_incremental_scheduling(nghttp2_option *option,
+                                                 int val);
+
+/**
+ * @function
+ *
  * This function sets the rate limit for the incoming stream reset
  * (RST_STREAM frame).  It is server use only.  It is a token-bucket
  * based rate limiter.  |burst| specifies the number of tokens that is

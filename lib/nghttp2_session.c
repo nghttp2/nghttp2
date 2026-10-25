@@ -566,6 +566,11 @@ static int session_new(nghttp2_session **session_ptr,
         NGHTTP2_OPTMASK_NO_RFC9113_LEADING_AND_TRAILING_WS_VALIDATION;
     }
 
+    if ((option->opt_set_mask & NGHTTP2_OPT_CLIENT_INCREMENTAL_SCHEDULING) &&
+        option->client_incremental_scheduling) {
+      (*session_ptr)->opt_flags |= NGHTTP2_OPTMASK_CLIENT_INCREMENTAL_SCHEDULING;
+    }
+
     if (option->opt_set_mask & NGHTTP2_OPT_STREAM_RESET_RATE_LIMIT) {
       nghttp2_ratelim_init(&(*session_ptr)->stream_reset_ratelim,
                            option->stream_reset_burst,
@@ -1250,6 +1255,13 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
                         (int32_t)session->local_settings.initial_window_size,
                         stream_user_data);
     stream->seq = session->stream_seq++;
+
+    if (!session->server &&
+        (session->opt_flags & NGHTTP2_OPTMASK_CLIENT_INCREMENTAL_SCHEDULING)) {
+      /* Client streams are never prioritized by the peer, so mark
+         them incremental to let them share the connection fairly. */
+      stream->extpri |= NGHTTP2_EXTPRI_INC_MASK;
+    }
 
     rv = nghttp2_map_insert(&session->streams, stream_id, stream);
     if (rv != 0) {
@@ -2472,7 +2484,8 @@ static void session_reschedule_stream(nghttp2_session *session,
                                       nghttp2_stream *stream) {
   stream->last_writelen = stream->item->frame.hd.length;
 
-  if (!session->server) {
+  if (!session->server &&
+      !(session->opt_flags & NGHTTP2_OPTMASK_CLIENT_INCREMENTAL_SCHEDULING)) {
     return;
   }
 
