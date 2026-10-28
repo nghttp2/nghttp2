@@ -285,7 +285,8 @@ nghttp2_stream *nghttp2_session_get_stream(nghttp2_session *session,
                                            int32_t stream_id) {
   nghttp2_stream *stream;
 
-  stream = (nghttp2_stream *)nghttp2_map_find(&session->streams, stream_id);
+  stream = (nghttp2_stream *)nghttp2_map_find(&session->streams,
+                                              (nghttp2_map_key_type)stream_id);
 
   if (stream == NULL || (stream->flags & NGHTTP2_STREAM_FLAG_CLOSED) ||
       stream->state == NGHTTP2_STREAM_IDLE) {
@@ -297,7 +298,8 @@ nghttp2_stream *nghttp2_session_get_stream(nghttp2_session *session,
 
 nghttp2_stream *nghttp2_session_get_stream_raw(nghttp2_session *session,
                                                int32_t stream_id) {
-  return (nghttp2_stream *)nghttp2_map_find(&session->streams, stream_id);
+  return (nghttp2_stream *)nghttp2_map_find(&session->streams,
+                                            (nghttp2_map_key_type)stream_id);
 }
 
 static void session_inbound_frame_reset(nghttp2_session *session) {
@@ -1251,7 +1253,8 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
                         stream_user_data);
     stream->seq = session->stream_seq++;
 
-    rv = nghttp2_map_insert(&session->streams, stream_id, stream);
+    rv = nghttp2_map_insert(&session->streams, (nghttp2_map_key_type)stream_id,
+                            stream);
     if (rv != 0) {
       nghttp2_stream_free(stream);
       nghttp2_mem_free(mem, stream);
@@ -1372,7 +1375,8 @@ void nghttp2_session_destroy_stream(nghttp2_session *session,
     session_ob_data_remove(session, stream);
   }
 
-  nghttp2_map_remove(&session->streams, stream->stream_id);
+  nghttp2_map_remove(&session->streams,
+                     (nghttp2_map_key_type)stream->stream_id);
   nghttp2_stream_free(stream);
   nghttp2_mem_free(mem, stream);
 }

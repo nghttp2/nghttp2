@@ -36,7 +36,7 @@
 
 /* Implementation of unordered map */
 
-typedef int32_t nghttp2_map_key_type;
+typedef uint64_t nghttp2_map_key_type;
 
 typedef struct nghttp2_map {
   nghttp2_map_key_type *keys;
