@@ -40,6 +40,10 @@
 extern "C" {
 #endif
 
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif /* HAVE_CONFIG_H */
+
 #include <stdlib.h>
 #if defined(_MSC_VER) && (_MSC_VER < 1800)
 /* MSVC < 2013 does not have inttypes.h because it is not C99
@@ -49,7 +53,11 @@ extern "C" {
 #else /* !defined(_MSC_VER) || (_MSC_VER >= 1800) */
 #  include <inttypes.h>
 #endif /* !defined(_MSC_VER) || (_MSC_VER >= 1800) */
-#include <sys/types.h>
+
+#if !defined(HAS_NO_SYS_TYPES)
+#  include <sys/types.h>
+#endif
+
 #include <stdarg.h>
 #include <stddef.h>
 
