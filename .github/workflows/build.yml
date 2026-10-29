@@ -608,14 +608,19 @@ jobs:
   build-windows:
     strategy:
       matrix:
-        arch: [x86, x64]
+        arch: [x86, x64, arm64]
         include:
         - arch: x86
           platform: Win32
+          runs-on: windows-latest
         - arch: x64
           platform: x64
+          runs-on: windows-latest
+        - arch: arm64
+          platform: ARM64
+          runs-on: windows-11-arm
 
-    runs-on: windows-latest
+    runs-on: ${{ matrix.runs-on }}
 
     steps:
     - name: Checkout
