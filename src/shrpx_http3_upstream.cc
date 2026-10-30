@@ -1785,7 +1785,7 @@ Http3Upstream::on_read(const UpstreamAddr *faddr, const Address &remote_addr,
       }
 
       // Overwrite error if any is set
-      ngtcp2_ccerr_set_liberr(&last_error_, rv, nullptr, 0);
+      ngtcp2_ccerr_set_liberr(&last_error_, NGTCP2_ERR_RETRY, nullptr, 0);
 
       (void)quic_conn_handler->send_retry(
         handler_->get_upstream_addr(), vc.version, {vc.dcid, vc.dcidlen},
