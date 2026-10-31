@@ -4937,6 +4937,12 @@ int nghttp2_session_on_priority_update_received(nghttp2_session *session,
         "PRIORITY_UPDATE: max concurrent streams exceeded");
     }
 
+    if (session->num_idle_streams + session->num_incoming_streams >=
+        session->pending_local_max_concurrent_stream) {
+      /* Ignore priority hints for excessive streams. */
+      return session_call_on_frame_received(session, frame);
+    }
+
     stream =
       nghttp2_session_open_stream(session, priority_update->stream_id,
                                   NGHTTP2_FLAG_NONE, NGHTTP2_STREAM_IDLE, NULL);

@@ -3497,6 +3497,35 @@ void test_nghttp2_session_recv_priority_update(void) {
   nghttp2_session_del(session);
   nghttp2_bufs_reset(&bufs);
 
+  /* Check that priority which is received in idle state that exceeds
+     pending limit is discarded. */
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
+
+  session->pending_local_max_concurrent_stream = 0;
+  session->pending_no_rfc7540_priorities = 1;
+
+  nghttp2_frame_priority_update_init(&frame, 1, (uint8_t *)field_value,
+                                     nghttp2_strlen_lit(field_value));
+
+  nghttp2_frame_pack_priority_update(&bufs, &frame);
+
+  ud.frame_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_bufs_len(&bufs));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_bufs_len(&bufs), ==, rv);
+  assert_int(1, ==, ud.frame_recv_cb_called);
+  assert_uint8(NGHTTP2_PRIORITY_UPDATE, ==, ud.recv_frame_hd.type);
+  assert_uint8(NGHTTP2_FLAG_NONE, ==, ud.recv_frame_hd.flags);
+  assert_int32(0, ==, ud.recv_frame_hd.stream_id);
+
+  stream = nghttp2_session_get_stream_raw(session, 1);
+
+  assert_null(stream);
+
+  nghttp2_session_del(session);
+  nghttp2_bufs_reset(&bufs);
+
   /* PRIORITY_UPDATE with too large field_value is discarded */
   nghttp2_session_server_new2(&session, &callbacks, &ud, option);
 
