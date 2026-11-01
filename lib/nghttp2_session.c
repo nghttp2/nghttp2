@@ -5461,6 +5461,42 @@ inbound_frame_effective_readlen(nghttp2_inbound_frame *iframe,
   return (nghttp2_ssize)(readlen);
 }
 
+static int session_update_recv_window_on_data_hd(nghttp2_session *session) {
+  const nghttp2_inbound_frame *iframe = &session->iframe;
+  int32_t stream_id = iframe->frame.hd.stream_id;
+  size_t datalen = iframe->frame.hd.length;
+  nghttp2_stream *stream;
+  int rv;
+
+  if (datalen == 0) {
+    return 0;
+  }
+
+  rv = nghttp2_session_update_recv_connection_window_size(session, datalen);
+  if (nghttp2_is_fatal(rv)) {
+    return rv;
+  }
+
+  if (iframe->state == NGHTTP2_IB_IGN_ALL) {
+    return 0;
+  }
+
+  stream = nghttp2_session_get_stream(session, stream_id);
+  if (!stream) {
+    return 0;
+  }
+
+  rv = nghttp2_session_update_recv_stream_window_size(
+    session, stream, datalen,
+    !(iframe->frame.hd.flags & NGHTTP2_FLAG_END_STREAM) &&
+      stream->state != NGHTTP2_STREAM_CLOSING);
+  if (nghttp2_is_fatal(rv)) {
+    return rv;
+  }
+
+  return 0;
+}
+
 static const uint8_t static_in[] = {0};
 
 ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
@@ -5608,8 +5644,26 @@ static nghttp2_ssize session_mem_recv(nghttp2_session *session,
           DEBUGF("recv: DATA not allowed stream_id=%d\n",
                  iframe->frame.hd.stream_id);
 
+          rv = session_update_recv_window_on_data_hd(session);
+          if (nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+
+          if (iframe->state == NGHTTP2_IB_IGN_ALL) {
+            return (nghttp2_ssize)inlen;
+          }
+
           iframe->state = NGHTTP2_IB_IGN_DATA;
           break;
+        }
+
+        rv = session_update_recv_window_on_data_hd(session);
+        if (nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+
+        if (iframe->state == NGHTTP2_IB_IGN_ALL) {
+          return (nghttp2_ssize)inlen;
         }
 
         rv = inbound_frame_handle_pad(iframe, &iframe->frame.hd);
@@ -6769,16 +6823,6 @@ static nghttp2_ssize session_mem_recv(nghttp2_session *session,
         return (nghttp2_ssize)(in - first);
       }
 
-      /* Pad Length field is subject to flow control */
-      rv = nghttp2_session_update_recv_connection_window_size(session, readlen);
-      if (nghttp2_is_fatal(rv)) {
-        return rv;
-      }
-
-      if (iframe->state == NGHTTP2_IB_IGN_ALL) {
-        return (nghttp2_ssize)inlen;
-      }
-
       /* Pad Length field is consumed immediately */
       rv =
         nghttp2_session_consume(session, iframe->frame.hd.stream_id, readlen);
@@ -6789,21 +6833,6 @@ static nghttp2_ssize session_mem_recv(nghttp2_session *session,
 
       if (iframe->state == NGHTTP2_IB_IGN_ALL) {
         return (nghttp2_ssize)inlen;
-      }
-
-      stream = nghttp2_session_get_stream(session, iframe->frame.hd.stream_id);
-      if (stream) {
-        rv = nghttp2_session_update_recv_stream_window_size(
-          session, stream, readlen,
-          iframe->payloadleft ||
-            (iframe->frame.hd.flags & NGHTTP2_FLAG_END_STREAM) == 0);
-        if (nghttp2_is_fatal(rv)) {
-          return rv;
-        }
-
-        if (iframe->state == NGHTTP2_IB_IGN_ALL) {
-          return (nghttp2_ssize)inlen;
-        }
       }
 
       busy = 1;
@@ -6857,28 +6886,6 @@ static nghttp2_ssize session_mem_recv(nghttp2_session *session,
 
       if (readlen > 0) {
         nghttp2_ssize data_readlen;
-
-        rv =
-          nghttp2_session_update_recv_connection_window_size(session, readlen);
-        if (nghttp2_is_fatal(rv)) {
-          return rv;
-        }
-
-        if (iframe->state == NGHTTP2_IB_IGN_ALL) {
-          return (nghttp2_ssize)inlen;
-        }
-
-        rv = nghttp2_session_update_recv_stream_window_size(
-          session, stream, readlen,
-          iframe->payloadleft ||
-            (iframe->frame.hd.flags & NGHTTP2_FLAG_END_STREAM) == 0);
-        if (nghttp2_is_fatal(rv)) {
-          return rv;
-        }
-
-        if (iframe->state == NGHTTP2_IB_IGN_ALL) {
-          return (nghttp2_ssize)inlen;
-        }
 
         data_readlen =
           inbound_frame_effective_readlen(iframe, iframe->payloadleft, readlen);
@@ -6991,18 +6998,6 @@ static nghttp2_ssize session_mem_recv(nghttp2_session *session,
              iframe->payloadleft);
 
       if (readlen > 0) {
-        /* Update connection-level flow control window for ignored
-           DATA frame too */
-        rv =
-          nghttp2_session_update_recv_connection_window_size(session, readlen);
-        if (nghttp2_is_fatal(rv)) {
-          return rv;
-        }
-
-        if (iframe->state == NGHTTP2_IB_IGN_ALL) {
-          return (nghttp2_ssize)inlen;
-        }
-
         if (session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) {
           /* Ignored DATA is considered as "consumed" immediately. */
           rv = session_update_connection_consumed_size(session, readlen);
