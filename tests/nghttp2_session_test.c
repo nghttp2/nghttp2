@@ -612,6 +612,24 @@ static nghttp2_ssize block_count_send_callback(nghttp2_session *session,
   return (nghttp2_ssize)len;
 }
 
+static nghttp2_ssize
+block_count_fixed_bytes_send_callback(nghttp2_session *session,
+                                      const uint8_t *data, size_t len,
+                                      int flags, void *user_data) {
+  my_user_data *ud = user_data;
+  (void)session;
+  (void)data;
+  (void)flags;
+
+  if (ud->block_count == 0) {
+    return NGHTTP2_ERR_WOULDBLOCK;
+  }
+
+  --ud->block_count;
+
+  return (nghttp2_ssize)nghttp2_min_size(ud->fixed_sendlen, len);
+}
+
 static int on_header_callback(nghttp2_session *session,
                               const nghttp2_frame *frame, const uint8_t *name,
                               size_t namelen, const uint8_t *value,
@@ -1143,20 +1161,21 @@ void test_nghttp2_session_recv_data(void) {
   assert_int(1, ==, ud.data_chunk_recv_cb_called);
   assert_int(1, ==, ud.frame_recv_cb_called);
 
-  assert_null(nghttp2_session_get_next_ob_item(session));
+  /* Now we got data more than initial-window-size / 2, WINDOW_UPDATE
+     must be queued */
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_WINDOW_UPDATE, ==, item->frame.hd.type);
+  assert_int32(1, ==, item->frame.window_update.hd.stream_id);
 
   ud.data_chunk_recv_cb_called = 0;
   ud.frame_recv_cb_called = 0;
   rv = nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN + 4096);
   assert_ptrdiff(NGHTTP2_FRAME_HDLEN + 4096, ==, rv);
 
-  /* Now we got data more than initial-window-size / 2, WINDOW_UPDATE
-     must be queued */
   assert_int(1, ==, ud.data_chunk_recv_cb_called);
   assert_int(1, ==, ud.frame_recv_cb_called);
-  item = nghttp2_session_get_next_ob_item(session);
-  assert_uint8(NGHTTP2_WINDOW_UPDATE, ==, item->frame.hd.type);
-  assert_int32(1, ==, item->frame.window_update.hd.stream_id);
   assert_int(0, ==, nghttp2_session_send(session));
 
   /* Set initial window size to 1MiB, so that we can check connection
@@ -8013,6 +8032,10 @@ void test_nghttp2_session_flow_control(void) {
     .send_callback2 = fixed_bytes_send_callback,
     .on_frame_send_callback = on_frame_send_callback,
   };
+  static const nghttp2_session_callbacks wouldblock_callbacks = {
+    .send_callback2 = block_count_fixed_bytes_send_callback,
+    .on_frame_send_callback = on_frame_send_callback,
+  };
   my_user_data ud;
   static const nghttp2_data_provider2 data_prd = {
     .read_callback = fixed_length_data_source_read_callback,
@@ -8028,6 +8051,9 @@ void test_nghttp2_session_flow_control(void) {
   };
   nghttp2_frame settings_frame;
   nghttp2_mem *mem;
+  const uint8_t *data;
+  nghttp2_ssize datalen;
+  size_t i;
 
   mem = nghttp2_mem_default();
 
@@ -8048,6 +8074,12 @@ void test_nghttp2_session_flow_control(void) {
   /* Sends 64KiB - 1 data */
   assert_int(0, ==, nghttp2_session_send(session));
   assert_size(64 * 1024, ==, ud.data_source_length);
+  assert_int32(0, ==, session->remote_window_size);
+
+  stream = nghttp2_session_get_stream(session, 1);
+
+  assert_not_null(stream);
+  assert_int32(0, ==, stream->remote_window_size);
 
   /* Back 32KiB in stream window */
   nghttp2_frame_window_update_init(&frame.window_update, NGHTTP2_FLAG_NONE, 1,
@@ -8124,6 +8156,96 @@ void test_nghttp2_session_flow_control(void) {
 
   nghttp2_frame_window_update_free(&frame.window_update);
   nghttp2_session_del(session);
+
+  /* Check NGHTTP2_ERR_WOULDBLOCK */
+  nghttp2_session_client_new(&session, &wouldblock_callbacks, &ud);
+  /* Change it to 64KiB for easy calculation */
+  session->remote_window_size = 64 * 1024;
+  session->remote_settings.initial_window_size = 64 * 1024;
+
+  nghttp2_submit_request2(session, NULL, NULL, 0, &data_prd, NULL);
+
+  /* Sends 1024 bytes of data */
+  ud.data_source_length = 64 * 1024;
+  ud.fixed_sendlen = 1024;
+  /* Send HEADERS and DATA, then block */
+  ud.block_count = 2;
+
+  assert_int(0, ==, nghttp2_session_send(session));
+  assert_size(64 * 1024 - 16384, ==, ud.data_source_length);
+  assert_int32(64 * 1024 - 16384, ==, session->remote_window_size);
+
+  stream = nghttp2_session_get_stream(session, 1);
+
+  assert_not_null(stream);
+  assert_int32(64 * 1024 - 16384, ==, stream->remote_window_size);
+
+  /* Send remaining DATA payload, and then block */
+  ud.fixed_sendlen = 16384;
+  ud.block_count = 1;
+
+  assert_int(0, ==, nghttp2_session_send(session));
+  assert_size(64 * 1024 - 32768, ==, ud.data_source_length);
+  assert_int32(64 * 1024 - 16384, ==, session->remote_window_size);
+
+  stream = nghttp2_session_get_stream(session, 1);
+
+  assert_not_null(stream);
+  assert_int32(64 * 1024 - 16384, ==, stream->remote_window_size);
+
+  /* Send 1024 bytes of data */
+  ud.fixed_sendlen = 1024;
+  ud.block_count = 1;
+
+  assert_int(0, ==, nghttp2_session_send(session));
+  assert_size(64 * 1024 - 32768, ==, ud.data_source_length);
+  assert_int32(64 * 1024 - 32768, ==, session->remote_window_size);
+
+  stream = nghttp2_session_get_stream(session, 1);
+
+  assert_not_null(stream);
+  assert_int32(64 * 1024 - 32768, ==, stream->remote_window_size);
+
+  nghttp2_session_del(session);
+
+  /* nghttp2_session_mem_send2 */
+  nghttp2_session_client_new(&session, &callbacks, &ud);
+  /* Change it to 64KiB for easy calculation */
+  session->remote_window_size = 64 * 1024;
+  session->remote_settings.initial_window_size = 64 * 1024;
+
+  assert_null(nghttp2_session_get_next_ob_item(session));
+
+  nghttp2_submit_request2(session, NULL, NULL, 0, &data_prd, NULL);
+
+  /* Sends 64KiB data */
+  ud.data_source_length = 64 * 1024;
+
+  datalen = nghttp2_session_mem_send2(session, &data);
+
+  assert_ptrdiff(NGHTTP2_FRAME_HDLEN, ==, datalen);
+  assert_int(NGHTTP2_HEADERS, ==, data[3]);
+
+  for (i = 1; i <= 4; ++i) {
+    datalen = nghttp2_session_mem_send2(session, &data);
+
+    assert_ptrdiff(NGHTTP2_FRAME_HDLEN + 16384, ==, datalen);
+    assert_size(64 * 1024 - 16384 * i, ==, ud.data_source_length);
+    assert_int32(64 * 1024 - 16384 * (int32_t)i, ==,
+                 session->remote_window_size);
+
+    stream = nghttp2_session_get_stream(session, 1);
+
+    assert_not_null(stream);
+    assert_int32(64 * 1024 - 16384 * (int32_t)i, ==,
+                 stream->remote_window_size);
+  }
+
+  datalen = nghttp2_session_mem_send2(session, &data);
+
+  assert_ptrdiff(0, ==, datalen);
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_flow_control_data_recv(void) {
@@ -8135,6 +8257,10 @@ void test_nghttp2_session_flow_control_data_recv(void) {
   nghttp2_frame_hd hd;
   nghttp2_outbound_item *item;
   nghttp2_stream *stream;
+  nghttp2_settings_entry iv[1];
+  nghttp2_ssize nread;
+  nghttp2_frame frame;
+  int rv;
 
   /* Initial window size to 64KiB - 1*/
   nghttp2_session_client_new(&session, &callbacks, NULL);
@@ -8181,6 +8307,63 @@ void test_nghttp2_session_flow_control_data_recv(void) {
   assert_int32(0, ==, item->frame.hd.stream_id);
   assert_int32(NGHTTP2_MAX_PAYLOADLEN, ==,
                item->frame.window_update.window_size_increment);
+
+  nghttp2_session_del(session);
+
+  /* Empty DATA frame and remote window size is 0 */
+  iv[0] = (nghttp2_settings_entry){
+    .settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE,
+    .value = 0,
+  };
+
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 1);
+
+  assert_int(0, ==, rv);
+
+  rv = nghttp2_session_send(session);
+
+  assert_int(0, ==, rv);
+  assert_null(nghttp2_session_get_next_ob_item(session));
+
+  open_sent_stream(session, 1);
+
+  nghttp2_frame_hd_init(&hd, 1, NGHTTP2_DATA, NGHTTP2_FLAG_NONE, 1);
+  data[NGHTTP2_FRAME_HDLEN] = 0;
+  nghttp2_frame_pack_frame_hd(data, &hd);
+
+  nread = nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN + 1);
+
+  assert_ptrdiff(NGHTTP2_FRAME_HDLEN + 1, ==, nread);
+  assert_null(nghttp2_session_get_next_ob_item(session));
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_ACK, NULL, 0);
+
+  rv = nghttp2_session_on_settings_received(session, &frame, 0);
+
+  assert_int(0, ==, rv);
+  assert_null(nghttp2_session_get_next_ob_item(session));
+
+  stream = nghttp2_session_find_stream(session, 1);
+
+  assert_not_null(stream);
+  assert_int32(0, ==, stream->local_window_size);
+  assert_int32(1, ==, stream->recv_window_size);
+
+  nghttp2_frame_hd_init(&hd, 0, NGHTTP2_DATA, NGHTTP2_FLAG_END_STREAM, 1);
+  nghttp2_frame_pack_frame_hd(data, &hd);
+
+  nread = nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN);
+
+  assert_ptrdiff(NGHTTP2_FRAME_HDLEN, ==, nread);
+  assert_null(nghttp2_session_get_next_ob_item(session));
+
+  stream = nghttp2_session_find_stream(session, 1);
+
+  assert_not_null(stream);
+  assert_int32(0, ==, stream->local_window_size);
+  assert_int32(1, ==, stream->recv_window_size);
 
   nghttp2_session_del(session);
 }
@@ -8232,8 +8415,8 @@ void test_nghttp2_session_flow_control_data_with_padding_recv(void) {
     nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN + 103));
   assert_int32(258, ==, session->consumed_size);
   assert_int32(258, ==, stream->consumed_size);
-  assert_int32(460, ==, session->recv_window_size);
-  assert_int32(460, ==, stream->recv_window_size);
+  assert_int32(714, ==, session->recv_window_size);
+  assert_int32(714, ==, stream->recv_window_size);
 
   /* 357 - 103 = 254 bytes left */
   assert_ptrdiff(254, ==, nghttp2_session_mem_recv2(session, data, 254));
@@ -8250,8 +8433,8 @@ void test_nghttp2_session_flow_control_data_with_padding_recv(void) {
     nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN + 102));
   assert_int32(513, ==, session->consumed_size);
   assert_int32(513, ==, stream->consumed_size);
-  assert_int32(816, ==, session->recv_window_size);
-  assert_int32(816, ==, stream->recv_window_size);
+  assert_int32(1071, ==, session->recv_window_size);
+  assert_int32(1071, ==, stream->recv_window_size);
 
   /* 357 - 102 = 255 bytes left */
   assert_ptrdiff(255, ==, nghttp2_session_mem_recv2(session, data, 255));
@@ -8268,8 +8451,8 @@ void test_nghttp2_session_flow_control_data_with_padding_recv(void) {
     nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN + 51));
   assert_int32(769, ==, session->consumed_size);
   assert_int32(769, ==, stream->consumed_size);
-  assert_int32(1122, ==, session->recv_window_size);
-  assert_int32(1122, ==, stream->recv_window_size);
+  assert_int32(1428, ==, session->recv_window_size);
+  assert_int32(1428, ==, stream->recv_window_size);
 
   /* 357 - 51 = 306 bytes left */
   assert_ptrdiff(306, ==, nghttp2_session_mem_recv2(session, data, 306));
@@ -9485,6 +9668,7 @@ void test_nghttp2_session_send_data_callback(void) {
   my_user_data ud;
   accumulator acc;
   nghttp2_frame_hd hd;
+  nghttp2_stream *stream;
 
   acc.length = 0;
   ud.acc = &acc;
@@ -9501,6 +9685,12 @@ void test_nghttp2_session_send_data_callback(void) {
 
   assert_size((NGHTTP2_FRAME_HDLEN + NGHTTP2_DATA_PAYLOADLEN) * 2, ==,
               acc.length);
+  assert_int32(32767, ==, session->remote_window_size);
+
+  stream = nghttp2_session_find_stream(session, 1);
+
+  assert_not_null(stream);
+  assert_int32(32767, ==, stream->remote_window_size);
 
   nghttp2_frame_unpack_frame_hd(&hd, acc.buf);
 
