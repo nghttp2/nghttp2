@@ -76,6 +76,7 @@ typedef struct {
   nghttp2_outbound_item *item;
   nghttp2_bufs framebufs;
   nghttp2_outbound_state state;
+  uint8_t data_window_accounted;
 } nghttp2_active_outbound_item;
 
 /* Buffer length for inbound raw byte stream used in

@@ -414,6 +414,7 @@ static void active_outbound_item_reset(nghttp2_active_outbound_item *aob,
   aob->item = NULL;
   nghttp2_bufs_reset(&aob->framebufs);
   aob->state = NGHTTP2_OB_POP_ITEM;
+  aob->data_window_accounted = 0;
 }
 
 #define NGHTTP2_STREAM_MAX_CYCLE_GAP ((uint64_t)NGHTTP2_MAX_FRAME_SIZE_MAX)
@@ -2490,6 +2491,26 @@ static int session_update_stream_consumed_size(nghttp2_session *session,
 static int session_update_connection_consumed_size(nghttp2_session *session,
                                                    size_t delta_size);
 
+static void session_account_data_window(nghttp2_session *session) {
+  nghttp2_active_outbound_item *aob = &session->aob;
+  nghttp2_frame *frame = &aob->item->frame;
+  nghttp2_stream *stream;
+
+  if (aob->data_window_accounted) {
+    return;
+  }
+
+  /* The peer can credit the declared payload as soon as it reads the
+     header. Account the entire frame when its first bytes are committed,
+     so WINDOW_UPDATE cannot see credit for a partially sent frame twice. */
+  session->remote_window_size -= (int32_t)frame->hd.length;
+  stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+  if (stream) {
+    stream->remote_window_size -= (int32_t)frame->hd.length;
+  }
+  aob->data_window_accounted = 1;
+}
+
 /*
  * Called after a frame is sent.  This function runs
  * on_frame_send_callback and handles stream closure upon END_STREAM
@@ -2520,13 +2541,7 @@ static int session_after_frame_sent1(nghttp2_session *session) {
     aux_data = &item->aux_data.data;
 
     stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-    /* We update flow control window after a frame was completely
-       sent. This is possible because we choose payload length not to
-       exceed the window */
-    session->remote_window_size -= (int32_t)frame->hd.length;
-    if (stream) {
-      stream->remote_window_size -= (int32_t)frame->hd.length;
-    }
+    session_account_data_window(session);
 
     if (stream && aux_data->eof) {
       session_detach_stream_item(session, stream);
@@ -3191,6 +3206,10 @@ int nghttp2_session_send(nghttp2_session *session) {
         return 0;
       }
       return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+    if (sentlen > 0 && session->aob.item &&
+        session->aob.item->frame.hd.type == NGHTTP2_DATA) {
+      session_account_data_window(session);
     }
     /* Rewind the offset to the amount of unsent bytes */
     framebufs->cur->buf.pos -= datalen - sentlen;
