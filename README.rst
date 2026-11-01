@@ -131,7 +131,7 @@ following libraries are required:
   <https://github.com/quictls/openssl/tree/OpenSSL_1_1_1w+quic>`_; or
   wolfSSL; or LibreSSL (does not support 0RTT); or aws-lc; or
   `BoringSSL <https://boringssl.googlesource.com/boringssl/>`_ (commit
-  3c6315e00ab02d7bc9b8922aff1f85d8f81ee130); or OpenSSL >= 3.5.0
+  ed9209cff8b5a2fbc6c10050f29b3355048bda85); or OpenSSL >= 3.5.0
 * `ngtcp2 <https://github.com/ngtcp2/ngtcp2>`_ >= 1.23.0
 * `nghttp3 <https://github.com/ngtcp2/nghttp3>`_ >= 1.17.0
 
@@ -345,7 +345,7 @@ Build aws-lc:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v5.4.0 https://github.com/aws/aws-lc
+   $ git clone --depth 1 -b v5.12.0 https://github.com/aws/aws-lc
    $ cd aws-lc
    $ cmake -B build -DDISABLE_GO=ON --install-prefix=$PWD/opt
    $ make -j$(nproc) -C build
@@ -385,7 +385,7 @@ from source:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.7.0 https://github.com/libbpf/libbpf
+   $ git clone --depth 1 -b v1.8.0 https://github.com/libbpf/libbpf
    $ cd libbpf
    $ PREFIX=$PWD/build make -C src install
    $ cd ..

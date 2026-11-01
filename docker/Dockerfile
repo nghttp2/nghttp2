@@ -26,7 +26,7 @@ apt-get install -y --no-install-recommends \
     libbrotli-dev
 apt-get install -y --no-install-recommends -t trixie-backports libelf-dev
 
-git clone --recursive --shallow-submodules --depth 1 -b v5.4.0 \
+git clone --recursive --shallow-submodules --depth 1 -b v5.12.0 \
     https://github.com/aws/aws-lc
 cd aws-lc
 export CC=clang-19 CXX=clang++-19
@@ -62,7 +62,7 @@ make install-strip
 cd ..
 rm -rf ngtcp2
 
-git clone --depth 1 -b v1.7.0 https://github.com/libbpf/libbpf
+git clone --depth 1 -b v1.8.0 https://github.com/libbpf/libbpf
 cd libbpf
 CC=clang-19 PREFIX=/usr/local make -C src install
 cd ..
