@@ -2520,13 +2520,6 @@ static int session_after_frame_sent1(nghttp2_session *session) {
     aux_data = &item->aux_data.data;
 
     stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-    /* We update flow control window after a frame was completely
-       sent. This is possible because we choose payload length not to
-       exceed the window */
-    session->remote_window_size -= (int32_t)frame->hd.length;
-    if (stream) {
-      stream->remote_window_size -= (int32_t)frame->hd.length;
-    }
 
     if (stream && aux_data->eof) {
       session_detach_stream_item(session, stream);
@@ -2833,6 +2826,20 @@ static int session_call_send_data(nghttp2_session *session,
   }
 }
 
+static void session_update_remote_window(nghttp2_session *session,
+                                         int32_t stream_id, size_t datalen) {
+  nghttp2_stream *stream;
+
+  session->remote_window_size -= (int32_t)datalen;
+
+  stream = nghttp2_session_get_stream(session, stream_id);
+  if (!stream) {
+    return;
+  }
+
+  stream->remote_window_size -= (int32_t)datalen;
+}
+
 static nghttp2_ssize nghttp2_session_mem_send_internal(nghttp2_session *session,
                                                        const uint8_t **data_ptr,
                                                        int fast_cb) {
@@ -3091,6 +3098,9 @@ static nghttp2_ssize nghttp2_session_mem_send_internal(nghttp2_session *session,
         return 0;
       }
 
+      session_update_remote_window(session, frame->hd.stream_id,
+                                   frame->hd.length);
+
       pause = (rv == NGHTTP2_ERR_PAUSE);
 
       rv = session_after_frame_sent1(session);
@@ -3140,6 +3150,7 @@ nghttp2_ssize nghttp2_session_mem_send2(nghttp2_session *session,
                                         const uint8_t **data_ptr) {
   int rv;
   nghttp2_ssize len;
+  const nghttp2_frame *frame;
 
   *data_ptr = NULL;
 
@@ -3149,6 +3160,14 @@ nghttp2_ssize nghttp2_session_mem_send2(nghttp2_session *session,
   }
 
   if (session->aob.item) {
+    frame = &session->aob.item->frame;
+
+    if (frame->hd.type == NGHTTP2_DATA &&
+        (size_t)len == NGHTTP2_FRAME_HDLEN + frame->hd.length) {
+      session_update_remote_window(session, frame->hd.stream_id,
+                                   frame->hd.length);
+    }
+
     /* We have to call session_after_frame_sent1 here to handle stream
        closure upon transmission of frames.  Otherwise, END_STREAM may
        be reached to client before we call nghttp2_session_mem_send
@@ -3168,6 +3187,7 @@ int nghttp2_session_send(nghttp2_session *session) {
   nghttp2_ssize datalen;
   nghttp2_ssize sentlen;
   nghttp2_bufs *framebufs;
+  const nghttp2_frame *frame;
 
   framebufs = &session->aob.framebufs;
 
@@ -3192,6 +3212,17 @@ int nghttp2_session_send(nghttp2_session *session) {
       }
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
+
+    if (sentlen > 0 && session->aob.item) {
+      frame = &session->aob.item->frame;
+
+      if (frame->hd.type == NGHTTP2_DATA &&
+          (size_t)datalen == NGHTTP2_FRAME_HDLEN + frame->hd.length) {
+        session_update_remote_window(session, frame->hd.stream_id,
+                                     frame->hd.length);
+      }
+    }
+
     /* Rewind the offset to the amount of unsent bytes */
     framebufs->cur->buf.pos -= datalen - sentlen;
   }
