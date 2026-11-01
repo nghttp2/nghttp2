@@ -377,8 +377,8 @@ Router::match_prefix(const RNode *start_node, std::string_view s) const {
 
 namespace {
 void dump_node(const RNode *node, int depth) {
-  std::println(stderr, "{:{}}s='{}', len={}, index={}", "", depth, node->s,
-               node->s.size(), node->index);
+  std::println(stderr, "{:{}}s='{}', len={}, index={}", "", depth,
+               as_string_view(node->s), node->s.size(), node->index);
   for (auto &nd : node->next) {
     dump_node(nd.get(), depth + 4);
   }
