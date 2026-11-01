@@ -385,7 +385,7 @@ from source:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.7.0 https://github.com/libbpf/libbpf
+   $ git clone --depth 1 -b v1.8.0 https://github.com/libbpf/libbpf
    $ cd libbpf
    $ PREFIX=$PWD/build make -C src install
    $ cd ..

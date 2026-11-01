@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 env:
-  LIBBPF_VERSION: v1.7.0
+  LIBBPF_VERSION: v1.8.0
   OPENSSL1_VERSION: 1_1_1w+quic
   BORINGSSL_VERSION: 22a0079b189c391b95689813a41982ce11876f0a
   AWSLC_VERSION: v5.4.0

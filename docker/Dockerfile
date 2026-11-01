@@ -62,7 +62,7 @@ make install-strip
 cd ..
 rm -rf ngtcp2
 
-git clone --depth 1 -b v1.7.0 https://github.com/libbpf/libbpf
+git clone --depth 1 -b v1.8.0 https://github.com/libbpf/libbpf
 cd libbpf
 CC=clang-19 PREFIX=/usr/local make -C src install
 cd ..
