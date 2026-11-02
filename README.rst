@@ -339,7 +339,7 @@ Build nghttp3:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.18.0 https://github.com/ngtcp2/nghttp3
+   $ git clone --depth 1 -b v1.19.0 https://github.com/ngtcp2/nghttp3
    $ cd nghttp3
    $ git submodule update --init --depth 1
    $ autoreconf -i
@@ -352,7 +352,7 @@ Build ngtcp2:
 
 .. code-block:: text
 
-   $ git clone --depth 1 -b v1.25.0 https://github.com/ngtcp2/ngtcp2
+   $ git clone --depth 1 -b v1.26.0 https://github.com/ngtcp2/ngtcp2
    $ cd ngtcp2
    $ git submodule update --init --depth 1
    $ autoreconf -i

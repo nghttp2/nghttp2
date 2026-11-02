@@ -36,7 +36,7 @@ cmake --install build
 cd ..
 rm -rf aws-lc
 
-git clone --recursive --shallow-submodules --depth 1 -b v1.18.0 \
+git clone --recursive --shallow-submodules --depth 1 -b v1.19.0 \
     https://github.com/ngtcp2/nghttp3
 cd nghttp3
 autoreconf -i
@@ -47,7 +47,7 @@ make install-strip
 cd ..
 rm -rf nghttp3
 
-git clone --recursive --shallow-submodules --depth 1 -b v1.25.0 \
+git clone --recursive --shallow-submodules --depth 1 -b v1.26.0 \
     https://github.com/ngtcp2/ngtcp2
 cd ngtcp2
 autoreconf -i
