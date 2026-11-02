@@ -28,7 +28,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .in \\n[rst2man-indent\\n[rst2man-indent-level]]u
 ..
-.TH "NGHTTPX" "1" "Jul 29, 2026" "1.70.0" "nghttp2"
+.TH "NGHTTPX" "1" "Nov 02, 2026" "1.71.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .SH SYNOPSIS
@@ -1195,16 +1195,6 @@ protocol security.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-no\-server\-push
-Disable HTTP/2 server push.  Server push is supported by
-default mode and HTTP/2  frontend via Link header field.
-It is  also supported if  both frontend and  backend are
-HTTP/2 in default mode.  In  this case, server push from
-backend session is relayed  to frontend, and server push
-via Link header field is also supported.
-.UNINDENT
-.INDENT 0.0
-.TP
 .B \-\-frontend\-http2\-optimize\-write\-buffer\-size
 (Experimental) Enable write  buffer size optimization in
 frontend HTTP/2 TLS  connection.  This optimization aims
@@ -2105,38 +2095,7 @@ than main process.
 .UNINDENT
 .SH SERVER PUSH
 .sp
-nghttpx supports HTTP/2 server push in default mode with Link header
-field.  nghttpx looks for Link header field (RFC 5988 \%<http://\:tools\:.ietf\:.org/\:html/\:rfc5988>) in response headers from
-backend server and extracts URI\-reference with parameter
-\fBrel=preload\fP (see preload \%<http://\:w3c\:.github\:.io/\:preload/#\:interoperability-with-http-link-header>)
-and pushes those URIs to the frontend client. Here is a sample Link
-header field to initiate server push:
-.INDENT 0.0
-.INDENT 3.5
-.sp
-.EX
-Link: </fonts/font.woff>; rel=preload
-Link: </css/theme.css>; rel=preload
-.EE
-.UNINDENT
-.UNINDENT
-.sp
-Currently, the following restriction is applied for server push:
-.INDENT 0.0
-.IP 1. 3
-The associated stream must have method \(dqGET\(dq or \(dqPOST\(dq.  The
-associated stream\(aqs status code must be 200.
-.UNINDENT
-.sp
-This limitation may be loosened in the future release.
-.sp
-nghttpx also supports server push if both frontend and backend are
-HTTP/2 in default mode.  In this case, in addition to server push via
-Link header field, server push from backend is forwarded to frontend
-HTTP/2 session.
-.sp
-HTTP/2 server push will be disabled if \fB\-\-http2\-proxy\fP is
-used.
+nghttpx does not support HTTP/2 server push.
 .SH UNIX DOMAIN SOCKET
 .sp
 nghttpx supports UNIX domain socket with a filename for both frontend
@@ -2492,19 +2451,6 @@ associated with key.
 .TP
 .B clear_headers()
 Clear all existing request header fields.
-.UNINDENT
-.INDENT 7.0
-.TP
-.B push(uri)
-Initiate to push resource identified by \fIuri\fP\&.  Only HTTP/2
-protocol supports this feature.  For the other protocols, this
-method is noop.  \fIuri\fP can be absolute URI, absolute path or
-relative path to the current request.  For absolute or
-relative path, scheme and authority are inherited from the
-current request.  Currently, method is always GET.  nghttpx
-will issue request to backend servers to fulfill this request.
-The request and response phase hooks will be called for pushed
-resource as well.
 .UNINDENT
 .UNINDENT
 .INDENT 0.0
