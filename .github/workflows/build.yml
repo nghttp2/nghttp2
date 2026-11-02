@@ -21,7 +21,7 @@ jobs:
   build-cache:
     strategy:
       matrix:
-        os: [ubuntu-26.04, ubuntu-26.04-arm, macos-26, macos-15]
+        os: [ubuntu-26.04, ubuntu-26.04-arm, macos-26]
 
     runs-on: ${{ matrix.os }}
 
@@ -258,16 +258,6 @@ jobs:
           http3: http3
           openssl: awslc
         - os: macos-26
-          compiler: clang
-          buildtool: autotools
-          http3: http3
-          openssl: wolfssl
-        - os: macos-15
-          compiler: clang
-          buildtool: autotools
-          http3: http3
-          openssl: awslc
-        - os: macos-15
           compiler: clang
           buildtool: autotools
           http3: http3
