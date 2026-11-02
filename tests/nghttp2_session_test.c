@@ -3317,7 +3317,28 @@ void test_nghttp2_session_recv_origin(void) {
   nghttp2_session_del(session);
   nghttp2_bufs_reset(&bufs);
 
-  /* A frame should be ignored if the reserved flag is set */
+  /* A frame should be ignored if any of the first four flags, which
+     are reserved for backwards-incompatible changes, is set. */
+  nghttp2_session_client_new2(&session, &callbacks, &ud, option);
+
+  nghttp2_frame_origin_init(&frame, &ov, 1);
+  frame.hd.flags = 0x01;
+  rv = nghttp2_frame_pack_origin(&bufs, &frame);
+
+  assert_ptrdiff(0, ==, rv);
+
+  ud.frame_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_bufs_len(&bufs));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_bufs_len(&bufs), ==, rv);
+  assert_int(0, ==, ud.frame_recv_cb_called);
+
+  nghttp2_session_del(session);
+  nghttp2_bufs_reset(&bufs);
+
+  /* The remaining flags are reserved for backwards-compatible changes
+     and do not affect processing. */
   nghttp2_session_client_new2(&session, &callbacks, &ud, option);
 
   nghttp2_frame_origin_init(&frame, &ov, 1);
@@ -3331,7 +3352,8 @@ void test_nghttp2_session_recv_origin(void) {
                                  nghttp2_bufs_len(&bufs));
 
   assert_ptrdiff((nghttp2_ssize)nghttp2_bufs_len(&bufs), ==, rv);
-  assert_int(0, ==, ud.frame_recv_cb_called);
+  assert_int(1, ==, ud.frame_recv_cb_called);
+  assert_uint8(NGHTTP2_ORIGIN, ==, ud.recv_frame_hd.type);
 
   nghttp2_session_del(session);
   nghttp2_bufs_reset(&bufs);
