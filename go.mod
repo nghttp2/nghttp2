@@ -6,7 +6,7 @@ require (
 	github.com/bradfitz/gomemcache v0.0.0-20230905024940-24af94b03874
 	github.com/quic-go/quic-go v0.64.1
 	github.com/tatsuhiro-t/go-nghttp2 v0.0.0-20240121064059-46ccb0a462a8
-	golang.org/x/net v0.61.0
+	golang.org/x/net v0.62.0
 )
 
 require (
