@@ -53,6 +53,13 @@ extern "C" {
 #include <stdarg.h>
 #include <stddef.h>
 
+#if defined(_MSC_VER)
+/* ssize_t is part of the Posix standard but not the C standard. 
+   It is not supported in MSVC. */
+#  include <BaseTsd.h>
+#  define ssize_t SSIZE_T
+#endif
+
 #include <nghttp2/nghttp2ver.h>
 
 #ifdef NGHTTP2_STATICLIB
