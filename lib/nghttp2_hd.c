@@ -1626,43 +1626,55 @@ int nghttp2_hd_deflate_new(nghttp2_hd_deflater **deflater_ptr,
                                  NULL);
 }
 
+/* nghttp2_hd_deflater allocated by nghttp2_hd_deflate_new2().  The
+   application may free |mem| passed to nghttp2_hd_deflate_new2()
+   after it returns, so keep a copy of it along with deflater. */
+typedef struct {
+  nghttp2_hd_deflater deflater;
+  nghttp2_mem mem;
+} hd_deflater_with_mem;
+
 int nghttp2_hd_deflate_new2(nghttp2_hd_deflater **deflater_ptr,
                             size_t deflate_hd_table_bufsize_max,
                             nghttp2_mem *mem) {
   int rv;
-  nghttp2_hd_deflater *deflater;
+  hd_deflater_with_mem *p;
 
   if (mem == NULL) {
     mem = nghttp2_mem_default();
   }
 
-  deflater = nghttp2_mem_malloc(mem, sizeof(nghttp2_hd_deflater));
+  p = nghttp2_mem_malloc(mem, sizeof(hd_deflater_with_mem));
 
-  if (deflater == NULL) {
+  if (p == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
 
-  rv = nghttp2_hd_deflate_init2(deflater, deflate_hd_table_bufsize_max, mem);
+  p->mem = *mem;
+
+  rv = nghttp2_hd_deflate_init2(&p->deflater, deflate_hd_table_bufsize_max,
+                                &p->mem);
 
   if (rv != 0) {
-    nghttp2_mem_free(mem, deflater);
+    nghttp2_mem_free(mem, p);
 
     return rv;
   }
 
-  *deflater_ptr = deflater;
+  *deflater_ptr = &p->deflater;
 
   return 0;
 }
 
 void nghttp2_hd_deflate_del(nghttp2_hd_deflater *deflater) {
-  nghttp2_mem *mem;
+  nghttp2_mem mem;
 
-  mem = deflater->ctx.mem;
+  /* deflater->ctx.mem points to the memory being freed */
+  mem = *deflater->ctx.mem;
 
   nghttp2_hd_deflate_free(deflater);
 
-  nghttp2_mem_free(mem, deflater);
+  nghttp2_mem_free(&mem, deflater);
 }
 
 static void hd_inflate_set_huffman_encoded(nghttp2_hd_inflater *inflater,
@@ -2297,41 +2309,52 @@ int nghttp2_hd_inflate_new(nghttp2_hd_inflater **inflater_ptr) {
   return nghttp2_hd_inflate_new2(inflater_ptr, NULL);
 }
 
+/* nghttp2_hd_inflater allocated by nghttp2_hd_inflate_new2().  The
+   application may free |mem| passed to nghttp2_hd_inflate_new2()
+   after it returns, so keep a copy of it along with inflater. */
+typedef struct {
+  nghttp2_hd_inflater inflater;
+  nghttp2_mem mem;
+} hd_inflater_with_mem;
+
 int nghttp2_hd_inflate_new2(nghttp2_hd_inflater **inflater_ptr,
                             nghttp2_mem *mem) {
   int rv;
-  nghttp2_hd_inflater *inflater;
+  hd_inflater_with_mem *p;
 
   if (mem == NULL) {
     mem = nghttp2_mem_default();
   }
 
-  inflater = nghttp2_mem_malloc(mem, sizeof(nghttp2_hd_inflater));
+  p = nghttp2_mem_malloc(mem, sizeof(hd_inflater_with_mem));
 
-  if (inflater == NULL) {
+  if (p == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
 
-  rv = nghttp2_hd_inflate_init(inflater, mem);
+  p->mem = *mem;
+
+  rv = nghttp2_hd_inflate_init(&p->inflater, &p->mem);
 
   if (rv != 0) {
-    nghttp2_mem_free(mem, inflater);
+    nghttp2_mem_free(mem, p);
 
     return rv;
   }
 
-  *inflater_ptr = inflater;
+  *inflater_ptr = &p->inflater;
 
   return 0;
 }
 
 void nghttp2_hd_inflate_del(nghttp2_hd_inflater *inflater) {
-  nghttp2_mem *mem;
+  nghttp2_mem mem;
 
-  mem = inflater->ctx.mem;
+  /* inflater->ctx.mem points to the memory being freed */
+  mem = *inflater->ctx.mem;
   nghttp2_hd_inflate_free(inflater);
 
-  nghttp2_mem_free(mem, inflater);
+  nghttp2_mem_free(&mem, inflater);
 }
 
 int nghttp2_hd_emit_indname_block(nghttp2_bufs *bufs, size_t idx,
