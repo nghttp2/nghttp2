@@ -188,6 +188,13 @@ void nghttp2_outbound_queue_push(nghttp2_outbound_queue *q,
    happens. */
 void nghttp2_outbound_queue_pop(nghttp2_outbound_queue *q);
 
+/* Removes |item| from |q|.  |prev| must be the item which
+   immediately precedes |item| in |q|, or NULL if |item| is at the
+   top. */
+void nghttp2_outbound_queue_remove(nghttp2_outbound_queue *q,
+                                   nghttp2_outbound_item *prev,
+                                   nghttp2_outbound_item *item);
+
 /* Returns the top item. */
 #define nghttp2_outbound_queue_top(Q) ((Q)->head)
 

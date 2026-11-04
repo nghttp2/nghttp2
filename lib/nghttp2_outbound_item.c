@@ -169,3 +169,18 @@ void nghttp2_outbound_queue_pop(nghttp2_outbound_queue *q) {
   }
   --q->n;
 }
+
+void nghttp2_outbound_queue_remove(nghttp2_outbound_queue *q,
+                                   nghttp2_outbound_item *prev,
+                                   nghttp2_outbound_item *item) {
+  if (prev) {
+    prev->qnext = item->qnext;
+  } else {
+    q->head = item->qnext;
+  }
+  if (q->tail == item) {
+    q->tail = prev;
+  }
+  item->qnext = NULL;
+  --q->n;
+}
