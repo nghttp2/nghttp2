@@ -4145,7 +4145,8 @@ static int session_process_headers_frame(nghttp2_session *session) {
 }
 
 static int session_update_stream_reset_ratelim(nghttp2_session *session) {
-  if (!session->server || (session->goaway_flags & NGHTTP2_GOAWAY_SUBMITTED)) {
+  if (!session->server ||
+      (session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND)) {
     return 0;
   }
 
@@ -4156,9 +4157,7 @@ static int session_update_stream_reset_ratelim(nghttp2_session *session) {
     return 0;
   }
 
-  return nghttp2_session_add_goaway(session, session->last_recv_stream_id,
-                                    NGHTTP2_INTERNAL_ERROR, NULL, 0,
-                                    NGHTTP2_GOAWAY_AUX_NONE);
+  return nghttp2_session_terminate_session(session, NGHTTP2_INTERNAL_ERROR);
 }
 
 int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
