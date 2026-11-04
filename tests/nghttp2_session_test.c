@@ -10986,6 +10986,10 @@ void test_nghttp2_session_stream_reset_ratelim(void) {
     assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
     assert_int32(NGHTTP2_DEFAULT_STREAM_RESET_BURST * 2 + 1, ==,
                  item->frame.goaway.last_stream_id);
+    assert_uint32(NGHTTP2_INTERNAL_ERROR, ==, item->frame.goaway.error_code);
+    assert_true(session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND);
+    assert_enum(nghttp2_inbound_state, NGHTTP2_IB_IGN_ALL, ==,
+                session->iframe.state);
   }
 
   nghttp2_hd_deflate_free(&deflater);
