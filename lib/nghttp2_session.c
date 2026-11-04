@@ -1156,12 +1156,14 @@ int nghttp2_session_add_rst_stream_continue(nghttp2_session *session,
       nghttp2_outbound_queue_top(&session->ob_syn)) {
     nghttp2_headers_aux_data *aux_data;
     nghttp2_frame *headers_frame;
+    nghttp2_outbound_item *prev;
 
     headers_frame = &nghttp2_outbound_queue_top(&session->ob_syn)->frame;
     assert(headers_frame->hd.type == NGHTTP2_HEADERS);
 
     if (headers_frame->hd.stream_id <= stream_id) {
-      for (item = session->ob_syn.head; item; item = item->qnext) {
+      for (prev = NULL, item = session->ob_syn.head; item;
+           prev = item, item = item->qnext) {
         aux_data = &item->aux_data.headers;
 
         if (item->frame.hd.stream_id < stream_id) {
@@ -1170,12 +1172,21 @@ int nghttp2_session_add_rst_stream_continue(nghttp2_session *session,
 
         /* stream_id in ob_syn queue must be strictly increasing.  If
            we found larger ID, then we can break here. */
-        if (item->frame.hd.stream_id > stream_id || aux_data->canceled) {
+        if (item->frame.hd.stream_id > stream_id) {
           break;
         }
 
         aux_data->error_code = error_code;
         aux_data->canceled = 1;
+
+        /* ob_syn is not processed while the number of outgoing
+           streams reaches SETTINGS_MAX_CONCURRENT_STREAMS, but the
+           canceled HEADERS does not consume a stream.  Move it to
+           ob_reg so that it is disposed of (and on_stream_close
+           callback is called) on the next send without waiting for a
+           stream slot. */
+        nghttp2_outbound_queue_remove(&session->ob_syn, prev, item);
+        nghttp2_outbound_queue_push(&session->ob_reg, item);
 
         return 0;
       }
@@ -7719,14 +7730,6 @@ int nghttp2_session_set_stream_user_data(nghttp2_session *session,
   }
 
   if (session->server || !nghttp2_session_is_my_stream_id(session, stream_id) ||
-      !nghttp2_outbound_queue_top(&session->ob_syn)) {
-    return NGHTTP2_ERR_INVALID_ARGUMENT;
-  }
-
-  frame = &nghttp2_outbound_queue_top(&session->ob_syn)->frame;
-  assert(frame->hd.type == NGHTTP2_HEADERS);
-
-  if (frame->hd.stream_id > stream_id ||
       (uint32_t)stream_id >= session->next_stream_id) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
@@ -7738,6 +7741,21 @@ int nghttp2_session_set_stream_user_data(nghttp2_session *session,
 
     if (item->frame.hd.stream_id > stream_id) {
       break;
+    }
+
+    item->aux_data.headers.stream_user_data = stream_user_data;
+    return 0;
+  }
+
+  /* Request HEADERS canceled by RST_STREAM is moved to ob_reg, and
+     stays there until it is disposed of. */
+  for (item = session->ob_reg.head; item; item = item->qnext) {
+    frame = &item->frame;
+
+    if (frame->hd.type != NGHTTP2_HEADERS ||
+        frame->headers.cat != NGHTTP2_HCAT_REQUEST ||
+        frame->hd.stream_id != stream_id) {
+      continue;
     }
 
     item->aux_data.headers.stream_user_data = stream_user_data;

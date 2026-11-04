@@ -7599,7 +7599,10 @@ void test_nghttp2_submit_rst_stream(void) {
 
   assert_int(0, ==, rv);
 
-  item = nghttp2_outbound_queue_top(&session->ob_syn);
+  /* Canceled HEADERS is moved from ob_syn to ob_reg. */
+  assert_null(nghttp2_outbound_queue_top(&session->ob_syn));
+
+  item = nghttp2_outbound_queue_top(&session->ob_reg);
 
   assert_not_null(item);
   assert_uint8(NGHTTP2_HEADERS, ==, item->frame.hd.type);
@@ -9627,31 +9630,58 @@ void test_nghttp2_session_reset_pending_headers(void) {
 
   session->remote_settings.max_concurrent_streams = 0;
 
-  /* RST_STREAM cancels pending HEADERS and is not actually sent. */
+  /* RST_STREAM cancels pending HEADERS and is not actually sent.
+     HEADERS is not sent either.  on_stream_close is called just like
+     transmission failure, even if SETTINGS_MAX_CONCURRENT_STREAMS
+     does not allow to send request HEADERS. */
+  assert_true(nghttp2_session_want_write(session));
+
   ud.frame_send_cb_called = 0;
-  assert_int(0, ==, nghttp2_session_send(session));
-
-  assert_int(0, ==, ud.frame_send_cb_called);
-
-  stream = nghttp2_session_get_stream(session, stream_id);
-
-  assert_null(stream);
-
-  /* See HEADERS is not sent.  on_stream_close is called just like
-     transmission failure. */
-  session->remote_settings.max_concurrent_streams = 1;
-
   ud.frame_not_send_cb_called = 0;
   ud.stream_close_error_code = 0;
   assert_int(0, ==, nghttp2_session_send(session));
 
+  assert_int(0, ==, ud.frame_send_cb_called);
   assert_int(1, ==, ud.frame_not_send_cb_called);
   assert_uint8(NGHTTP2_HEADERS, ==, ud.not_sent_frame_type);
   assert_uint32(NGHTTP2_CANCEL, ==, ud.stream_close_error_code);
+  assert_size(0, ==, nghttp2_session_get_outbound_queue_size(session));
+  assert_false(nghttp2_session_want_write(session));
 
   stream = nghttp2_session_get_stream(session, stream_id);
 
   assert_null(stream);
+
+  nghttp2_session_del(session);
+
+  /* Canceled HEADERS is disposed of even if a pending request which
+     is not canceled precedes it. */
+  nghttp2_session_client_new(&session, &callbacks, &ud);
+
+  session->remote_settings.max_concurrent_streams = 0;
+
+  assert_int32(1, ==,
+               nghttp2_submit_request2(session, NULL, NULL, 0, NULL, NULL));
+
+  stream_id = nghttp2_submit_request2(session, NULL, NULL, 0, NULL, NULL);
+  assert_int32(3, ==, stream_id);
+
+  nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
+                            NGHTTP2_CANCEL);
+
+  ud.frame_send_cb_called = 0;
+  ud.frame_not_send_cb_called = 0;
+  ud.stream_close_error_code = 0;
+  assert_int(0, ==, nghttp2_session_send(session));
+
+  assert_int(0, ==, ud.frame_send_cb_called);
+  assert_int(1, ==, ud.frame_not_send_cb_called);
+  assert_uint8(NGHTTP2_HEADERS, ==, ud.not_sent_frame_type);
+  assert_uint32(NGHTTP2_CANCEL, ==, ud.stream_close_error_code);
+  assert_null(nghttp2_session_get_stream(session, stream_id));
+  assert_size(1, ==, nghttp2_session_get_outbound_queue_size(session));
+  assert_int32(1, ==, session->ob_syn.head->frame.hd.stream_id);
+  assert_false(nghttp2_session_want_write(session));
 
   nghttp2_session_del(session);
 }
@@ -10607,6 +10637,7 @@ void test_nghttp2_session_set_stream_user_data(void) {
   int rv;
   const uint8_t *datap;
   nghttp2_ssize datalen;
+  nghttp2_outbound_item *item;
 
   nghttp2_session_client_new(&session, &callbacks, NULL);
 
@@ -10626,6 +10657,37 @@ void test_nghttp2_session_set_stream_user_data(void) {
 
   assert_int(NGHTTP2_ERR_INVALID_ARGUMENT, ==,
              nghttp2_session_set_stream_user_data(session, 2, NULL));
+
+  nghttp2_session_del(session);
+
+  /* Request HEADERS canceled before it is sent */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  stream_id = nghttp2_submit_request2(session, NULL, reqnv, ARRLEN(reqnv), NULL,
+                                      &user_data1);
+
+  rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
+                                 NGHTTP2_CANCEL);
+
+  assert_int(0, ==, rv);
+
+  rv = nghttp2_session_set_stream_user_data(session, stream_id, &user_data2);
+
+  assert_int(0, ==, rv);
+
+  item = nghttp2_outbound_queue_top(&session->ob_reg);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_HEADERS, ==, item->frame.hd.type);
+  assert_ptr_equal(&user_data2, item->aux_data.headers.stream_user_data);
+
+  /* Canceled HEADERS is disposed of on send. */
+  datalen = nghttp2_session_mem_send2(session, &datap);
+
+  assert_ptrdiff(0, ==, datalen);
+  assert_null(nghttp2_outbound_queue_top(&session->ob_reg));
+  assert_int(NGHTTP2_ERR_INVALID_ARGUMENT, ==,
+             nghttp2_session_set_stream_user_data(session, stream_id, NULL));
 
   nghttp2_session_del(session);
 }
