@@ -51,6 +51,7 @@ static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_session_recv_headers_with_padding),
   munit_void_test(test_nghttp2_session_recv_headers_early_response),
   munit_void_test(test_nghttp2_session_recv_headers_for_closed_stream),
+  munit_void_test(test_nghttp2_session_recv_headers_for_reset_stream),
   munit_void_test(test_nghttp2_session_recv_headers_with_extpri),
   munit_void_test(test_nghttp2_session_server_recv_push_response),
   munit_void_test(test_nghttp2_session_recv_premature_headers),
@@ -2248,6 +2249,135 @@ void test_nghttp2_session_recv_headers_for_closed_stream(void) {
   nghttp2_bufs_free(&bufs);
   nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_recv_headers_for_reset_stream(void) {
+  nghttp2_session *session;
+  static const nghttp2_session_callbacks callbacks = {
+    .send_callback2 = null_send_callback,
+  };
+  nghttp2_option *option;
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  nghttp2_ssize rv;
+  nghttp2_hd_deflater deflater;
+  nghttp2_outbound_item *item;
+  nghttp2_mem *mem;
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
+
+  nghttp2_option_new(&option);
+  nghttp2_option_set_glitch_rate_limit(option, 0, 0);
+
+  /* Client receives response HEADERS for the stream which it has
+     reset.  This is a race condition, and must not be counted as
+     glitch. */
+  nghttp2_session_client_new2(&session, &callbacks, NULL, option);
+
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  open_sent_stream2(session, 1, NGHTTP2_STREAM_OPENING);
+
+  rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 1, NGHTTP2_CANCEL);
+
+  assert_ptrdiff(0, ==, rv);
+
+  /* RST_STREAM is queued, but not sent yet */
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, resnv,
+                    ARRLEN(resnv), mem);
+
+  assert_ptrdiff(0, ==, rv);
+
+  buf = &bufs.head->buf;
+
+  rv = nghttp2_session_mem_recv2(session, buf->pos, nghttp2_buf_len(buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(buf), ==, rv);
+  assert_enum(nghttp2_inbound_state, NGHTTP2_IB_READ_HEAD, ==,
+              session->iframe.state);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+
+  assert_int(0, ==, nghttp2_session_send(session));
+  assert_null(nghttp2_session_get_stream_raw(session, 1));
+
+  nghttp2_bufs_reset(&bufs);
+
+  /* RST_STREAM has been sent, and stream is closed */
+  rv = pack_headers(&bufs, &deflater, 1,
+                    NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_END_STREAM,
+                    trailernv, ARRLEN(trailernv), mem);
+
+  assert_ptrdiff(0, ==, rv);
+
+  rv = nghttp2_session_mem_recv2(session, buf->pos, nghttp2_buf_len(buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(buf), ==, rv);
+  assert_enum(nghttp2_inbound_state, NGHTTP2_IB_READ_HEAD, ==,
+              session->iframe.state);
+  assert_null(nghttp2_session_get_next_ob_item(session));
+
+  nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  /* Server receives trailer HEADERS for the stream which it has
+     reset. */
+  nghttp2_session_server_new2(&session, &callbacks, NULL, option);
+
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  open_recv_stream(session, 1);
+
+  rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 1, NGHTTP2_CANCEL);
+
+  assert_ptrdiff(0, ==, rv);
+
+  /* RST_STREAM is queued, but not sent yet */
+  rv = pack_headers(&bufs, &deflater, 1,
+                    NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_END_STREAM,
+                    trailernv, ARRLEN(trailernv), mem);
+
+  assert_ptrdiff(0, ==, rv);
+
+  rv = nghttp2_session_mem_recv2(session, buf->pos, nghttp2_buf_len(buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(buf), ==, rv);
+  assert_enum(nghttp2_inbound_state, NGHTTP2_IB_READ_HEAD, ==,
+              session->iframe.state);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+
+  assert_int(0, ==, nghttp2_session_send(session));
+  assert_null(nghttp2_session_get_stream(session, 1));
+
+  nghttp2_bufs_reset(&bufs);
+
+  /* RST_STREAM has been sent, and stream is closed */
+  rv = pack_headers(&bufs, &deflater, 1,
+                    NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_END_STREAM,
+                    trailernv, ARRLEN(trailernv), mem);
+
+  assert_ptrdiff(0, ==, rv);
+
+  rv = nghttp2_session_mem_recv2(session, buf->pos, nghttp2_buf_len(buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(buf), ==, rv);
+  assert_enum(nghttp2_inbound_state, NGHTTP2_IB_READ_HEAD, ==,
+              session->iframe.state);
+  assert_null(nghttp2_session_get_next_ob_item(session));
+
+  nghttp2_bufs_free(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+  nghttp2_option_del(option);
 }
 
 void test_nghttp2_session_recv_headers_with_extpri(void) {
