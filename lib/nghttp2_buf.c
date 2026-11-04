@@ -353,17 +353,14 @@ int nghttp2_bufs_add(nghttp2_bufs *bufs, const void *data, size_t len) {
 
 static int bufs_ensure_addb(nghttp2_bufs *bufs) {
   int rv;
-  nghttp2_buf *buf;
 
-  buf = &bufs->cur->buf;
-
-  if (nghttp2_buf_avail(buf) > 0) {
-    return 0;
-  }
-
-  rv = bufs_alloc_chain(bufs);
-  if (rv != 0) {
-    return rv;
+  /* The next chunk might have no space either if bufs wraps
+     zero-length buffers (see nghttp2_bufs_wrap_init2). */
+  while (nghttp2_buf_avail(&bufs->cur->buf) == 0) {
+    rv = bufs_alloc_chain(bufs);
+    if (rv != 0) {
+      return rv;
+    }
   }
 
   return 0;

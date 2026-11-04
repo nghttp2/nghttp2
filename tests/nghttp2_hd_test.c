@@ -1445,6 +1445,42 @@ void test_nghttp2_hd_deflate_hd_vec(void) {
   nghttp2_hd_inflate_del(inflater);
   nghttp2_hd_deflate_del(deflater);
 
+  /* check the case when 0 length chunk is in the middle */
+  for (i = 0; i < 64; ++i) {
+    nghttp2_hd_deflate_new(&deflater, 4096);
+    nghttp2_hd_inflate_new(&inflater);
+
+    buflen = nghttp2_hd_deflate_bound(deflater, nva, ARRLEN(nva));
+
+    vec[0] = (nghttp2_vec){
+      .base = &buf[0],
+      .len = i,
+    };
+    vec[1] = (nghttp2_vec){0};
+    vec[2] = (nghttp2_vec){
+      .base = &buf[i],
+      .len = buflen - i,
+    };
+
+    blocklen = nghttp2_hd_deflate_hd_vec2(deflater, vec, 3, nva, ARRLEN(nva));
+
+    assert_ptrdiff(0, <, blocklen);
+
+    nghttp2_bufs_wrap_init(&bufs, buf, (size_t)blocklen, mem);
+    bufs.head->buf.last += blocklen;
+
+    assert_ptrdiff(blocklen, ==, inflate_hd(inflater, &out, &bufs, 0, mem));
+
+    assert_size(ARRLEN(nva), ==, out.nvlen);
+    assert_nv_equal(nva, out.nva, ARRLEN(nva), mem);
+
+    nghttp2_bufs_wrap_free(&bufs);
+
+    nghttp2_hd_inflate_del(inflater);
+    nghttp2_hd_deflate_del(deflater);
+    nva_out_reset(&out, mem);
+  }
+
   /* check the case where chunk size differs in each chunk */
   nghttp2_hd_deflate_new(&deflater, 4096);
   nghttp2_hd_inflate_new(&inflater);
