@@ -12747,6 +12747,10 @@ void test_nghttp2_http_ignore_content_length(void) {
     MAKE_NV(":status", "200"),
     MAKE_NV("content-length", "0"),
   };
+  static const nghttp2_nv conn_cl_407_resnv[] = {
+    MAKE_NV(":status", "407"),
+    MAKE_NV("content-length", "5"),
+  };
   nghttp2_stream *stream;
 
   mem = nghttp2_mem_default();
@@ -12788,6 +12792,24 @@ void test_nghttp2_http_ignore_content_length(void) {
 
   assert_null(nghttp2_session_get_next_ob_item(session));
   assert_int64(-1, ==, stream->content_length);
+
+  nghttp2_bufs_reset(&bufs);
+
+  /* Content-Length in non-2xx response to CONNECT is not ignored */
+  stream = open_sent_stream2(session, 5, NGHTTP2_STREAM_OPENING);
+  stream->http_flags |= NGHTTP2_HTTP_FLAG_METH_CONNECT;
+
+  rv = pack_headers(&bufs, &deflater, 5, NGHTTP2_FLAG_END_HEADERS,
+                    conn_cl_407_resnv, ARRLEN(conn_cl_407_resnv), mem);
+  assert_ptrdiff(0, ==, rv);
+
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_buf_len(&bufs.head->buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
+
+  assert_null(nghttp2_session_get_next_ob_item(session));
+  assert_int64(5, ==, stream->content_length);
 
   nghttp2_bufs_reset(&bufs);
 
