@@ -502,8 +502,9 @@ int nghttp2_http_on_response_headers(nghttp2_stream *stream) {
 
   if (!expect_response_body(stream)) {
     stream->content_length = 0;
-  } else if (stream->http_flags & (NGHTTP2_HTTP_FLAG_METH_CONNECT |
-                                   NGHTTP2_HTTP_FLAG_METH_UPGRADE_WORKAROUND)) {
+  } else if ((stream->http_flags & NGHTTP2_HTTP_FLAG_METH_UPGRADE_WORKAROUND) ||
+             ((stream->http_flags & NGHTTP2_HTTP_FLAG_METH_CONNECT) &&
+              stream->status_code / 100 == 2)) {
     stream->content_length = -1;
   }
 
