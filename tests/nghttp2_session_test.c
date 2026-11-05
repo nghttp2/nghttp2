@@ -9443,6 +9443,7 @@ void test_nghttp2_session_on_header_temporal_failure(void) {
   nghttp2_frame_hd hd;
   nghttp2_outbound_item *item;
   nghttp2_mem *mem;
+  nghttp2_option *option;
 
   mem = nghttp2_mem_default();
 
@@ -9515,6 +9516,38 @@ void test_nghttp2_session_on_header_temporal_failure(void) {
   assert_uint32(NGHTTP2_INTERNAL_ERROR, ==, item->frame.rst_stream.error_code);
 
   nghttp2_session_del(session);
+  nghttp2_hd_deflate_free(&deflater);
+
+  nghttp2_bufs_reset(&bufs);
+
+  /* Stream reset requested by on_header_callback is subject to glitch
+     rate limit */
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  nghttp2_option_new(&option);
+  nghttp2_option_set_glitch_rate_limit(option, 0, 0);
+
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
+
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, reqnv,
+                    ARRLEN(reqnv), mem);
+  assert_ptrdiff(0, ==, rv);
+
+  ud.header_cb_called = 0;
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_bufs_len(&bufs));
+  assert_ptrdiff((nghttp2_ssize)nghttp2_bufs_len(&bufs), ==, rv);
+  assert_int(1, ==, ud.header_cb_called);
+  assert_enum(nghttp2_inbound_state, NGHTTP2_IB_IGN_ALL, ==,
+              session->iframe.state);
+
+  item = nghttp2_session_get_next_ob_item(session);
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_ENHANCE_YOUR_CALM, ==, item->frame.goaway.error_code);
+
+  nghttp2_session_del(session);
+  nghttp2_option_del(option);
   nghttp2_hd_deflate_free(&deflater);
   nghttp2_bufs_free(&bufs);
 }
@@ -9881,6 +9914,7 @@ void test_nghttp2_session_on_begin_headers_temporal_failure(void) {
   nghttp2_ssize rv;
   nghttp2_hd_deflater deflater;
   nghttp2_outbound_item *item;
+  nghttp2_option *option;
 
   mem = nghttp2_mem_default();
   frame_pack_bufs_init(&bufs);
@@ -9906,6 +9940,41 @@ void test_nghttp2_session_on_begin_headers_temporal_failure(void) {
   assert_uint32(NGHTTP2_INTERNAL_ERROR, ==, item->frame.rst_stream.error_code);
 
   nghttp2_session_del(session);
+  nghttp2_hd_deflate_free(&deflater);
+
+  nghttp2_bufs_reset(&bufs);
+
+  /* Stream reset requested by on_begin_headers_callback is subject
+     to glitch rate limit */
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  nghttp2_option_new(&option);
+  nghttp2_option_set_glitch_rate_limit(option, 0, 0);
+
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
+
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, reqnv,
+                    ARRLEN(reqnv), mem);
+  assert_ptrdiff(0, ==, rv);
+
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_bufs_len(&bufs));
+  assert_ptrdiff((nghttp2_ssize)nghttp2_bufs_len(&bufs), ==, rv);
+  assert_enum(nghttp2_inbound_state, NGHTTP2_IB_IGN_ALL, ==,
+              session->iframe.state);
+
+  item = nghttp2_session_get_next_ob_item(session);
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_int32(1, ==, item->frame.hd.stream_id);
+
+  item = session->ob_reg.tail;
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_ENHANCE_YOUR_CALM, ==, item->frame.goaway.error_code);
+
+  nghttp2_session_del(session);
+  nghttp2_option_del(option);
   nghttp2_hd_deflate_free(&deflater);
 
   nghttp2_bufs_reset(&bufs);
@@ -12632,6 +12701,7 @@ void test_nghttp2_http_ignore_regular_header(void) {
   size_t proclen;
   size_t i;
   nghttp2_outbound_item *item;
+  nghttp2_option *option;
 
   mem = nghttp2_mem_default();
   frame_pack_bufs_init(&bufs);
@@ -12736,6 +12806,35 @@ void test_nghttp2_http_ignore_regular_header(void) {
   assert_int32(1, ==, item->frame.hd.stream_id);
 
   nghttp2_session_del(session);
+
+  /* Stream reset requested by on_invalid_header_callback is subject
+     to glitch rate limit */
+  nghttp2_option_new(&option);
+  nghttp2_option_set_glitch_rate_limit(option, 0, 0);
+
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
+
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_buf_len(&bufs.head->buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
+  assert_enum(nghttp2_inbound_state, NGHTTP2_IB_IGN_ALL, ==,
+              session->iframe.state);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_int32(1, ==, item->frame.hd.stream_id);
+
+  item = session->ob_reg.tail;
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_ENHANCE_YOUR_CALM, ==, item->frame.goaway.error_code);
+
+  nghttp2_session_del(session);
+  nghttp2_option_del(option);
   nghttp2_bufs_free(&bufs);
 }
 
