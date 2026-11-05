@@ -2984,6 +2984,24 @@ static nghttp2_ssize nghttp2_session_mem_send_internal(nghttp2_session *session,
             }
           }
 
+          /* The header block of canceled HEADERS or PUSH_PROMISE has
+             already been compressed, and the entries it added to the
+             dynamic table of the encoder (and the table size update
+             it may have carried) never reach the remote decoder.  We
+             cannot undo them, so evict all entries and make the next
+             header block signal table size 0 followed by the current
+             size so that the remote decoder empties its dynamic table
+             as well. */
+          switch (item->frame.hd.type) {
+          case NGHTTP2_HEADERS:
+          case NGHTTP2_PUSH_PROMISE:
+            nghttp2_hd_deflate_change_table_size(&session->hd_deflater, 0);
+            nghttp2_hd_deflate_change_table_size(
+              &session->hd_deflater,
+              session->remote_settings.header_table_size);
+            break;
+          }
+
           /* We have to close stream opened by canceled request
              HEADERS or PUSH_PROMISE. */
           switch (item->frame.hd.type) {

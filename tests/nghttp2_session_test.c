@@ -10424,6 +10424,13 @@ void test_nghttp2_session_cancel_from_before_frame_send(void) {
 
   assert_null(stream);
 
+  /* Dynamic table is cleared, and table size update is signaled in
+     the next header block. */
+  assert_size(0, ==, session->hd_deflater.ctx.hd_table.len);
+  assert_true(session->hd_deflater.notify_table_size_change);
+  assert_size(0, ==, session->hd_deflater.min_hd_table_bufsize_max);
+  assert_size(4096, ==, session->hd_deflater.ctx.hd_table_bufsize_max);
+
   nghttp2_session_del(session);
 
   nghttp2_session_server_new(&session, &callbacks, &ud);
@@ -10449,6 +10456,13 @@ void test_nghttp2_session_cancel_from_before_frame_send(void) {
   stream = nghttp2_session_get_stream_raw(session, stream_id);
 
   assert_null(stream);
+
+  /* Dynamic table is cleared, and table size update is signaled in
+     the next header block. */
+  assert_size(0, ==, session->hd_deflater.ctx.hd_table.len);
+  assert_true(session->hd_deflater.notify_table_size_change);
+  assert_size(0, ==, session->hd_deflater.min_hd_table_bufsize_max);
+  assert_size(4096, ==, session->hd_deflater.ctx.hd_table_bufsize_max);
 
   nghttp2_session_del(session);
 }

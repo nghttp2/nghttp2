@@ -1758,7 +1758,10 @@ typedef int (*nghttp2_on_data_chunk_recv_callback)(nghttp2_session *session,
  *
  * The implementation of this function must return 0 if it succeeds.
  * It can also return :enum:`nghttp2_error.NGHTTP2_ERR_CANCEL` to
- * cancel the transmission of the given frame.
+ * cancel the transmission of the given frame.  Canceling HEADERS or
+ * PUSH_PROMISE frame discards an already compressed header block, and
+ * the library resets the HPACK dynamic table in the next header block
+ * to keep the encoder in sync with the remote decoder.
  *
  * If there is a fatal error while executing this callback, the
  * implementation should return
