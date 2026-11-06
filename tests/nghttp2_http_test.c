@@ -324,4 +324,29 @@ void test_nghttp2_http_on_header(void) {
 
     nghttp2_session_del(session);
   }
+
+  /* Too long header field value is not parsed. */
+  {
+    nghttp2_session_server_new(&session, &callbacks, NULL);
+    stream = open_recv_stream(session, 1);
+
+    rv = nghttp2_http_on_header(
+      session, stream, &frame,
+      &(nghttp2_hd_nv){
+        .name = &(nghttp2_rcbuf)MAKE_RCBUF("priority"),
+        .value = &(nghttp2_rcbuf)MAKE_RCBUF("u=1, a, a, a, a, a, a, a, a, a"),
+        .token = NGHTTP2_TOKEN_PRIORITY,
+      },
+      /* trailer = */ 0);
+
+    assert_int(0, ==, rv);
+    assert_uint8(nghttp2_extpri_to_uint8(&(nghttp2_extpri){
+                   .urgency = NGHTTP2_EXTPRI_DEFAULT_URGENCY,
+                 }),
+                 ==, stream->http_extpri);
+    assert_false(stream->http_flags & NGHTTP2_HTTP_FLAG_PRIORITY);
+    assert_true(stream->http_flags & NGHTTP2_HTTP_FLAG_BAD_PRIORITY);
+
+    nghttp2_session_del(session);
+  }
 }
