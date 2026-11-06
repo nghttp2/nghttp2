@@ -188,7 +188,7 @@ void test_template_as_string_view(void) {
   }
 
   {
-    static constexpr auto s = ""s;
+    static const auto s = ""s;
 
     assert_eq(""sv, as_string_view(s));
     assert_eq(""sv, as_string_view(std::ranges::begin(s), std::ranges::end(s)));
