@@ -1107,6 +1107,7 @@ void test_nghttp2_session_recv_data(void) {
   nghttp2_stream *stream;
   nghttp2_frame_hd hd;
   int i;
+  nghttp2_option *option;
 
   nghttp2_session_client_new(&session, &callbacks, &ud);
 
@@ -1344,6 +1345,42 @@ void test_nghttp2_session_recv_data(void) {
   assert_uint32(NGHTTP2_ENHANCE_YOUR_CALM, ==, item->frame.goaway.error_code);
 
   nghttp2_session_del(session);
+
+  /* Ignored DATA frame is not counted as a glitch, but empty DATA
+     frame without END_STREAM flag set is. */
+  nghttp2_option_new(&option);
+  nghttp2_option_set_glitch_rate_limit(option, 0, 0);
+
+  nghttp2_session_client_new2(&session, &callbacks, &ud, option);
+
+  open_sent_stream2(session, 1, NGHTTP2_STREAM_CLOSING);
+
+  hd = (nghttp2_frame_hd){
+    .length = 4096,
+    .stream_id = 1,
+    .type = NGHTTP2_DATA,
+    .flags = NGHTTP2_FLAG_NONE,
+  };
+  nghttp2_frame_pack_frame_hd(data, &hd);
+
+  rv = nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN + 4096);
+  assert_ptrdiff(NGHTTP2_FRAME_HDLEN + 4096, ==, rv);
+  assert_null(nghttp2_session_get_next_ob_item(session));
+
+  hd.length = 0;
+  nghttp2_frame_pack_frame_hd(data, &hd);
+
+  rv = nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN);
+  assert_ptrdiff(NGHTTP2_FRAME_HDLEN, ==, rv);
+  assert_enum(nghttp2_inbound_state, NGHTTP2_IB_IGN_ALL, ==,
+              session->iframe.state);
+
+  item = nghttp2_session_get_next_ob_item(session);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_ENHANCE_YOUR_CALM, ==, item->frame.goaway.error_code);
+
+  nghttp2_session_del(session);
+  nghttp2_option_del(option);
 }
 
 void test_nghttp2_session_recv_data_no_auto_flow_control(void) {
