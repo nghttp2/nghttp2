@@ -5741,6 +5741,21 @@ static nghttp2_ssize session_mem_recv(nghttp2_session *session,
             return (nghttp2_ssize)inlen;
           }
 
+          /* Empty DATA frame without END_STREAM flag set is
+             suspicious regardless of the stream state, and it is not
+             subject to flow control either. */
+          if (iframe->payloadleft == 0 &&
+              (iframe->frame.hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
+            rv = session_update_glitch_ratelim(session);
+            if (rv != 0) {
+              return rv;
+            }
+
+            if (iframe->state == NGHTTP2_IB_IGN_ALL) {
+              return (nghttp2_ssize)inlen;
+            }
+          }
+
           iframe->state = NGHTTP2_IB_IGN_DATA;
           break;
         }
