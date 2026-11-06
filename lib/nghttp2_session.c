@@ -1264,6 +1264,10 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
                         stream_user_data);
     stream->seq = session->stream_seq++;
 
+    if (!session->server) {
+      stream->extpri |= NGHTTP2_EXTPRI_INC_MASK;
+    }
+
     rv = nghttp2_map_insert(&session->streams, (nghttp2_map_key_type)stream_id,
                             stream);
     if (rv != 0) {
@@ -2486,10 +2490,6 @@ static int session_close_stream_on_goaway(nghttp2_session *session,
 static void session_reschedule_stream(nghttp2_session *session,
                                       nghttp2_stream *stream) {
   stream->last_writelen = stream->item->frame.hd.length;
-
-  if (!session->server) {
-    return;
-  }
 
   session_sched_reschedule_stream(session, stream);
 }
