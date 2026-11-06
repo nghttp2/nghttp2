@@ -3710,6 +3710,15 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
               if (nghttp2_is_fatal(rv2)) {
                 return rv2;
               }
+
+              rv2 = session_update_glitch_ratelim(session);
+              if (rv2 != 0) {
+                return rv2;
+              }
+
+              if (iframe->state == NGHTTP2_IB_IGN_ALL) {
+                return 0;
+              }
             }
           }
 
