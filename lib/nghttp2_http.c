@@ -185,6 +185,12 @@ static int check_header_value(const nghttp2_stream *stream,
   return nghttp2_check_header_value_rfc9113(value->base, value->len);
 }
 
+/* NGHTTP2_HTTP_MAX_PRIORITY_VALUELEN is the maximum length of
+   priority header field value that is parsed.  A longer value is
+   treated as a value that cannot be parsed.  This is the same limit
+   we impose against PRIORITY_UPDATE frame. */
+#define NGHTTP2_HTTP_MAX_PRIORITY_VALUELEN 28
+
 static int http_request_on_header(nghttp2_stream *stream, nghttp2_hd_nv *nv,
                                   int trailer, int connect_protocol) {
   nghttp2_extpri extpri;
@@ -310,7 +316,8 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_hd_nv *nv,
         (stream->stream_id & 1) &&
         !(stream->http_flags & NGHTTP2_HTTP_FLAG_BAD_PRIORITY)) {
       nghttp2_extpri_from_uint8(&extpri, stream->http_extpri);
-      if (nghttp2_http_parse_priority(&extpri, nv->value->base,
+      if (nv->value->len <= NGHTTP2_HTTP_MAX_PRIORITY_VALUELEN &&
+          nghttp2_http_parse_priority(&extpri, nv->value->base,
                                       nv->value->len) == 0) {
         stream->http_extpri = nghttp2_extpri_to_uint8(&extpri);
         stream->http_flags |= NGHTTP2_HTTP_FLAG_PRIORITY;
