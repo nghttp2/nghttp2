@@ -12835,6 +12835,33 @@ void test_nghttp2_http_ignore_regular_header(void) {
 
   nghttp2_session_del(session);
   nghttp2_option_del(option);
+
+  /* Ignored header field is counted as a glitch */
+  callbacks = (nghttp2_session_callbacks){
+    .send_callback2 = null_send_callback,
+    .on_header_callback = on_header_callback,
+  };
+
+  nghttp2_option_new(&option);
+  nghttp2_option_set_glitch_rate_limit(option, 0, 0);
+
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
+
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_buf_len(&bufs.head->buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
+  assert_enum(nghttp2_inbound_state, NGHTTP2_IB_IGN_ALL, ==,
+              session->iframe.state);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_ENHANCE_YOUR_CALM, ==, item->frame.goaway.error_code);
+
+  nghttp2_session_del(session);
+  nghttp2_option_del(option);
   nghttp2_bufs_free(&bufs);
 }
 
