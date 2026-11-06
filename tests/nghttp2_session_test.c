@@ -1381,6 +1381,43 @@ void test_nghttp2_session_recv_data(void) {
 
   nghttp2_session_del(session);
   nghttp2_option_del(option);
+
+  /* The rest of DATA frame is ignored if RST_STREAM is queued while
+     it is being received. */
+  nghttp2_session_client_new(&session, &callbacks, &ud);
+
+  stream = open_sent_stream(session, 1);
+
+  hd = (nghttp2_frame_hd){
+    .length = 4096,
+    .stream_id = 1,
+    .type = NGHTTP2_DATA,
+    .flags = NGHTTP2_FLAG_NONE,
+  };
+  nghttp2_frame_pack_frame_hd(data, &hd);
+
+  ud.data_chunk_recv_cb_called = 0;
+  ud.frame_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN + 1024);
+  assert_ptrdiff(NGHTTP2_FRAME_HDLEN + 1024, ==, rv);
+
+  assert_int(1, ==, ud.data_chunk_recv_cb_called);
+
+  assert_int(
+    0, ==,
+    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 1, NGHTTP2_CANCEL));
+  assert_enum(nghttp2_stream_state, NGHTTP2_STREAM_CLOSING, ==, stream->state);
+
+  ud.data_chunk_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv2(session, data + NGHTTP2_FRAME_HDLEN + 1024,
+                                 4096 - 1024);
+  assert_ptrdiff(4096 - 1024, ==, rv);
+
+  assert_int(0, ==, ud.data_chunk_recv_cb_called);
+  assert_int(0, ==, ud.frame_recv_cb_called);
+  assert_int32(4096, ==, session->recv_window_size);
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_recv_data_no_auto_flow_control(void) {
