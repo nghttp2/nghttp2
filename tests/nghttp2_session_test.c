@@ -126,6 +126,7 @@ static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_session_flow_control_data_recv),
   munit_void_test(test_nghttp2_session_flow_control_data_with_padding_recv),
   munit_void_test(test_nghttp2_session_data_read_temporal_failure),
+  munit_void_test(test_nghttp2_session_client_data_share_window),
   munit_void_test(test_nghttp2_session_on_stream_close),
   munit_void_test(test_nghttp2_session_on_ctrl_not_send),
   munit_void_test(test_nghttp2_session_get_outbound_queue_size),
@@ -8655,6 +8656,41 @@ void test_nghttp2_session_data_read_temporal_failure(void) {
   nghttp2_submit_request2(session, NULL, NULL, 0, &data_prd, NULL);
   /* Sending data will fail (hard fail) and session tear down */
   assert_int(NGHTTP2_ERR_CALLBACK_FAILURE, ==, nghttp2_session_send(session));
+
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_client_data_share_window(void) {
+  nghttp2_session *session;
+  static const nghttp2_session_callbacks callbacks = {
+    .send_callback2 = null_send_callback,
+  };
+  my_user_data ud;
+  nghttp2_data_provider2 data_prd;
+  int32_t stream_id1, stream_id2;
+
+  data_prd = (nghttp2_data_provider2){
+    .read_callback = fixed_length_data_source_read_callback,
+  };
+
+  ud.data_source_length = 1024 * 1024;
+
+  nghttp2_session_client_new(&session, &callbacks, &ud);
+
+  stream_id1 = nghttp2_submit_request2(session, NULL, NULL, 0, &data_prd, NULL);
+  stream_id2 = nghttp2_submit_request2(session, NULL, NULL, 0, &data_prd, NULL);
+
+  /* Connection-level window is the bottleneck.  Request bodies must
+     take turns instead of the first stream consuming all of it. */
+  assert_int(0, ==, nghttp2_session_send(session));
+  assert_int32(0, ==, nghttp2_session_get_remote_window_size(session));
+  assert_int32(
+    NGHTTP2_INITIAL_WINDOW_SIZE - 2 * NGHTTP2_DATA_PAYLOADLEN, ==,
+    nghttp2_session_get_stream_remote_window_size(session, stream_id1));
+  assert_int32(
+    NGHTTP2_INITIAL_WINDOW_SIZE -
+      (NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE - 2 * NGHTTP2_DATA_PAYLOADLEN),
+    ==, nghttp2_session_get_stream_remote_window_size(session, stream_id2));
 
   nghttp2_session_del(session);
 }
