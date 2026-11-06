@@ -6949,9 +6949,10 @@ static nghttp2_ssize session_mem_recv(nghttp2_session *session,
 
       iframe->frame.data.padlen = (size_t)padlen;
 
-      /* Empty DATA frame without END_STREAM flag set is
-         suspicious. */
-      if (iframe->payloadleft == 0 &&
+      /* Empty DATA frame without END_STREAM flag set is suspicious.
+         DATA frame which contains padding only is also empty. */
+      if (iframe->payloadleft ==
+            nghttp2_frame_trail_padlen(&iframe->frame, iframe->padlen) &&
           (iframe->frame.hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
         rv = session_update_glitch_ratelim(session);
         if (rv != 0) {
