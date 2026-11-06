@@ -1280,6 +1280,70 @@ void test_nghttp2_session_recv_data(void) {
   assert_false(session->window_update_queued);
 
   nghttp2_session_del(session);
+
+  /* Receiving too many empty DATA frames without END_STREAM flag
+     set */
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  open_recv_stream(session, 1);
+
+  hd = (nghttp2_frame_hd){
+    .stream_id = 1,
+    .type = NGHTTP2_DATA,
+    .flags = NGHTTP2_FLAG_NONE,
+  };
+  nghttp2_frame_pack_frame_hd(data, &hd);
+
+  for (;;) {
+    rv = nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN);
+    assert_ptrdiff(NGHTTP2_FRAME_HDLEN, ==, rv);
+
+    if (session->iframe.state == NGHTTP2_IB_IGN_ALL) {
+      break;
+    }
+  }
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_ENHANCE_YOUR_CALM, ==, item->frame.goaway.error_code);
+
+  nghttp2_session_del(session);
+
+  /* Receiving too many DATA frames which contain padding only
+     without END_STREAM flag set */
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  open_recv_stream(session, 1);
+
+  hd = (nghttp2_frame_hd){
+    .length = 2,
+    .stream_id = 1,
+    .type = NGHTTP2_DATA,
+    .flags = NGHTTP2_FLAG_PADDED,
+  };
+  nghttp2_frame_pack_frame_hd(data, &hd);
+  /* Pad Length = 1, followed by 1 byte of padding */
+  data[NGHTTP2_FRAME_HDLEN] = 1;
+  data[NGHTTP2_FRAME_HDLEN + 1] = 0;
+
+  for (;;) {
+    rv = nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN + 2);
+    assert_ptrdiff(NGHTTP2_FRAME_HDLEN + 2, ==, rv);
+
+    if (session->iframe.state == NGHTTP2_IB_IGN_ALL) {
+      break;
+    }
+  }
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_ENHANCE_YOUR_CALM, ==, item->frame.goaway.error_code);
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_recv_data_no_auto_flow_control(void) {
