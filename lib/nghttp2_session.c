@@ -6985,7 +6985,9 @@ static nghttp2_ssize session_mem_recv(nghttp2_session *session,
     case NGHTTP2_IB_READ_DATA:
       stream = nghttp2_session_get_stream(session, iframe->frame.hd.stream_id);
 
-      if (!stream) {
+      /* RST_STREAM might have been queued while this DATA frame is
+         being received. */
+      if (!stream || stream->state == NGHTTP2_STREAM_CLOSING) {
         busy = 1;
         iframe->state = NGHTTP2_IB_IGN_DATA;
         break;
