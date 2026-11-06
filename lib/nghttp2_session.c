@@ -6560,7 +6560,7 @@ static nghttp2_ssize session_mem_recv(nghttp2_session *session,
           }
 
           nghttp2_buf_wrap_init(&iframe->lbuf, iframe->raw_lbuf,
-                                iframe->frame.hd.length);
+                                iframe->frame.hd.length - 2);
         }
 
         busy = 1;
