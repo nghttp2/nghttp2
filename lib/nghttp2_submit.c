@@ -290,11 +290,15 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
                                  int32_t window_size_increment) {
   int rv;
   nghttp2_stream *stream = 0;
+  int increase;
   (void)flags;
 
   if (window_size_increment == 0) {
     return 0;
   }
+
+  increase = window_size_increment > 0;
+
   if (stream_id == 0) {
     rv = nghttp2_adjust_local_window_size(
       &session->local_window_size, &session->recv_window_size,
@@ -328,7 +332,20 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
     return nghttp2_session_add_window_update(session, 0, stream_id,
                                              window_size_increment);
   }
-  return 0;
+
+  if (!increase) {
+    return 0;
+  }
+
+  /* The whole increment was paid by the earlier window size
+     reduction and is now accounted in recv_window_size.  Submit
+     WINDOW_UPDATE if necessary, otherwise if the remote endpoint has
+     exhausted its window, it cannot send any more data and stalls. */
+  if (stream_id == 0) {
+    return nghttp2_session_update_recv_connection_window_size(session, 0);
+  }
+
+  return nghttp2_session_update_recv_stream_window_size(session, stream, 0, 1);
 }
 
 int nghttp2_session_set_local_window_size(nghttp2_session *session,
