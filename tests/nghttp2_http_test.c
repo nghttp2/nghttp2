@@ -349,4 +349,23 @@ void test_nghttp2_http_on_header(void) {
 
     nghttp2_session_del(session);
   }
+
+  {
+    /* Upper-cased letter must be rejected as stream error even if it
+       is preceded by another invalid character. */
+    nghttp2_session_server_new(&session, &callbacks, NULL);
+    stream = open_recv_stream(session, 1);
+
+    rv = nghttp2_http_on_header(session, stream, &frame,
+                                &(nghttp2_hd_nv){
+                                  .name = &(nghttp2_rcbuf)MAKE_RCBUF("foo Bar"),
+                                  .value = &(nghttp2_rcbuf)MAKE_RCBUF("1"),
+                                  .token = -1,
+                                },
+                                /* trailer = */ 0);
+
+    assert_int(NGHTTP2_ERR_HTTP_HEADER, ==, rv);
+
+    nghttp2_session_del(session);
+  }
 }

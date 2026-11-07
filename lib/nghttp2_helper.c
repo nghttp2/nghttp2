@@ -383,16 +383,21 @@ int nghttp2_check_header_name(const uint8_t *name, size_t len) {
 
 int nghttp2_check_nonempty_header_name(const uint8_t *name, size_t len) {
   const uint8_t *last;
-  int rv;
+  int rv = 1;
 
   for (last = name + len; name != last; ++name) {
-    rv = VALID_HD_NAME_CHARS[*name];
-    if (rv != 1) {
-      return rv;
+    switch (VALID_HD_NAME_CHARS[*name]) {
+    case 0:
+      /* Keep scanning because a character in [A-Z] takes precedence
+         over other invalid characters. */
+      rv = 0;
+      break;
+    case 2:
+      return 2;
     }
   }
 
-  return 1;
+  return rv;
 }
 
 static const uint8_t VALID_HD_VALUE_CHARS[256] = {
