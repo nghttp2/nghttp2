@@ -51,6 +51,7 @@ static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_session_recv_headers_with_padding),
   munit_void_test(test_nghttp2_session_recv_headers_early_response),
   munit_void_test(test_nghttp2_session_recv_headers_for_closed_stream),
+  munit_void_test(test_nghttp2_session_recv_push_promise_for_closed_stream),
   munit_void_test(test_nghttp2_session_recv_headers_for_reset_stream),
   munit_void_test(test_nghttp2_session_recv_headers_with_extpri),
   munit_void_test(test_nghttp2_session_server_recv_push_response),
@@ -2660,6 +2661,99 @@ void test_nghttp2_session_recv_headers_for_reset_stream(void) {
   nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);
   nghttp2_option_del(option);
+}
+
+void test_nghttp2_session_recv_push_promise_for_closed_stream(void) {
+  nghttp2_session *session;
+  static const nghttp2_session_callbacks callbacks = {
+    .on_frame_recv_callback = on_frame_recv_callback,
+    .on_header_callback = on_header_callback,
+    .on_begin_headers_callback = on_begin_headers_callback,
+  };
+  nghttp2_nv *nva;
+  size_t nvlen;
+  nghttp2_frame frame;
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  nghttp2_ssize rv;
+  my_user_data ud;
+  nghttp2_hd_deflater deflater;
+  nghttp2_stream *stream;
+  nghttp2_mem *mem;
+  const uint8_t *data;
+  size_t hdlen;
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
+
+  nghttp2_session_client_new(&session, &callbacks, &ud);
+
+  open_sent_stream(session, 1);
+
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  /* Make sure that on_frame_recv callback never be invoked for
+     PUSH_PROMISE if the promised stream has been closed while its
+     header block is still being received. */
+  nvlen = ARRLEN(reqnv);
+  nghttp2_nv_array_copy(&nva, reqnv, nvlen, mem);
+
+  nghttp2_frame_push_promise_init(&frame.push_promise, NGHTTP2_FLAG_END_HEADERS,
+                                  1, 2, nva, nvlen);
+
+  rv = nghttp2_frame_pack_push_promise(&bufs, &frame.push_promise, &deflater);
+
+  assert_ptrdiff(0, ==, rv);
+  assert_size(0, <, nghttp2_bufs_len(&bufs));
+
+  nghttp2_frame_push_promise_free(&frame.push_promise, mem);
+
+  buf = &bufs.head->buf;
+  assert(nghttp2_bufs_len(&bufs) == nghttp2_buf_len(buf));
+
+  /* frame header + promised stream ID */
+  hdlen = NGHTTP2_FRAME_HDLEN + 4;
+
+  ud.begin_headers_cb_called = 0;
+  ud.header_cb_called = 0;
+  ud.frame_recv_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv2(session, buf->pos, hdlen);
+
+  assert_ptrdiff((nghttp2_ssize)hdlen, ==, rv);
+  assert_int(1, ==, ud.begin_headers_cb_called);
+  assert_int(0, ==, ud.header_cb_called);
+  assert_int(0, ==, ud.frame_recv_cb_called);
+
+  stream = nghttp2_session_get_stream(session, 2);
+
+  assert_not_null(stream);
+
+  rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 2, NGHTTP2_CANCEL);
+
+  assert_ptrdiff(0, ==, rv);
+
+  rv = nghttp2_session_mem_send2(session, &data);
+
+  assert_ptrdiff(0, <, rv);
+
+  stream = nghttp2_session_get_stream(session, 2);
+
+  assert_null(stream);
+
+  ud.header_cb_called = 0;
+  ud.frame_recv_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv2(session, buf->pos + hdlen,
+                                 nghttp2_buf_len(buf) - hdlen);
+
+  assert_ptrdiff((nghttp2_ssize)(nghttp2_buf_len(buf) - hdlen), ==, rv);
+  assert_int(0, ==, ud.header_cb_called);
+  assert_int(0, ==, ud.frame_recv_cb_called);
+
+  nghttp2_bufs_free(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_recv_headers_with_extpri(void) {

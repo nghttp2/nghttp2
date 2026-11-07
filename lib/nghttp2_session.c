@@ -3601,8 +3601,17 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
 
   if (frame->hd.type == NGHTTP2_PUSH_PROMISE) {
-    subject_stream = nghttp2_session_get_stream(
-      session, frame->push_promise.promised_stream_id);
+    /* The associated stream might have been closed or be closing
+       while the header block is being received (e.g., RST_STREAM was
+       submitted by the application).  In that case, don't call the
+       callbacks with the frame on the closed stream, just as we don't
+       for HEADERS. */
+    if (!stream || stream->state == NGHTTP2_STREAM_CLOSING) {
+      subject_stream = NULL;
+    } else {
+      subject_stream = nghttp2_session_get_stream(
+        session, frame->push_promise.promised_stream_id);
+    }
   } else {
     subject_stream = stream;
     trailer = session_trailer_headers(session, stream, frame);
@@ -3835,23 +3844,42 @@ static int session_after_header_block_received(nghttp2_session *session) {
   nghttp2_frame *frame = &session->iframe.frame;
   nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_stream *stream;
+  nghttp2_stream *subject_stream = NULL;
 
   /* We don't call on_frame_recv_callback if stream has been closed
      already or being closed. */
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
   if (!stream || stream->state == NGHTTP2_STREAM_CLOSING) {
+    if (frame->hd.type == NGHTTP2_PUSH_PROMISE) {
+      /* The associated stream went away while the header block was
+         being received.  The application never sees this
+         PUSH_PROMISE, so cancel the promised stream like
+         nghttp2_session_on_push_promise_received does. */
+      rv = session_handle_invalid_stream2(
+        session, frame->push_promise.promised_stream_id, NULL,
+        NGHTTP2_ERR_PUSH_CANCEL);
+      if (rv != 0) {
+        return rv;
+      }
+    }
     return 0;
+  }
+
+  /* For PUSH_PROMISE, the header block belongs to the promised
+     stream, which may have been closed (e.g., by RST_STREAM submitted
+     from on_begin_headers_callback) while the header block was still
+     being received.  Apply the same rule to it. */
+  if (frame->hd.type == NGHTTP2_PUSH_PROMISE) {
+    subject_stream = nghttp2_session_get_stream(
+      session, frame->push_promise.promised_stream_id);
+    if (!subject_stream || subject_stream->state == NGHTTP2_STREAM_CLOSING) {
+      return 0;
+    }
   }
 
   if (session_enforce_http_messaging(session)) {
     if (frame->hd.type == NGHTTP2_PUSH_PROMISE) {
-      nghttp2_stream *subject_stream;
-
-      subject_stream = nghttp2_session_get_stream(
-        session, frame->push_promise.promised_stream_id);
-      if (subject_stream) {
-        rv = nghttp2_http_on_request_headers(subject_stream, frame);
-      }
+      rv = nghttp2_http_on_request_headers(subject_stream, frame);
     } else {
       assert(frame->hd.type == NGHTTP2_HEADERS);
       switch (frame->headers.cat) {
