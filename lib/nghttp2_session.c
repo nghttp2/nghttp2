@@ -4256,10 +4256,14 @@ int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
   }
 
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-  if (stream) {
-    /* We may use stream->shut_flags for strict error checking. */
-    nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+  if (!stream) {
+    /* We don't call on_frame_recv_callback if stream has been closed
+       already. */
+    return session_update_stream_reset_ratelim(session);
   }
+
+  /* We may use stream->shut_flags for strict error checking. */
+  nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
 
   rv = session_call_on_frame_received(session, frame);
   if (rv != 0) {
