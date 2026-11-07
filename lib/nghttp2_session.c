@@ -2552,9 +2552,14 @@ static int session_after_frame_sent1(nghttp2_session *session) {
 
         nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
 
-        rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
-        if (nghttp2_is_fatal(rv)) {
-          return rv;
+        /* If RST_STREAM has been queued while this frame was being
+           sent, let its transmission close the stream so that its
+           error code is reported to the application. */
+        if (stream->state != NGHTTP2_STREAM_CLOSING) {
+          rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+          if (nghttp2_is_fatal(rv)) {
+            return rv;
+          }
         }
         /* stream may be NULL if it was closed */
         if (stream_closed) {
@@ -2598,7 +2603,9 @@ static int session_after_frame_sent1(nghttp2_session *session) {
 
     switch (frame->headers.cat) {
     case NGHTTP2_HCAT_REQUEST: {
-      stream->state = NGHTTP2_STREAM_OPENING;
+      if (stream->state != NGHTTP2_STREAM_CLOSING) {
+        stream->state = NGHTTP2_STREAM_OPENING;
+      }
       if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
         nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
       }
@@ -2627,15 +2634,24 @@ static int session_after_frame_sent1(nghttp2_session *session) {
       ++session->num_outgoing_streams;
     /* Fall through */
     case NGHTTP2_HCAT_RESPONSE:
-      stream->state = NGHTTP2_STREAM_OPENED;
+      /* RST_STREAM may have been queued while this frame was being
+         sent; don't revive the stream in that case. */
+      if (stream->state != NGHTTP2_STREAM_CLOSING) {
+        stream->state = NGHTTP2_STREAM_OPENED;
+      }
     /* Fall through */
     case NGHTTP2_HCAT_HEADERS:
       if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
         nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
       }
-      rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
-      if (nghttp2_is_fatal(rv)) {
-        return rv;
+      /* If RST_STREAM has been queued while this frame was being
+         sent, let its transmission close the stream so that its error
+         code is reported to the application. */
+      if (stream->state != NGHTTP2_STREAM_CLOSING) {
+        rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+        if (nghttp2_is_fatal(rv)) {
+          return rv;
+        }
       }
       /* We assume aux_data is a pointer to nghttp2_headers_aux_data */
       aux_data = &item->aux_data.headers;
