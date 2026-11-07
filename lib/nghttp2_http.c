@@ -470,10 +470,13 @@ int nghttp2_http_on_request_headers(nghttp2_stream *stream,
          (NGHTTP2_HTTP_FLAG__AUTHORITY | NGHTTP2_HTTP_FLAG_HOST)) == 0) {
       return -1;
     }
-    if ((stream->http_flags & NGHTTP2_HTTP_FLAG__PROTOCOL) &&
-        ((stream->http_flags & NGHTTP2_HTTP_FLAG_METH_CONNECT) == 0 ||
-         (stream->http_flags & NGHTTP2_HTTP_FLAG__AUTHORITY) == 0)) {
-      return -1;
+    if (stream->http_flags & NGHTTP2_HTTP_FLAG__PROTOCOL) {
+      if ((stream->http_flags & NGHTTP2_HTTP_FLAG_METH_CONNECT) == 0 ||
+          (stream->http_flags & NGHTTP2_HTTP_FLAG__AUTHORITY) == 0) {
+        return -1;
+      }
+
+      stream->content_length = -1;
     }
     if (!check_path(stream)) {
       return -1;
