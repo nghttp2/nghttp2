@@ -169,6 +169,7 @@ static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_http_mandatory_headers),
   munit_void_test(test_nghttp2_http_content_length),
   munit_void_test(test_nghttp2_http_content_length_mismatch),
+  munit_void_test(test_nghttp2_http_content_length_mismatch_pending_end_stream),
   munit_void_test(test_nghttp2_http_non_final_response),
   munit_void_test(test_nghttp2_http_trailer_headers),
   munit_void_test(test_nghttp2_http_ignore_regular_header),
@@ -13188,6 +13189,137 @@ void test_nghttp2_http_content_length_mismatch(void) {
 
   nghttp2_hd_deflate_free(&deflater);
 
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_http_content_length_mismatch_pending_end_stream(void) {
+  nghttp2_session *session;
+  static const nghttp2_session_callbacks callbacks = {
+    .send_callback2 = block_count_send_callback,
+    .on_stream_close_callback = on_stream_close_callback,
+  };
+  static const nghttp2_data_provider2 data_prd = {
+    .read_callback = fixed_length_data_source_read_callback,
+  };
+  static const nghttp2_nv cl_reqnv[] = {
+    MAKE_NV(":path", "/"),
+    MAKE_NV(":method", "PUT"),
+    MAKE_NV(":authority", "localhost"),
+    MAKE_NV(":scheme", "https"),
+    MAKE_NV("content-length", "20"),
+  };
+  static const nghttp2_nv cl_resnv[] = {
+    MAKE_NV(":status", "200"),
+    MAKE_NV("content-length", "20"),
+  };
+  nghttp2_hd_deflater deflater;
+  nghttp2_mem *mem;
+  nghttp2_bufs bufs;
+  nghttp2_ssize rv;
+  nghttp2_stream *stream;
+  nghttp2_frame_hd hd;
+  my_user_data ud;
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
+
+  /* Check for client: DATA with END_STREAM is blocked in the middle
+     of transmission when the response is received. */
+  nghttp2_session_client_new(&session, &callbacks, &ud);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  ud.data_source_length = 10;
+  ud.stream_close_cb_called = 0;
+
+  assert_int32(1, ==,
+               nghttp2_submit_request2(session, NULL, reqnv, ARRLEN(reqnv),
+                                       &data_prd, NULL));
+
+  /* HEADERS is sent, but DATA with END_STREAM is blocked */
+  ud.block_count = 1;
+  assert_int(0, ==, nghttp2_session_send(session));
+  assert_uint8(NGHTTP2_DATA, ==, session->aob.item->frame.hd.type);
+
+  stream = nghttp2_session_get_stream(session, 1);
+
+  /* header says content-length: 20, but DATA has 0 byte */
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, cl_resnv,
+                    ARRLEN(cl_resnv), mem);
+  assert_ptrdiff(0, ==, rv);
+
+  nghttp2_frame_hd_init(&hd, 0, NGHTTP2_DATA, NGHTTP2_FLAG_END_STREAM, 1);
+  nghttp2_frame_pack_frame_hd(bufs.head->buf.last, &hd);
+  bufs.head->buf.last += NGHTTP2_FRAME_HDLEN;
+
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_buf_len(&bufs.head->buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
+  assert_enum(nghttp2_stream_state, NGHTTP2_STREAM_CLOSING, ==, stream->state);
+  assert_int(0, ==, ud.stream_close_cb_called);
+
+  /* Sending the blocked DATA must not close the stream with
+     NGHTTP2_NO_ERROR.  RST_STREAM closes it. */
+  ud.block_count = 100;
+  assert_int(0, ==, nghttp2_session_send(session));
+  assert_int(1, ==, ud.stream_close_cb_called);
+  assert_uint32(NGHTTP2_PROTOCOL_ERROR, ==, ud.stream_close_error_code);
+  assert_null(nghttp2_session_get_stream(session, 1));
+
+  nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  /* Check for server: response HEADERS with END_STREAM is blocked in
+     the middle of transmission when the request body is received. */
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  ud.stream_close_cb_called = 0;
+
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, cl_reqnv,
+                    ARRLEN(cl_reqnv), mem);
+  assert_ptrdiff(0, ==, rv);
+
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_buf_len(&bufs.head->buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
+
+  assert_int(0, ==,
+             nghttp2_submit_response2(session, 1, resnv, ARRLEN(resnv), NULL));
+
+  /* HEADERS with END_STREAM is blocked */
+  ud.block_count = 0;
+  assert_int(0, ==, nghttp2_session_send(session));
+  assert_uint8(NGHTTP2_HEADERS, ==, session->aob.item->frame.hd.type);
+
+  stream = nghttp2_session_get_stream(session, 1);
+
+  nghttp2_bufs_reset(&bufs);
+
+  /* header says content-length: 20, but DATA has 0 byte */
+  nghttp2_frame_hd_init(&hd, 0, NGHTTP2_DATA, NGHTTP2_FLAG_END_STREAM, 1);
+  nghttp2_frame_pack_frame_hd(bufs.head->buf.last, &hd);
+  bufs.head->buf.last += NGHTTP2_FRAME_HDLEN;
+
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_buf_len(&bufs.head->buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
+  assert_enum(nghttp2_stream_state, NGHTTP2_STREAM_CLOSING, ==, stream->state);
+  assert_int(0, ==, ud.stream_close_cb_called);
+
+  /* Sending the blocked HEADERS must not close the stream with
+     NGHTTP2_NO_ERROR.  RST_STREAM closes it. */
+  ud.block_count = 100;
+  assert_int(0, ==, nghttp2_session_send(session));
+  assert_int(1, ==, ud.stream_close_cb_called);
+  assert_uint32(NGHTTP2_PROTOCOL_ERROR, ==, ud.stream_close_error_code);
+  assert_null(nghttp2_session_get_stream(session, 1));
+
+  nghttp2_bufs_free(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);
 }
 
