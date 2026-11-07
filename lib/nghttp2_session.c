@@ -4940,6 +4940,24 @@ static int session_process_window_update_frame(nghttp2_session *session) {
   return nghttp2_session_on_window_update_received(session, frame);
 }
 
+static int session_handle_invalid_altsvc(nghttp2_session *session,
+                                         nghttp2_frame *frame) {
+  int rv;
+
+  /* Receiving too frequent invalid frames is suspicious. */
+  rv = session_update_glitch_ratelim(session);
+  if (rv != 0) {
+    return rv;
+  }
+
+  if (session->iframe.state == NGHTTP2_IB_IGN_ALL) {
+    return 0;
+  }
+
+  return session_call_on_invalid_frame_recv_callback(session, frame,
+                                                     NGHTTP2_ERR_PROTO);
+}
+
 int nghttp2_session_on_altsvc_received(nghttp2_session *session,
                                        nghttp2_frame *frame) {
   nghttp2_ext_altsvc *altsvc;
@@ -4951,13 +4969,17 @@ int nghttp2_session_on_altsvc_received(nghttp2_session *session,
 
   if (frame->hd.stream_id == 0) {
     if (altsvc->origin_len == 0) {
-      return session_call_on_invalid_frame_recv_callback(session, frame,
-                                                         NGHTTP2_ERR_PROTO);
+      return session_handle_invalid_altsvc(session, frame);
     }
   } else {
     if (altsvc->origin_len > 0) {
-      return session_call_on_invalid_frame_recv_callback(session, frame,
-                                                         NGHTTP2_ERR_PROTO);
+      return session_handle_invalid_altsvc(session, frame);
+    }
+
+    if (session_detect_idle_stream(session, frame->hd.stream_id)) {
+      /* Receiving too frequent ALTSVC to idle stream is
+         suspicious. */
+      return session_update_glitch_ratelim(session);
     }
 
     stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
@@ -4971,8 +4993,7 @@ int nghttp2_session_on_altsvc_received(nghttp2_session *session,
   }
 
   if (altsvc->field_value_len == 0) {
-    return session_call_on_invalid_frame_recv_callback(session, frame,
-                                                       NGHTTP2_ERR_PROTO);
+    return session_handle_invalid_altsvc(session, frame);
   }
 
   return session_call_on_frame_received(session, frame);
@@ -5088,8 +5109,9 @@ static int session_process_origin_frame(nghttp2_session *session) {
     if (nghttp2_is_fatal(rv)) {
       return rv;
     }
-    /* Ignore ORIGIN frame which cannot be parsed. */
-    return 0;
+    /* Ignore ORIGIN frame which cannot be parsed.  Receiving too
+       frequent invalid frames is suspicious. */
+    return session_update_glitch_ratelim(session);
   }
 
   return nghttp2_session_on_origin_received(session, frame);
