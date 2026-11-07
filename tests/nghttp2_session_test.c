@@ -13428,6 +13428,11 @@ void test_nghttp2_http_ignore_content_length(void) {
     MAKE_NV(":method", "CONNECT"),
     MAKE_NV("content-length", "999999"),
   };
+  static const nghttp2_nv connproto_reqnv[] = {
+    MAKE_NV(":scheme", "https"),   MAKE_NV(":authority", "localhost"),
+    MAKE_NV(":method", "CONNECT"), MAKE_NV(":protocol", "websocket"),
+    MAKE_NV(":path", "/"),         MAKE_NV("content-length", "999999"),
+  };
   static const nghttp2_nv conn_cl_resnv[] = {
     MAKE_NV(":status", "200"),
     MAKE_NV("content-length", "0"),
@@ -13522,6 +13527,35 @@ void test_nghttp2_http_ignore_content_length(void) {
 
   assert_int64(-1, ==, stream->content_length);
   assert_true(stream->http_flags & NGHTTP2_HTTP_FLAG_METH_CONNECT);
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  /* If request method is CONNECT with :protocol field, content-length
+     must be ignored */
+  nghttp2_bufs_reset(&bufs);
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+  session->pending_enable_connect_protocol = 1;
+
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS,
+                    connproto_reqnv, ARRLEN(connproto_reqnv), mem);
+
+  assert_ptrdiff(0, ==, rv);
+
+  rv = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                 nghttp2_buf_len(&bufs.head->buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&bufs.head->buf), ==, rv);
+
+  assert_null(nghttp2_session_get_next_ob_item(session));
+
+  stream = nghttp2_session_get_stream(session, 1);
+
+  assert_int64(-1, ==, stream->content_length);
+  assert_true(stream->http_flags & NGHTTP2_HTTP_FLAG_METH_CONNECT);
+  assert_true(stream->http_flags & NGHTTP2_HTTP_FLAG__PROTOCOL);
 
   nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);
