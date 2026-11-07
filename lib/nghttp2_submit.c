@@ -377,6 +377,14 @@ int nghttp2_session_set_local_window_size(nghttp2_session *session,
       return 0;
     }
 
+    /* stream->local_window_size could be negative if local endpoint
+       reduced SETTINGS_INITIAL_WINDOW_SIZE, and then the increment
+       might not fit in int32_t. */
+    if ((int64_t)window_size - (int64_t)stream->local_window_size >
+        NGHTTP2_MAX_WINDOW_SIZE) {
+      return NGHTTP2_ERR_FLOW_CONTROL;
+    }
+
     window_size_increment = window_size - stream->local_window_size;
 
     if (window_size_increment == 0) {

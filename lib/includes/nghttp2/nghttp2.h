@@ -5401,6 +5401,8 @@ NGHTTP2_EXTERN int nghttp2_submit_window_update(nghttp2_session *session,
  *
  * :enum:`nghttp2_error.NGHTTP2_ERR_INVALID_ARGUMENT`
  *     The |stream_id| is negative.
+ * :enum:`nghttp2_error.NGHTTP2_ERR_FLOW_CONTROL`
+ *     The local window size overflow or gets negative.
  * :enum:`nghttp2_error.NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */

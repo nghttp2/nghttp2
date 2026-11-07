@@ -10799,6 +10799,11 @@ void test_nghttp2_session_set_local_window_size(void) {
   };
   nghttp2_outbound_item *item;
   nghttp2_stream *stream;
+  nghttp2_settings_entry iv;
+  nghttp2_frame frame;
+  uint8_t data[NGHTTP2_MAX_PAYLOADLEN + NGHTTP2_FRAME_HDLEN] = {0};
+  nghttp2_frame_hd hd;
+  int rv;
 
   nghttp2_session_client_new(&session, &callbacks, NULL);
   stream = open_sent_stream(session, 1);
@@ -10979,6 +10984,97 @@ void test_nghttp2_session_set_local_window_size(void) {
   assert_int32(0, ==, item->frame.hd.stream_id);
   assert_int32(NGHTTP2_INITIAL_WINDOW_SIZE, ==,
                item->frame.window_update.window_size_increment);
+
+  nghttp2_session_del(session);
+
+  /* Stream-level local window size becomes very negative after
+     local endpoint reduced SETTINGS_INITIAL_WINDOW_SIZE. */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+  stream = open_sent_stream(session, 1);
+
+  iv = (nghttp2_settings_entry){
+    .settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE,
+    .value = INT32_MAX,
+  };
+  rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, &iv, 1);
+
+  assert_int(0, ==, rv);
+
+  rv = nghttp2_session_send(session);
+
+  assert_int(0, ==, rv);
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_ACK, NULL, 0);
+
+  rv = nghttp2_session_on_settings_received(session, &frame, 0);
+
+  assert_int(0, ==, rv);
+  assert_int32(INT32_MAX, ==, stream->local_window_size);
+  assert_int32(0, ==, stream->recv_window_size);
+
+  rv = nghttp2_session_set_local_window_size(session, NGHTTP2_FLAG_NONE, 1, 0);
+
+  assert_int(0, ==, rv);
+  assert_int32(0, ==, stream->local_window_size);
+  assert_int32(-INT32_MAX, ==, stream->recv_window_size);
+  assert_int32(INT32_MAX, ==, stream->recv_reduction);
+
+  iv = (nghttp2_settings_entry){
+    .settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE,
+    .value = 0,
+  };
+  rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, &iv, 1);
+
+  assert_int(0, ==, rv);
+
+  rv = nghttp2_session_send(session);
+
+  assert_int(0, ==, rv);
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_ACK, NULL, 0);
+
+  rv = nghttp2_session_on_settings_received(session, &frame, 0);
+
+  assert_int(0, ==, rv);
+  assert_int32(-INT32_MAX, ==, stream->local_window_size);
+  assert_int32(-INT32_MAX, ==, stream->recv_window_size);
+  assert_int32(0, ==, nghttp2_session_get_stream_local_window_size(session, 1));
+  assert_null(nghttp2_session_get_next_ob_item(session));
+
+  /* Increasing window size beyond the range of int32_t is
+     rejected. */
+  rv = nghttp2_session_set_local_window_size(session, NGHTTP2_FLAG_NONE, 1,
+                                             NGHTTP2_MAX_WINDOW_SIZE);
+
+  assert_int(NGHTTP2_ERR_FLOW_CONTROL, ==, rv);
+  assert_int32(-INT32_MAX, ==, stream->local_window_size);
+  assert_int32(-INT32_MAX, ==, stream->recv_window_size);
+  assert_int32(INT32_MAX, ==, stream->recv_reduction);
+
+  rv = nghttp2_submit_window_update(session, NGHTTP2_FLAG_NONE, 1, -2);
+
+  assert_int(NGHTTP2_ERR_FLOW_CONTROL, ==, rv);
+  assert_int32(-INT32_MAX, ==, stream->local_window_size);
+  assert_int32(-INT32_MAX, ==, stream->recv_window_size);
+  assert_int32(INT32_MAX, ==, stream->recv_reduction);
+
+  /* Receiving DATA on the stream which has no window left is subject
+     to FLOW_CONTROL_ERROR regardless of the size of the chunk. */
+  nghttp2_frame_hd_init(&hd, NGHTTP2_MAX_PAYLOADLEN, NGHTTP2_DATA,
+                        NGHTTP2_FLAG_NONE, 1);
+  nghttp2_frame_pack_frame_hd(data, &hd);
+
+  assert_ptrdiff(
+    NGHTTP2_MAX_PAYLOADLEN + NGHTTP2_FRAME_HDLEN, ==,
+    nghttp2_session_mem_recv2(session, data,
+                              NGHTTP2_MAX_PAYLOADLEN + NGHTTP2_FRAME_HDLEN));
+
+  item = nghttp2_outbound_queue_top(&session->ob_reg);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_FLOW_CONTROL_ERROR, ==, item->frame.goaway.error_code);
+  assert_int32(-INT32_MAX, ==, stream->recv_window_size);
 
   nghttp2_session_del(session);
 }

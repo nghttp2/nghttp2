@@ -196,7 +196,10 @@ int nghttp2_adjust_local_window_size(int32_t *local_window_size_ptr,
     return 0;
   }
 
-  if (*local_window_size_ptr + *delta_ptr < 0 ||
+  /* *local_window_size_ptr could be negative if local endpoint
+     reduced SETTINGS_INITIAL_WINDOW_SIZE, so do the addition in 64
+     bits to avoid signed integer overflow. */
+  if ((int64_t)*local_window_size_ptr + (int64_t)*delta_ptr < 0 ||
       *recv_window_size_ptr < INT32_MIN - *delta_ptr ||
       *recv_reduction_ptr > INT32_MAX + *delta_ptr) {
     return NGHTTP2_ERR_FLOW_CONTROL;

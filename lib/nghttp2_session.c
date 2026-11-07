@@ -5254,7 +5254,10 @@ static int session_process_data_frame(nghttp2_session *session) {
  */
 static int adjust_recv_window_size(int32_t *recv_window_size_ptr, size_t delta,
                                    int32_t local_window_size) {
-  if (*recv_window_size_ptr > local_window_size - (int32_t)delta ||
+  /* local_window_size could be negative if local endpoint reduced
+     SETTINGS_INITIAL_WINDOW_SIZE, so do the arithmetic in 64 bits to
+     avoid signed integer overflow. */
+  if ((int64_t)*recv_window_size_ptr + (int64_t)delta > local_window_size ||
       *recv_window_size_ptr > NGHTTP2_MAX_WINDOW_SIZE - (int32_t)delta) {
     return -1;
   }
