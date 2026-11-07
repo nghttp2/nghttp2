@@ -1579,6 +1579,7 @@ void test_nghttp2_session_consume_stream(void) {
   nghttp2_ssize nwrite;
   const uint8_t *data;
   const nghttp2_outbound_item *item;
+  nghttp2_stream *stream;
   int rv;
 
   nghttp2_session_callbacks_new(&callbacks);
@@ -1641,6 +1642,58 @@ void test_nghttp2_session_consume_stream(void) {
 
   nghttp2_session_del(session);
 
+  /* Consumed bytes which pay for the local window reduction must not
+     be returned to the remote peer. */
+  nghttp2_session_client_new2(&session, callbacks, NULL, option);
+
+  stream = open_sent_stream(session, 1);
+
+  rv =
+    nghttp2_session_set_local_window_size(session, NGHTTP2_FLAG_NONE, 1, 16384);
+
+  assert_int(0, ==, rv);
+  assert_int32(-49151, ==, stream->recv_window_size);
+  assert_int32(49151, ==, stream->recv_reduction);
+
+  assert_int(0, ==,
+             nghttp2_session_update_recv_stream_window_size(
+               session, stream, NGHTTP2_INITIAL_WINDOW_SIZE, 1));
+
+  rv = nghttp2_session_consume_stream(session, 1, NGHTTP2_INITIAL_WINDOW_SIZE);
+
+  assert_int(0, ==, rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_WINDOW_UPDATE, ==, item->frame.hd.type);
+  assert_int32(16384, ==, item->frame.window_update.window_size_increment);
+
+  nwrite = nghttp2_session_mem_send2(session, &data);
+
+  assert_ptrdiff(0, <, nwrite);
+
+  assert_int(
+    0, ==,
+    nghttp2_session_update_recv_stream_window_size(session, stream, 16383, 1));
+
+  rv = nghttp2_session_consume_stream(session, 1, 1);
+
+  assert_int(0, ==, rv);
+  assert_null(nghttp2_session_get_next_ob_item(session));
+
+  rv = nghttp2_session_consume_stream(session, 1, 16382);
+
+  assert_int(0, ==, rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_WINDOW_UPDATE, ==, item->frame.hd.type);
+  assert_int32(16383, ==, item->frame.window_update.window_size_increment);
+
+  nghttp2_session_del(session);
+
   nghttp2_option_del(option);
   nghttp2_session_callbacks_del(callbacks);
 }
@@ -1649,6 +1702,8 @@ void test_nghttp2_session_consume_connection(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks *callbacks;
   nghttp2_option *option;
+  nghttp2_ssize nwrite;
+  const uint8_t *data;
   const nghttp2_outbound_item *item;
   int rv;
 
@@ -1690,6 +1745,56 @@ void test_nghttp2_session_consume_connection(void) {
   assert_not_null(item);
   assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
   assert_uint32(NGHTTP2_FLOW_CONTROL_ERROR, ==, item->frame.goaway.error_code);
+
+  nghttp2_session_del(session);
+
+  /* Consumed bytes which pay for the local window reduction must not
+     be returned to the remote peer. */
+  nghttp2_session_client_new2(&session, callbacks, NULL, option);
+
+  rv =
+    nghttp2_session_set_local_window_size(session, NGHTTP2_FLAG_NONE, 0, 16384);
+
+  assert_int(0, ==, rv);
+  assert_int32(-49151, ==, session->recv_window_size);
+  assert_int32(49151, ==, session->recv_reduction);
+
+  assert_int(0, ==,
+             nghttp2_session_update_recv_connection_window_size(
+               session, NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE));
+
+  rv = nghttp2_session_consume_connection(
+    session, NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE);
+
+  assert_int(0, ==, rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_WINDOW_UPDATE, ==, item->frame.hd.type);
+  assert_int32(16384, ==, item->frame.window_update.window_size_increment);
+
+  nwrite = nghttp2_session_mem_send2(session, &data);
+
+  assert_ptrdiff(0, <, nwrite);
+
+  assert_int(
+    0, ==, nghttp2_session_update_recv_connection_window_size(session, 16383));
+
+  rv = nghttp2_session_consume_connection(session, 1);
+
+  assert_int(0, ==, rv);
+  assert_null(nghttp2_session_get_next_ob_item(session));
+
+  rv = nghttp2_session_consume_connection(session, 16382);
+
+  assert_int(0, ==, rv);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_WINDOW_UPDATE, ==, item->frame.hd.type);
+  assert_int32(16383, ==, item->frame.window_update.window_size_increment);
 
   nghttp2_session_del(session);
 

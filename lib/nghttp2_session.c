@@ -5294,6 +5294,7 @@ int nghttp2_session_update_recv_connection_window_size(nghttp2_session *session,
 static int session_update_consumed_size(nghttp2_session *session,
                                         int32_t *consumed_size_ptr,
                                         int32_t *recv_window_size_ptr,
+                                        int32_t recv_reduction,
                                         uint8_t window_update_queued,
                                         int32_t stream_id, size_t delta_size,
                                         int32_t local_window_size) {
@@ -5311,8 +5312,13 @@ static int session_update_consumed_size(nghttp2_session *session,
   if (window_update_queued == 0) {
     /* recv_window_size may be smaller than consumed_size, because it
        may be decreased by negative value with
-       nghttp2_submit_window_update(). */
-    recv_size = nghttp2_min_int32(*consumed_size_ptr, *recv_window_size_ptr);
+       nghttp2_submit_window_update() or
+       nghttp2_session_set_local_window_size().  That decrease is
+       recorded in recv_reduction, and the first recv_reduction bytes
+       consumed by the application pay for it; they must not be
+       returned to the remote peer with WINDOW_UPDATE. */
+    recv_size = nghttp2_min_int32(*consumed_size_ptr - recv_reduction,
+                                  *recv_window_size_ptr);
 
     if (nghttp2_should_send_window_update(local_window_size, recv_size)) {
       rv = nghttp2_session_add_window_update(session, NGHTTP2_FLAG_NONE,
@@ -5335,15 +5341,16 @@ static int session_update_stream_consumed_size(nghttp2_session *session,
                                                size_t delta_size) {
   return session_update_consumed_size(
     session, &stream->consumed_size, &stream->recv_window_size,
-    stream->window_update_queued, stream->stream_id, delta_size,
-    stream->local_window_size);
+    stream->recv_reduction, stream->window_update_queued, stream->stream_id,
+    delta_size, stream->local_window_size);
 }
 
 static int session_update_connection_consumed_size(nghttp2_session *session,
                                                    size_t delta_size) {
   return session_update_consumed_size(
     session, &session->consumed_size, &session->recv_window_size,
-    session->window_update_queued, 0, delta_size, session->local_window_size);
+    session->recv_reduction, session->window_update_queued, 0, delta_size,
+    session->local_window_size);
 }
 
 /*
