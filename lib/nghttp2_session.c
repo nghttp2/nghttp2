@@ -3785,6 +3785,13 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
           }
         }
       }
+
+      /* The application may have called
+         nghttp2_session_terminate_session() from the callbacks above.
+         Do not process the rest of the header block. */
+      if (iframe->state == NGHTTP2_IB_IGN_ALL) {
+        return 0;
+      }
     }
     if (inflate_flags & NGHTTP2_HD_INFLATE_FINAL) {
       nghttp2_hd_inflate_end_headers(&session->hd_inflater);

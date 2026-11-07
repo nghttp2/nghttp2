@@ -11867,6 +11867,40 @@ static int term_session_on_frame_recv_callback(nghttp2_session *session,
   return 0;
 }
 
+static int term_session_on_header_callback(nghttp2_session *session,
+                                           const nghttp2_frame *frame,
+                                           const uint8_t *name, size_t namelen,
+                                           const uint8_t *value,
+                                           size_t valuelen, uint8_t flags,
+                                           void *user_data) {
+  int rv;
+
+  on_header_callback(session, frame, name, namelen, value, valuelen, flags,
+                     user_data);
+
+  rv = nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR);
+
+  assert_int(0, ==, rv);
+
+  return 0;
+}
+
+static int term_session_on_invalid_header_callback(
+  nghttp2_session *session, const nghttp2_frame *frame, const uint8_t *name,
+  size_t namelen, const uint8_t *value, size_t valuelen, uint8_t flags,
+  void *user_data) {
+  int rv;
+
+  on_invalid_header_callback(session, frame, name, namelen, value, valuelen,
+                             flags, user_data);
+
+  rv = nghttp2_session_terminate_session(session, NGHTTP2_NO_ERROR);
+
+  assert_int(0, ==, rv);
+
+  return 0;
+}
+
 static int term_session_on_data_chunk_recv_callback(
   nghttp2_session *session, uint8_t flags, int32_t stream_id,
   const uint8_t *data, size_t len, void *user_data) {
@@ -11937,6 +11971,11 @@ void test_nghttp2_session_verify_iframe_state(void) {
   my_user_data ud;
   nghttp2_buf udbuf;
   static const char uddata[] = "hello world";
+  static const nghttp2_nv bad_reqnv[] = {
+    MAKE_NV(":method", "GET"),   MAKE_NV(":path", "/"),
+    MAKE_NV(":scheme", "https"), MAKE_NV(":authority", "localhost"),
+    MAKE_NV("foo", "\x0zzz"),    MAKE_NV("bar", "\x0zzz"),
+  };
 
   nghttp2_frame_hd_init(&hd, 0, NGHTTP2_RST_STREAM, NGHTTP2_FLAG_NONE, 1);
   nghttp2_frame_pack_frame_hd(size_err_hd, &hd);
@@ -12012,6 +12051,89 @@ void test_nghttp2_session_verify_iframe_state(void) {
   assert_ptrdiff((nghttp2_ssize)nghttp2_bufs_len(&bufs), ==, rv);
   assert_enum(nghttp2_inbound_state, NGHTTP2_IB_IGN_ALL, ==,
               session->iframe.state);
+
+  rv = nghttp2_session_mem_recv2(session, size_err_hd, sizeof(size_err_hd));
+
+  assert_ptrdiff((nghttp2_ssize)sizeof(size_err_hd), ==, rv);
+  assert_enum(nghttp2_inbound_state, NGHTTP2_IB_IGN_ALL, ==,
+              session->iframe.state);
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  /* HEADERS + on_header_callback + FRAME_SIZE_ERROR */
+  callbacks = (nghttp2_session_callbacks){
+    .on_header_callback = term_session_on_header_callback,
+  };
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  nvlen = ARRLEN(reqnv);
+  nghttp2_nv_array_copy(&nva, reqnv, nvlen, mem);
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 1,
+                             NGHTTP2_HCAT_HEADERS, NULL, nva, nvlen);
+  nghttp2_hd_deflate_init(&deflater, mem);
+  nghttp2_bufs_reset(&bufs);
+  rv = nghttp2_frame_pack_headers(&bufs, &frame.headers, &deflater);
+
+  assert_ptrdiff(0, ==, rv);
+
+  nghttp2_frame_headers_free(&frame.headers, mem);
+
+  buf = &bufs.head->buf;
+
+  ud.header_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv2(session, buf->pos, nghttp2_bufs_len(&bufs));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_bufs_len(&bufs), ==, rv);
+  assert_enum(nghttp2_inbound_state, NGHTTP2_IB_IGN_ALL, ==,
+              session->iframe.state);
+  /* The rest of the header block must not be delivered. */
+  assert_int(1, ==, ud.header_cb_called);
+
+  rv = nghttp2_session_mem_recv2(session, size_err_hd, sizeof(size_err_hd));
+
+  assert_ptrdiff((nghttp2_ssize)sizeof(size_err_hd), ==, rv);
+  assert_enum(nghttp2_inbound_state, NGHTTP2_IB_IGN_ALL, ==,
+              session->iframe.state);
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  /* HEADERS + on_invalid_header_callback + FRAME_SIZE_ERROR */
+  callbacks = (nghttp2_session_callbacks){
+    .on_header_callback = on_header_callback,
+    .on_invalid_header_callback = term_session_on_invalid_header_callback,
+  };
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  nvlen = ARRLEN(bad_reqnv);
+  nghttp2_nv_array_copy(&nva, bad_reqnv, nvlen, mem);
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 1,
+                             NGHTTP2_HCAT_HEADERS, NULL, nva, nvlen);
+  nghttp2_hd_deflate_init(&deflater, mem);
+  nghttp2_bufs_reset(&bufs);
+  rv = nghttp2_frame_pack_headers(&bufs, &frame.headers, &deflater);
+
+  assert_ptrdiff(0, ==, rv);
+
+  nghttp2_frame_headers_free(&frame.headers, mem);
+
+  buf = &bufs.head->buf;
+
+  ud.header_cb_called = 0;
+  ud.invalid_header_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv2(session, buf->pos, nghttp2_bufs_len(&bufs));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_bufs_len(&bufs), ==, rv);
+  assert_enum(nghttp2_inbound_state, NGHTTP2_IB_IGN_ALL, ==,
+              session->iframe.state);
+  /* The rest of the header block must not be delivered. */
+  assert_int(ARRLEN(reqnv), ==, ud.header_cb_called);
+  assert_int(1, ==, ud.invalid_header_cb_called);
 
   rv = nghttp2_session_mem_recv2(session, size_err_hd, sizeof(size_err_hd));
 
