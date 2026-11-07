@@ -4862,7 +4862,9 @@ void test_nghttp2_session_on_push_response_headers_received(void) {
 
 void test_nghttp2_session_on_rst_stream_received(void) {
   nghttp2_session *session;
-  static const nghttp2_session_callbacks callbacks = {0};
+  static const nghttp2_session_callbacks callbacks = {
+    .on_frame_recv_callback = on_frame_recv_callback,
+  };
   my_user_data user_data;
   nghttp2_frame frame;
 
@@ -4871,8 +4873,18 @@ void test_nghttp2_session_on_rst_stream_received(void) {
 
   nghttp2_frame_rst_stream_init(&frame.rst_stream, 1, NGHTTP2_PROTOCOL_ERROR);
 
+  user_data.frame_recv_cb_called = 0;
+
   assert_int(0, ==, nghttp2_session_on_rst_stream_received(session, &frame));
   assert_null(nghttp2_session_get_stream(session, 1));
+  assert_int(1, ==, user_data.frame_recv_cb_called);
+
+  /* RST_STREAM to the closed stream does not invoke
+     on_frame_recv_callback. */
+  user_data.frame_recv_cb_called = 0;
+
+  assert_int(0, ==, nghttp2_session_on_rst_stream_received(session, &frame));
+  assert_int(0, ==, user_data.frame_recv_cb_called);
 
   nghttp2_frame_rst_stream_free(&frame.rst_stream);
   nghttp2_session_del(session);
