@@ -116,7 +116,7 @@ void MRubyContext::delete_downstream(Downstream *downstream) {
   if (!mrb_) {
     return;
   }
-  delete_downstream_from_module(mrb_, downstream);
+  delete_downstream_from_module(mrb_, env_, downstream);
 }
 
 namespace {

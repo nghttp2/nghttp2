@@ -59,14 +59,8 @@ mrb_value create_env(mrb_state *mrb) {
 }
 } // namespace
 
-void delete_downstream_from_module(mrb_state *mrb, Downstream *downstream) {
-  auto module = mrb_module_get(mrb, "Nghttpx");
-  auto env = mrb_obj_iv_get(mrb, reinterpret_cast<RObject *>(module),
-                            mrb_intern_lit(mrb, "env"));
-  if (mrb_nil_p(env)) {
-    return;
-  }
-
+void delete_downstream_from_module(mrb_state *mrb, mrb_value env,
+                                   Downstream *downstream) {
   mrb_iv_remove(mrb, env, intern_ptr(mrb, downstream));
 }
 
