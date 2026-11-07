@@ -443,6 +443,23 @@ static int pause_on_data_chunk_recv_callback(nghttp2_session *session,
   return NGHTTP2_ERR_PAUSE;
 }
 
+static int fail_on_data_chunk_recv_callback(nghttp2_session *session,
+                                            uint8_t flags, int32_t stream_id,
+                                            const uint8_t *data, size_t len,
+                                            void *user_data) {
+  my_user_data *ud = (my_user_data *)user_data;
+  (void)session;
+  (void)flags;
+  (void)stream_id;
+  (void)data;
+  (void)len;
+
+  ++ud->data_chunk_recv_cb_called;
+  /* Any nonzero value which is not a library error code must be
+     treated as fatal error. */
+  return -1;
+}
+
 static nghttp2_ssize select_padding_callback(nghttp2_session *session,
                                              const nghttp2_frame *frame,
                                              size_t max_payloadlen,
@@ -1100,6 +1117,11 @@ void test_nghttp2_session_recv_data(void) {
     .on_frame_recv_callback = on_frame_recv_callback,
     .on_frame_send_callback = on_frame_send_callback,
   };
+  static const nghttp2_session_callbacks fail_callbacks = {
+    .send_callback2 = null_send_callback,
+    .on_data_chunk_recv_callback = fail_on_data_chunk_recv_callback,
+    .on_frame_recv_callback = on_frame_recv_callback,
+  };
   my_user_data ud;
   uint8_t data[8092] = {0};
   nghttp2_ssize rv;
@@ -1416,6 +1438,22 @@ void test_nghttp2_session_recv_data(void) {
   assert_int(0, ==, ud.data_chunk_recv_cb_called);
   assert_int(0, ==, ud.frame_recv_cb_called);
   assert_int32(4096, ==, session->recv_window_size);
+
+  nghttp2_session_del(session);
+
+  /* Nonzero return value from on_data_chunk_recv_callback is fatal
+     error even if it is not nghttp2 library error code. */
+  nghttp2_session_server_new(&session, &fail_callbacks, &ud);
+
+  open_recv_stream(session, 1);
+
+  ud.data_chunk_recv_cb_called = 0;
+  ud.frame_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN + 4096);
+  assert_ptrdiff(NGHTTP2_ERR_CALLBACK_FAILURE, ==, rv);
+
+  assert_int(1, ==, ud.data_chunk_recv_cb_called);
+  assert_int(0, ==, ud.frame_recv_cb_called);
 
   nghttp2_session_del(session);
 }
