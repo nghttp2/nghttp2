@@ -2254,7 +2254,6 @@ static int session_prep_frame(nghttp2_session *session,
     if (rv != 0) {
       return rv;
     }
-    session->local_last_stream_id = frame->goaway.last_stream_id;
 
     return 0;
   case NGHTTP2_WINDOW_UPDATE:
@@ -7435,7 +7434,7 @@ int nghttp2_session_add_goaway(nghttp2_session *session, int32_t last_stream_id,
   frame = &item->frame;
 
   /* last_stream_id must not be increased from the value previously
-     sent */
+     submitted */
   last_stream_id =
     nghttp2_min_int32(last_stream_id, session->local_last_stream_id);
 
@@ -7453,6 +7452,9 @@ int nghttp2_session_add_goaway(nghttp2_session *session, int32_t last_stream_id,
   }
 
   session->goaway_flags |= NGHTTP2_GOAWAY_SUBMITTED;
+  /* Record last_stream_id now rather than when the frame is sent so
+     that GOAWAY still waiting in the queue is taken into account. */
+  session->local_last_stream_id = last_stream_id;
 
   return 0;
 }

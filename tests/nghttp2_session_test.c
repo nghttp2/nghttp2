@@ -9595,6 +9595,35 @@ void test_nghttp2_session_graceful_shutdown(void) {
   assert_null(nghttp2_session_get_stream(session, 319));
 
   nghttp2_session_del(session);
+
+  /* GOAWAY queued while another GOAWAY is still pending must not
+     carry larger last_stream_id than the one sent before it. */
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  open_recv_stream(session, 1);
+
+  assert_int(0, ==,
+             nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, 1,
+                                   NGHTTP2_NO_ERROR, NULL, 0));
+
+  open_recv_stream(session, 3);
+
+  assert_int(0, ==,
+             nghttp2_session_terminate_session2(session, 3, NGHTTP2_NO_ERROR));
+
+  ud.frame_send_cb_called = 0;
+  ud.stream_close_cb_called = 0;
+
+  assert_int(0, ==, nghttp2_session_send(session));
+
+  assert_int(2, ==, ud.frame_send_cb_called);
+  assert_int32(1, ==, session->local_last_stream_id);
+  assert_int(1, ==, ud.stream_close_cb_called);
+
+  assert_not_null(nghttp2_session_get_stream(session, 1));
+  assert_null(nghttp2_session_get_stream(session, 3));
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_on_header_temporal_failure(void) {
