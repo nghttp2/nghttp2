@@ -5254,6 +5254,14 @@ static int session_process_data_frame(nghttp2_session *session) {
  */
 static int adjust_recv_window_size(int32_t *recv_window_size_ptr, size_t delta,
                                    int32_t local_window_size) {
+  if (delta == 0) {
+    /* No DATA received; caller just wants to re-evaluate whether
+       WINDOW_UPDATE should be sent.  recv_window_size may
+       legitimately exceed local_window_size here if local endpoint
+       reduced SETTINGS_INITIAL_WINDOW_SIZE while WINDOW_UPDATE was
+       queued. */
+    return 0;
+  }
   /* local_window_size could be negative if local endpoint reduced
      SETTINGS_INITIAL_WINDOW_SIZE, so do the arithmetic in 64 bits to
      avoid signed integer overflow. */

@@ -126,6 +126,8 @@ static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_session_flow_control),
   munit_void_test(test_nghttp2_session_flow_control_data_recv),
   munit_void_test(test_nghttp2_session_flow_control_data_with_padding_recv),
+  munit_void_test(
+    test_nghttp2_session_flow_control_reduce_local_initial_window_size),
   munit_void_test(test_nghttp2_session_data_read_temporal_failure),
   munit_void_test(test_nghttp2_session_client_data_share_window),
   munit_void_test(test_nghttp2_session_on_stream_close),
@@ -9074,6 +9076,106 @@ void test_nghttp2_session_flow_control_data_with_padding_recv(void) {
   assert_int32(1024, ==, stream->consumed_size);
   assert_int32(1428, ==, session->recv_window_size);
   assert_int32(1428, ==, stream->recv_window_size);
+
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_flow_control_reduce_local_initial_window_size(void) {
+  nghttp2_session *session;
+  static const nghttp2_session_callbacks callbacks = {
+    .send_callback2 = null_send_callback,
+    .on_frame_send_callback = on_frame_send_callback,
+  };
+  my_user_data ud;
+  uint8_t data[8192] = {0};
+  nghttp2_frame_hd hd;
+  nghttp2_stream *stream;
+  nghttp2_frame ack_frame;
+  nghttp2_ssize rv;
+  nghttp2_mem *mem;
+  size_t i;
+  static const nghttp2_settings_entry iv[] = {
+    {
+      .settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE,
+      .value = 16384,
+    },
+  };
+
+  mem = nghttp2_mem_default();
+
+  /* Reduce local initial window size below the default.  Stream is
+     opened before SETTINGS ACK is received, so it has the default
+     window size. */
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  assert_int(0, ==, nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 1));
+  assert_int(0, ==, nghttp2_session_send(session));
+
+  stream = open_recv_stream(session, 1);
+
+  hd = (nghttp2_frame_hd){
+    .length = 4096,
+    .stream_id = 1,
+    .type = NGHTTP2_DATA,
+    .flags = NGHTTP2_FLAG_NONE,
+  };
+  nghttp2_frame_pack_frame_hd(data, &hd);
+
+  /* Send 32767 bytes of DATA which queues WINDOW_UPDATE for stream. */
+  for (i = 0; i < 7; ++i) {
+    rv = nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN + 4096);
+    assert_ptrdiff(NGHTTP2_FRAME_HDLEN + 4096, ==, rv);
+  }
+
+  hd.length = 4095;
+  nghttp2_frame_pack_frame_hd(data, &hd);
+  rv = nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN + 4095);
+  assert_ptrdiff(NGHTTP2_FRAME_HDLEN + 4095, ==, rv);
+
+  assert_int32(0, ==, stream->recv_window_size);
+  assert_true(stream->window_update_queued);
+
+  /* Then send 16385 bytes of DATA, which is 1 byte more than the new
+     window size, but still within the current window. */
+  hd.length = 4096;
+  nghttp2_frame_pack_frame_hd(data, &hd);
+
+  for (i = 0; i < 4; ++i) {
+    rv = nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN + 4096);
+    assert_ptrdiff(NGHTTP2_FRAME_HDLEN + 4096, ==, rv);
+  }
+
+  hd.length = 1;
+  nghttp2_frame_pack_frame_hd(data, &hd);
+  rv = nghttp2_session_mem_recv2(session, data, NGHTTP2_FRAME_HDLEN + 1);
+  assert_ptrdiff(NGHTTP2_FRAME_HDLEN + 1, ==, rv);
+
+  assert_int32(16385, ==, stream->recv_window_size);
+  assert_true(stream->window_update_queued);
+
+  /* SETTINGS ACK shrinks the window while WINDOW_UPDATE is still
+     queued.  recv_window_size now exceeds local_window_size, which is
+     allowed. */
+  nghttp2_frame_settings_init(&ack_frame.settings, NGHTTP2_FLAG_ACK, NULL, 0);
+  assert_int(0, ==,
+             nghttp2_session_on_settings_received(session, &ack_frame, 0));
+  nghttp2_frame_settings_free(&ack_frame.settings, mem);
+
+  assert_int32(16384, ==, stream->local_window_size);
+  assert_int32(16385, ==, stream->recv_window_size);
+
+  ud.frame_send_cb_called = 0;
+
+  /* Sending queued WINDOW_UPDATEs must not trigger FLOW_CONTROL_ERROR.
+     Instead, another WINDOW_UPDATE for stream is queued and sent. */
+  assert_int(0, ==, nghttp2_session_send(session));
+
+  assert_int(3, ==, ud.frame_send_cb_called);
+  assert_uint8(NGHTTP2_WINDOW_UPDATE, ==, ud.sent_frame_type);
+  assert_int32(0, ==, stream->recv_window_size);
+  assert_false(stream->window_update_queued);
+  assert_null(nghttp2_session_get_next_ob_item(session));
+  assert_true(nghttp2_session_want_read(session));
 
   nghttp2_session_del(session);
 }
