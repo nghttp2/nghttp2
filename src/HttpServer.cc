@@ -1419,11 +1419,13 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
     nghttp2_rcbuf_incref(value);
     break;
   case http2::HD_IF_MODIFIED_SINCE:
+    nghttp2_rcbuf_decref(header.rcbuf.ims);
     header.ims = as_string_view(valuebuf.base, valuebuf.len);
     header.rcbuf.ims = value;
     nghttp2_rcbuf_incref(value);
     break;
   case http2::HD_EXPECT:
+    nghttp2_rcbuf_decref(header.rcbuf.expect);
     header.expect = as_string_view(valuebuf.base, valuebuf.len);
     header.rcbuf.expect = value;
     nghttp2_rcbuf_incref(value);
