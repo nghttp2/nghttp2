@@ -134,10 +134,11 @@ int htp_uricb(llhttp_t *htp, const char *data, size_t len) {
   req.fs.add_extra_buffer_size(len);
 
   if (req.method == HTTP_CONNECT) {
-    req.authority =
-      concat_string_ref(balloc, req.authority, std::string_view{data, len});
+    req.authority = realloc_concat_string_ref(balloc, req.authority,
+                                              std::string_view{data, len});
   } else {
-    req.path = concat_string_ref(balloc, req.path, std::string_view{data, len});
+    req.path =
+      realloc_concat_string_ref(balloc, req.path, std::string_view{data, len});
   }
 
   return 0;
