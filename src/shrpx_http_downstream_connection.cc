@@ -114,12 +114,25 @@ void retry_downstream_connection(Downstream *downstream,
 
       return;
     }
-    if (!downstream->attach_downstream_connection(std::move(*maybe_dconn))) {
-      continue;
+
+    if (downstream->attach_downstream_connection(std::move(*maybe_dconn))) {
+      break;
     }
-    if (downstream->push_request_headers()) {
-      return;
-    }
+  }
+
+  if (downstream->push_request_headers()) {
+    return;
+  }
+
+  // push_request_headers() fails because of the request itself (e.g.,
+  // WebSocket request to the HTTP/2 backend which does not support
+  // extended CONNECT), not because of the backend connection, so do
+  // not retry with another backend.
+  downstream->pop_downstream_connection();
+  downstream->set_request_state(DownstreamState::CONNECT_FAIL);
+
+  if (!upstream->on_downstream_abort_request(downstream, status_code)) {
+    delete handler;
   }
 }
 } // namespace
