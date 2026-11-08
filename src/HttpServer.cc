@@ -1631,7 +1631,7 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
            errno == EINTR)
       ;
 
-    if (nread == -1) {
+    if (nread <= 0) {
       remove_stream_read_timeout(stream);
       remove_stream_write_timeout(stream);
 
