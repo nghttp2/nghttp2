@@ -579,9 +579,7 @@ std::expected<void, Error> Http2Session::initiate_connection() {
       on_read_ = &Http2Session::read_noop;
       on_write_ = &Http2Session::write_noop;
 
-      if (auto rv = connected(); !rv) {
-        return rv;
-      }
+      return connected();
     }
 
     write_ = &Http2Session::connected;
