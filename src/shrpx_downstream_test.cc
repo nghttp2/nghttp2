@@ -203,10 +203,14 @@ void test_downstream_find_affinity_cookie(void) {
                           http2::HD_COOKIE);
   req.fs.add_header_token("cookie"sv, "short=e1e2e3e"sv, false,
                           http2::HD_COOKIE);
+  req.fs.add_header_token("cookie"sv, "x;y;noeq=01020304"sv, false,
+                          http2::HD_COOKIE);
 
   assert_eq(0xDEADBEEF, d.find_affinity_cookie("lb"sv));
   assert_eq(0xF1F2F3F4, d.find_affinity_cookie("LB"sv));
   assert_eq(0, d.find_affinity_cookie("short"sv));
+  assert_eq(0x01020304, d.find_affinity_cookie("noeq"sv));
+  assert_eq(0, d.find_affinity_cookie("x"sv));
 }
 
 } // namespace shrpx

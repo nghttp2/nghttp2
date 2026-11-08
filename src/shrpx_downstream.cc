@@ -383,13 +383,20 @@ uint32_t Downstream::find_affinity_cookie(std::string_view name) {
         continue;
       }
 
-      auto end = std::ranges::find(it, std::ranges::end(kv.value), '=');
+      auto end =
+        std::ranges::find_if(it, std::ranges::end(kv.value),
+                             [](auto c) { return c == '=' || c == ';'; });
       if (end == std::ranges::end(kv.value)) {
         return 0;
       }
 
+      if (*it == ';') {
+        ++it;
+        continue;
+      }
+
       if (name != std::string_view{it, end}) {
-        it = std::ranges::find(it, std::ranges::end(kv.value), ';');
+        it = std::ranges::find(end, std::ranges::end(kv.value), ';');
         continue;
       }
 
@@ -683,6 +690,16 @@ Downstream::push_upload_data_chunk(std::span<const uint8_t> data) {
   req_.recv_body_length += data.size();
 
   if (!dconn_ && !request_header_sent_) {
+    auto faddr = upstream_->get_client_handler()->get_upstream_addr();
+
+    // API and health monitor endpoints do not apply flow control to
+    // the request body.  Their requests are never blocked; if there
+    // is no DownstreamConnection, the request has already been
+    // answered.  Discard the body instead of buffering it.
+    if (faddr->alt_mode != UpstreamAltMode::NONE) {
+      return {};
+    }
+
     blocked_request_buf_.append(data);
     req_.unconsumed_body_length += data.size();
     return {};

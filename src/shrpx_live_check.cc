@@ -649,7 +649,9 @@ void LiveCheck::on_success() {
     return;
   }
 
-  Log{NOTICE} << util::to_numeric_addr(&addr_->addr) << " is considered online";
+  // addr_->addr is not resolved if addr_->dns is true.  raddr_ is the
+  // address that we have just connected to.
+  Log{NOTICE} << util::to_numeric_addr(raddr_) << " is considered online";
 
   addr_->connect_blocker->online();
 

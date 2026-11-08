@@ -134,10 +134,11 @@ int htp_uricb(llhttp_t *htp, const char *data, size_t len) {
   req.fs.add_extra_buffer_size(len);
 
   if (req.method == HTTP_CONNECT) {
-    req.authority =
-      concat_string_ref(balloc, req.authority, std::string_view{data, len});
+    req.authority = realloc_concat_string_ref(balloc, req.authority,
+                                              std::string_view{data, len});
   } else {
-    req.path = concat_string_ref(balloc, req.path, std::string_view{data, len});
+    req.path =
+      realloc_concat_string_ref(balloc, req.path, std::string_view{data, len});
   }
 
   return 0;
@@ -404,7 +405,8 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     const auto &value = host->value;
 
     if (!nghttp2_check_authority(
-          reinterpret_cast<const uint8_t *>(value.data()), value.size())) {
+          reinterpret_cast<const uint8_t *>(value.data()), value.size()) ||
+        util::contains(value, '@')) {
       return -1;
     }
   }
@@ -465,6 +467,14 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     } else {
       rewrite_request_host_path_from_uri(balloc, req, req.path, u);
     }
+  } else if (!nghttp2_check_authority(
+               reinterpret_cast<const uint8_t *>(req.authority.data()),
+               req.authority.size()) ||
+             util::contains(req.authority, '@')) {
+    // The request-target of CONNECT is authority-form, and it is used
+    // as authority as is.  Apply the same check as :authority in
+    // HTTP/2, which does not allow '@'.
+    return -1;
   }
 
   downstream->set_request_state(DownstreamState::HEADER_COMPLETE);
@@ -543,6 +553,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     }
 
     if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
+      downstream->pop_downstream_connection();
       return 0;
     }
   }
@@ -766,6 +777,14 @@ std::expected<void, Error> HttpsUpstream::on_read() {
     }
 
     error_reply(status_code);
+
+    if (downstream) {
+      // Drop backend connection now, just like the other error
+      // paths.  Otherwise, the response parser may still get data
+      // from backend and it confuses response header fields with
+      // trailer fields because response state is now MSG_COMPLETE.
+      downstream->pop_downstream_connection();
+    }
 
     handler_->signal_write();
 

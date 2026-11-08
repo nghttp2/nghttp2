@@ -211,8 +211,10 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "response has already been committed");
   }
 
-  const char *val;
-  mrb_int vallen;
+  // body is optional; mrb_get_args does not touch val and vallen if
+  // it is omitted.
+  const char *val = nullptr;
+  mrb_int vallen = 0;
   mrb_get_args(mrb, "|s", &val, &vallen);
 
   std::span<const uint8_t> body;

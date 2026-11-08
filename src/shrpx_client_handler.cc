@@ -830,6 +830,40 @@ void reschedule_wg(
 }
 } // namespace
 
+namespace {
+// find_affinity_addr returns the backend address which |hash| is
+// mapped to in the affinity hash ring of |shared_addr|.  If that
+// backend is blocked, the ring is searched from there for the first
+// backend which is not blocked.  It returns nullptr if all backends
+// are blocked.
+DownstreamAddr *
+find_affinity_addr(const std::shared_ptr<SharedDownstreamAddr> &shared_addr,
+                   uint32_t hash) {
+  const auto &affinity_hash = shared_addr->affinity_hash;
+
+  auto it =
+    std::ranges::lower_bound(affinity_hash, hash, {}, &AffinityHash::hash);
+  if (it == std::ranges::end(affinity_hash)) {
+    it = std::ranges::begin(affinity_hash);
+  }
+
+  auto aff_idx = static_cast<size_t>(
+    std::ranges::distance(std::ranges::begin(affinity_hash), it));
+  auto i = aff_idx;
+
+  do {
+    auto addr = &shared_addr->addrs[affinity_hash[i].idx];
+    if (!addr->connect_blocker->blocked()) {
+      return addr;
+    }
+
+    i = (i + 1) % affinity_hash.size();
+  } while (i != aff_idx);
+
+  return nullptr;
+}
+} // namespace
+
 std::expected<DownstreamAddr *, Error>
 ClientHandler::get_downstream_addr(DownstreamAddrGroup *group,
                                    Downstream *downstream) {
@@ -865,34 +899,9 @@ ClientHandler::get_downstream_addr(DownstreamAddrGroup *group,
       assert(0);
     }
 
-    const auto &affinity_hash = shared_addr->affinity_hash;
-
-    auto it =
-      std::ranges::lower_bound(affinity_hash, hash, {}, &AffinityHash::hash);
-    if (it == std::ranges::end(affinity_hash)) {
-      it = std::ranges::begin(affinity_hash);
-    }
-
-    auto aff_idx = static_cast<size_t>(
-      std::ranges::distance(std::ranges::begin(affinity_hash), it));
-    auto idx = (*it).idx;
-    auto addr = &shared_addr->addrs[idx];
-
-    if (addr->connect_blocker->blocked()) {
-      size_t i;
-      for (i = aff_idx + 1; i != aff_idx; ++i) {
-        if (i == shared_addr->affinity_hash.size()) {
-          i = 0;
-        }
-        addr = &shared_addr->addrs[shared_addr->affinity_hash[i].idx];
-        if (addr->connect_blocker->blocked()) {
-          continue;
-        }
-        break;
-      }
-      if (i == aff_idx) {
-        return std::unexpected{Error::NO_AVAIL_DOWNSTREAM};
-      }
+    auto addr = find_affinity_addr(shared_addr, hash);
+    if (!addr) {
+      return std::unexpected{Error::NO_AVAIL_DOWNSTREAM};
     }
 
     return addr;
@@ -935,8 +944,6 @@ std::expected<DownstreamAddr *, Error>
 ClientHandler::get_downstream_addr_strict_affinity(
   const std::shared_ptr<SharedDownstreamAddr> &shared_addr,
   Downstream *downstream) {
-  const auto &affinity_hash = shared_addr->affinity_hash;
-
   auto h = downstream->find_affinity_cookie(shared_addr->affinity.cookie.name);
   if (h) {
     auto it = shared_addr->affinity_hash_map.find(h);
@@ -958,31 +965,9 @@ ClientHandler::get_downstream_addr_strict_affinity(
   // existing h allows us to find new server in a deterministic way.
   // It is preferable because multiple concurrent requests with the
   // stale cookie might be in-flight.
-  auto it = std::ranges::lower_bound(affinity_hash, h, {}, &AffinityHash::hash);
-  if (it == std::ranges::end(affinity_hash)) {
-    it = std::ranges::begin(affinity_hash);
-  }
-
-  auto aff_idx = static_cast<size_t>(
-    std::ranges::distance(std::ranges::begin(affinity_hash), it));
-  auto idx = (*it).idx;
-  auto addr = &shared_addr->addrs[idx];
-
-  if (addr->connect_blocker->blocked()) {
-    size_t i;
-    for (i = aff_idx + 1; i != aff_idx; ++i) {
-      if (i == shared_addr->affinity_hash.size()) {
-        i = 0;
-      }
-      addr = &shared_addr->addrs[shared_addr->affinity_hash[i].idx];
-      if (addr->connect_blocker->blocked()) {
-        continue;
-      }
-      break;
-    }
-    if (i == aff_idx) {
-      return std::unexpected{Error::NO_AVAIL_DOWNSTREAM};
-    }
+  auto addr = find_affinity_addr(shared_addr, h);
+  if (!addr) {
+    return std::unexpected{Error::NO_AVAIL_DOWNSTREAM};
   }
 
   downstream->renew_affinity_cookie(addr->affinity_hash);

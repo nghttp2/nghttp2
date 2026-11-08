@@ -820,6 +820,10 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen) {
 }
 
 std::string to_numeric_addr(const Address *addr) {
+  if (addr->empty()) {
+    return "unknown";
+  }
+
   return to_numeric_addr(addr->as_sockaddr(), addr->size());
 }
 

@@ -114,12 +114,25 @@ void retry_downstream_connection(Downstream *downstream,
 
       return;
     }
-    if (!downstream->attach_downstream_connection(std::move(*maybe_dconn))) {
-      continue;
+
+    if (downstream->attach_downstream_connection(std::move(*maybe_dconn))) {
+      break;
     }
-    if (downstream->push_request_headers()) {
-      return;
-    }
+  }
+
+  if (downstream->push_request_headers()) {
+    return;
+  }
+
+  // push_request_headers() fails because of the request itself (e.g.,
+  // WebSocket request to the HTTP/2 backend which does not support
+  // extended CONNECT), not because of the backend connection, so do
+  // not retry with another backend.
+  downstream->pop_downstream_connection();
+  downstream->set_request_state(DownstreamState::CONNECT_FAIL);
+
+  if (!upstream->on_downstream_abort_request(downstream, status_code)) {
+    delete handler;
   }
 }
 } // namespace
@@ -426,6 +439,7 @@ std::expected<void, Error> HttpDownstreamConnection::initiate_connection() {
     on_write_ = &HttpDownstreamConnection::write_first;
     first_write_done_ = false;
     request_header_written_ = false;
+    blocked_request_buf_processed_ = false;
   }
 
   llhttp_init(&response_htp_, HTTP_RESPONSE, &htp_hooks);
@@ -751,10 +765,8 @@ std::expected<void, Error> HttpDownstreamConnection::push_upload_data_chunk(
   std::span<const uint8_t> data) {
   if (should_block_request_body()) {
     auto output = downstream_->get_blocked_request_buf();
-    auto &req = downstream_->request();
     output->append(data);
-    req.unconsumed_body_length += data.size();
-    if (request_header_written_) {
+    if (request_header_written_ && !downstream_->get_request_header_sent()) {
       signal_write();
     }
     return {};
@@ -783,7 +795,7 @@ std::expected<void, Error> HttpDownstreamConnection::push_upload_data_chunk(
 std::expected<void, Error> HttpDownstreamConnection::end_upload_data() {
   if (should_block_request_body()) {
     downstream_->set_blocked_request_data_eof(true);
-    if (request_header_written_) {
+    if (request_header_written_ && !downstream_->get_request_header_sent()) {
       signal_write();
     }
     return {};
@@ -1252,8 +1264,7 @@ std::expected<void, Error> HttpDownstreamConnection::write_first() {
   // write_tls()/write_clear(), but before blocked_request_buf_ is
   // reset.  So upstream read might still be blocked.  Let's do it
   // again here.
-  auto input = downstream_->get_request_buf();
-  if (input->rleft() == 0) {
+  if (downstream_->get_buffered_request_body_length() == 0) {
     auto upstream = downstream_->get_upstream();
     auto &req = downstream_->request();
 
@@ -1346,7 +1357,10 @@ std::expected<void, Error> HttpDownstreamConnection::write_clear() {
   conn_.wlimit.stopw();
   ev_timer_stop(conn_.loop, &conn_.wt);
 
-  if (input->rleft() == 0) {
+  // Request body of CONNECT or HTTP Upgrade request is kept in
+  // blocked request buffer until backend accepts the request.  It has
+  // not been consumed yet.
+  if (downstream_->get_buffered_request_body_length() == 0) {
     auto &req = downstream_->request();
 
     if (auto rv = upstream->resume_read(SHRPX_NO_BUFFER, downstream_,
@@ -1389,6 +1403,7 @@ std::expected<void, Error> HttpDownstreamConnection::tls_handshake() {
   auto &connect_blocker = addr_->connect_blocker;
 
   signal_write_ = &HttpDownstreamConnection::actual_signal_write;
+  reusable_ = true;
 
   connect_blocker->on_success();
 
@@ -1486,7 +1501,12 @@ std::expected<void, Error> HttpDownstreamConnection::write_tls() {
 
   if (input->rleft() == 0) {
     conn_.start_tls_write_idle();
+  }
 
+  // Request body of CONNECT or HTTP Upgrade request is kept in
+  // blocked request buffer until backend accepts the request.  It has
+  // not been consumed yet.
+  if (downstream_->get_buffered_request_body_length() == 0) {
     auto &req = downstream_->request();
 
     if (auto rv = upstream->resume_read(SHRPX_NO_BUFFER, downstream_,
@@ -1515,6 +1535,15 @@ HttpDownstreamConnection::process_input(std::span<const uint8_t> data) {
     }
 
     return {};
+  }
+
+  // Upstream may have completed response by itself (e.g., error
+  // reply to a bad request body) while we are still receiving
+  // response header fields.  Do not feed the parser anymore,
+  // otherwise the remaining header fields are treated as trailer
+  // fields.
+  if (downstream_->get_response_state() == DownstreamState::MSG_COMPLETE) {
+    return std::unexpected{Error::DCONN_CANCELED};
   }
 
   auto htperr = llhttp_execute(
@@ -1604,6 +1633,7 @@ std::expected<void, Error> HttpDownstreamConnection::connected() {
   }
 
   signal_write_ = &HttpDownstreamConnection::actual_signal_write;
+  reusable_ = true;
 
   connect_blocker->on_success();
 

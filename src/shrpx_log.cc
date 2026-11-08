@@ -488,7 +488,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
     }
     case LogFragmentType::AUTHORITY:
       if (!req.authority.empty()) {
-        p = copy(req.authority, p);
+        p = copy_escape(req.authority, p);
         break;
       }
 

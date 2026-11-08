@@ -485,12 +485,14 @@ Http2Upstream::initiate_downstream(Downstream *downstream) {
         }
       }
 
+      downstream->pop_downstream_connection();
       downstream_queue_.mark_failure(downstream);
 
       return {};
     }
 
     if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
+      downstream->pop_downstream_connection();
       return {};
     }
   }
@@ -909,8 +911,13 @@ nghttp2_session_callbacks *create_http2_upstream_callbacks() {
 }
 
 namespace {
-size_t downstream_queue_size(Worker *worker) {
-  auto &downstreamconf = *worker->get_downstream_config();
+size_t downstream_queue_size(ClientHandler *handler) {
+  // API and health monitor requests do not use backend connection.
+  if (handler->get_upstream_addr()->alt_mode != UpstreamAltMode::NONE) {
+    return 0;
+  }
+
+  auto &downstreamconf = *handler->get_worker()->get_downstream_config();
 
   if (get_config()->http2_proxy) {
     return downstreamconf.connections_per_host;
@@ -922,7 +929,7 @@ size_t downstream_queue_size(Worker *worker) {
 
 Http2Upstream::Http2Upstream(ClientHandler *handler)
   : wb_(handler->get_worker()->get_mcpool()),
-    downstream_queue_(downstream_queue_size(handler->get_worker()),
+    downstream_queue_(downstream_queue_size(handler),
                       !get_config()->http2_proxy),
     handler_(handler) {
   int rv;
