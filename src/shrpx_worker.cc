@@ -480,6 +480,13 @@ void Worker::run_async() {
     (void)reopen_log_files(get_config()->logging);
     ev_run(loop_);
 
+    {
+      std::lock_guard<std::mutex> g(m_);
+
+      stopped_ = true;
+      q_.clear();
+    }
+
 #  ifdef NGHTTP2_OPENSSL_IS_WOLFSSL
     wc_ecc_fp_free();
 #  endif // defined(NGHTTP2_OPENSSL_IS_WOLFSSL)
@@ -487,14 +494,20 @@ void Worker::run_async() {
 #endif // !defined(NOTHREADS)
 }
 
-void Worker::send(WorkerEvent event) {
+bool Worker::send(WorkerEvent event) {
   {
     std::lock_guard<std::mutex> g(m_);
+
+    if (stopped_) {
+      return false;
+    }
 
     q_.emplace_back(std::move(event));
   }
 
   ev_async_send(loop_, &w_);
+
+  return true;
 }
 
 void Worker::process_events() {

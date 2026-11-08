@@ -583,11 +583,13 @@ std::expected<void, Error> ConnectionHandler::forward_quic_packet(
 
   auto worker = *maybe_worker;
 
-  worker->send(WorkerEvent{
-    .type = WorkerEventType::QUIC_PKT_FORWARD,
-    .quic_pkt = std::make_unique<QUICPacket>(faddr->index, remote_addr,
-                                             local_addr, pi, data),
-  });
+  if (!worker->send(WorkerEvent{
+        .type = WorkerEventType::QUIC_PKT_FORWARD,
+        .quic_pkt = std::make_unique<QUICPacket>(faddr->index, remote_addr,
+                                                 local_addr, pi, data),
+      })) {
+    return std::unexpected{Error::ENTITY_NOT_FOUND};
+  }
 
   return {};
 }
