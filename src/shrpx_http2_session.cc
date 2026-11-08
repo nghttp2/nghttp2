@@ -1413,6 +1413,17 @@ int on_frame_not_send_callback(nghttp2_session *session,
     return 0;
   }
 
+  // The library closes the stream if request HEADERS could not be
+  // sent.  Otherwise (e.g., trailers), the stream has already been
+  // opened and the backend has seen it, so issue RST_STREAM here
+  // because Http2DownstreamConnection does not do it for
+  // DownstreamState::MSG_RESET.
+  if (frame->headers.cat != NGHTTP2_HCAT_REQUEST &&
+      !http2session->submit_rst_stream(frame->hd.stream_id,
+                                       NGHTTP2_INTERNAL_ERROR)) {
+    return NGHTTP2_ERR_CALLBACK_FAILURE;
+  }
+
   // To avoid stream hanging around, flag DownstreamState::MSG_RESET.
   downstream->set_response_state(DownstreamState::MSG_RESET);
   call_downstream_readcb(http2session, downstream);
