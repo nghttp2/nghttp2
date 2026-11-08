@@ -336,7 +336,7 @@ enum {
   HD_MAXIDX,
 };
 
-using HeaderIndex = std::array<int16_t, HD_MAXIDX>;
+using HeaderIndex = std::array<int32_t, HD_MAXIDX>;
 
 // Looks up header token for header name |name|.  Only headers we are
 // interested in are tokenized.  If header name cannot be tokenized,
