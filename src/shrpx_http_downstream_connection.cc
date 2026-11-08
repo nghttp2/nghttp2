@@ -1517,6 +1517,15 @@ HttpDownstreamConnection::process_input(std::span<const uint8_t> data) {
     return {};
   }
 
+  // Upstream may have completed response by itself (e.g., error
+  // reply to a bad request body) while we are still receiving
+  // response header fields.  Do not feed the parser anymore,
+  // otherwise the remaining header fields are treated as trailer
+  // fields.
+  if (downstream_->get_response_state() == DownstreamState::MSG_COMPLETE) {
+    return std::unexpected{Error::DCONN_CANCELED};
+  }
+
   auto htperr = llhttp_execute(
     &response_htp_, reinterpret_cast<const char *>(data.data()), data.size());
   auto nproc = htperr == HPE_OK

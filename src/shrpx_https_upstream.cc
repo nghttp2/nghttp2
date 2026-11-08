@@ -777,6 +777,14 @@ std::expected<void, Error> HttpsUpstream::on_read() {
 
     error_reply(status_code);
 
+    if (downstream) {
+      // Drop backend connection now, just like the other error
+      // paths.  Otherwise, the response parser may still get data
+      // from backend and it confuses response header fields with
+      // trailer fields because response state is now MSG_COMPLETE.
+      downstream->pop_downstream_connection();
+    }
+
     handler_->signal_write();
 
     return {};
