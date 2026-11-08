@@ -123,7 +123,7 @@ private:
   // true if first write succeeded.
   bool first_write_done_{};
   // true if this object can be reused
-  bool reusable_{true};
+  bool reusable_{};
   // true if request header is written to request buffer.
   bool request_header_written_{};
   // true if blocked request buffer has been processed.
