@@ -485,12 +485,14 @@ Http2Upstream::initiate_downstream(Downstream *downstream) {
         }
       }
 
+      downstream->pop_downstream_connection();
       downstream_queue_.mark_failure(downstream);
 
       return {};
     }
 
     if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
+      downstream->pop_downstream_connection();
       return {};
     }
   }

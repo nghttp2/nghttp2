@@ -553,6 +553,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     }
 
     if (downstream->get_response_state() == DownstreamState::MSG_COMPLETE) {
+      downstream->pop_downstream_connection();
       return 0;
     }
   }
