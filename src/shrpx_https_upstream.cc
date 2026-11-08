@@ -404,7 +404,8 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     const auto &value = host->value;
 
     if (!nghttp2_check_authority(
-          reinterpret_cast<const uint8_t *>(value.data()), value.size())) {
+          reinterpret_cast<const uint8_t *>(value.data()), value.size()) ||
+        util::contains(value, '@')) {
       return -1;
     }
   }
@@ -465,6 +466,14 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     } else {
       rewrite_request_host_path_from_uri(balloc, req, req.path, u);
     }
+  } else if (!nghttp2_check_authority(
+               reinterpret_cast<const uint8_t *>(req.authority.data()),
+               req.authority.size()) ||
+             util::contains(req.authority, '@')) {
+    // The request-target of CONNECT is authority-form, and it is used
+    // as authority as is.  Apply the same check as :authority in
+    // HTTP/2, which does not allow '@'.
+    return -1;
   }
 
   downstream->set_request_state(DownstreamState::HEADER_COMPLETE);

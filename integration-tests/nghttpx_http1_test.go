@@ -318,6 +318,34 @@ func TestH1H1BadAuthority(t *testing.T) {
 	}
 }
 
+// TestH1H1CONNECTMethodBadAuthority tests that server rejects CONNECT
+// request including bad characters in request-target.
+func TestH1H1CONNECTMethodBadAuthority(t *testing.T) {
+	opts := options{
+		handler: func(http.ResponseWriter, *http.Request) {
+			t.Errorf("server should not forward this request")
+		},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "CONNECT 127.0.0.1:443/\",for=1.2.3.4 HTTP/1.1\r\nTest-Case: TestH1H1CONNECTMethodBadAuthority\r\nHost: 127.0.0.1:443\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
 // TestH1H1BadScheme tests that server rejects request including
 // bad characters in scheme component of requset URI.
 func TestH1H1BadScheme(t *testing.T) {
