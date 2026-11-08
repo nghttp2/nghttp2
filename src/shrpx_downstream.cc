@@ -683,6 +683,16 @@ Downstream::push_upload_data_chunk(std::span<const uint8_t> data) {
   req_.recv_body_length += data.size();
 
   if (!dconn_ && !request_header_sent_) {
+    auto faddr = upstream_->get_client_handler()->get_upstream_addr();
+
+    // API and health monitor endpoints do not apply flow control to
+    // the request body.  Their requests are never blocked; if there
+    // is no DownstreamConnection, the request has already been
+    // answered.  Discard the body instead of buffering it.
+    if (faddr->alt_mode != UpstreamAltMode::NONE) {
+      return {};
+    }
+
     blocked_request_buf_.append(data);
     req_.unconsumed_body_length += data.size();
     return {};
