@@ -309,7 +309,9 @@ void DNSTracker::gc() {
   auto now = std::chrono::steady_clock::now();
   for (auto it = std::ranges::begin(ents_); it != std::ranges::end(ents_);) {
     auto &ent = (*it).second;
-    if (ent.expiry >= now) {
+    // expiry is not set while name lookup is in progress, and
+    // DNSQuery objects in qlist are still waiting for its result.
+    if (ent.status == DNSResolverStatus::RUNNING || ent.expiry >= now) {
       ++it;
       continue;
     }
