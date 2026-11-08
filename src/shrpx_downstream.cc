@@ -383,13 +383,20 @@ uint32_t Downstream::find_affinity_cookie(std::string_view name) {
         continue;
       }
 
-      auto end = std::ranges::find(it, std::ranges::end(kv.value), '=');
+      auto end =
+        std::ranges::find_if(it, std::ranges::end(kv.value),
+                             [](auto c) { return c == '=' || c == ';'; });
       if (end == std::ranges::end(kv.value)) {
         return 0;
       }
 
+      if (*it == ';') {
+        ++it;
+        continue;
+      }
+
       if (name != std::string_view{it, end}) {
-        it = std::ranges::find(it, std::ranges::end(kv.value), ';');
+        it = std::ranges::find(end, std::ranges::end(kv.value), ';');
         continue;
       }
 
