@@ -374,6 +374,11 @@ Http2Upstream::on_request_headers(Downstream *downstream,
   if (path) {
     if (method_token == HTTP_OPTIONS && path->value == "*"sv) {
       // Server-wide OPTIONS request.  Path is empty.
+    } else if (path->value.empty() || path->value[0] != '/') {
+      // libnghttp2 checks the form of :path only for http and https
+      // schemes.  We require origin-form for all schemes because we
+      // select backend and construct request-target with it.
+      return error_reply(downstream, 400);
     } else if (config->http2_proxy &&
                faddr->alt_mode == UpstreamAltMode::NONE) {
       req.path = path->value;
