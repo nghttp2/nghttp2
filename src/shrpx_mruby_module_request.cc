@@ -95,6 +95,15 @@ mrb_value request_set_method(mrb_state *mrb, mrb_value self) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "method not supported");
   }
 
+  // CONNECT request has no scheme and path, and its request body is
+  // held back until backend accepts the tunnel.  They have been set
+  // up according to the original method before mruby hook runs, so do
+  // not allow to change method from or to CONNECT.
+  if ((req.method == HTTP_CONNECT) != (token == HTTP_CONNECT)) {
+    mrb_raise(mrb, E_RUNTIME_ERROR,
+              "method cannot be changed from or to CONNECT");
+  }
+
   req.method = token;
 
   return self;
