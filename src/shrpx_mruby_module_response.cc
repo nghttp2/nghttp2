@@ -127,6 +127,8 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
 
   mrb_gc_arena_restore(mrb, ai);
 
+  check_header_name(mrb, keyref);
+
   auto token = http2::lookup_token(keyref);
 
   if (repl) {
@@ -153,6 +155,8 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
         mrb_raise(mrb, E_RUNTIME_ERROR, "value must be string");
       }
 
+      check_header_value(mrb, value);
+
       resp.fs.add_header_token(
         keyref,
         make_string_ref(
@@ -161,6 +165,8 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
         false, token);
     }
   } else if (mrb_string_p(values)) {
+    check_header_value(mrb, values);
+
     resp.fs.add_header_token(
       keyref,
       make_string_ref(
@@ -315,6 +321,8 @@ mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
 
     mrb_gc_arena_restore(mrb, ai);
 
+    check_header_name(mrb, keyref);
+
     auto token = http2::lookup_token(keyref);
 
     if (mrb_array_p(values)) {
@@ -325,6 +333,8 @@ mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
           mrb_raise(mrb, E_RUNTIME_ERROR, "value must be string");
         }
 
+        check_header_value(mrb, value);
+
         resp.fs.add_header_token(
           keyref,
           make_string_ref(
@@ -333,6 +343,8 @@ mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
           false, token);
       }
     } else if (mrb_string_p(values)) {
+      check_header_value(mrb, values);
+
       resp.fs.add_header_token(
         keyref,
         make_string_ref(

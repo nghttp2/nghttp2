@@ -45,6 +45,16 @@ void delete_downstream_from_module(mrb_state *mrb, Downstream *downstream);
 
 mrb_value create_headers_hash(mrb_state *mrb, const HeaderRefs &headers);
 
+// Checks that |name| is a valid header field name.  If not, raise
+// exception.
+void check_header_name(mrb_state *mrb, const std::string_view &name);
+
+// Checks that |value|, which must be a String, is a valid header
+// field value.  If not, raise exception.  Header fields are written
+// to HTTP/1 connection as is, and CR or LF in |value| would inject
+// header fields.
+void check_header_value(mrb_state *mrb, mrb_value value);
+
 } // namespace mruby
 
 } // namespace shrpx

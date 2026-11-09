@@ -111,6 +111,21 @@ mrb_value create_headers_hash(mrb_state *mrb, const HeaderRefs &headers) {
   return hash;
 }
 
+void check_header_name(mrb_state *mrb, const std::string_view &name) {
+  if (!nghttp2_check_header_name(reinterpret_cast<const uint8_t *>(name.data()),
+                                 name.size())) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "key contains invalid character");
+  }
+}
+
+void check_header_value(mrb_state *mrb, mrb_value value) {
+  if (!nghttp2_check_header_value_rfc9113(
+        reinterpret_cast<const uint8_t *>(RSTRING_PTR(value)),
+        static_cast<size_t>(RSTRING_LEN(value)))) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "value contains invalid character");
+  }
+}
+
 } // namespace mruby
 
 } // namespace shrpx

@@ -187,6 +187,17 @@ std::expected<std::string_view, Error> get_servername(SSL *ssl) {
     return std::unexpected{Error::INTERNAL};
   }
 
+  // The server name must be a host name (RFC 6066, section 3).  It is
+  // later exposed as-is to mruby scripts and log, so reject the name
+  // containing characters which cannot appear in a host name, such as
+  // CR or LF.
+  if (!nghttp2_check_authority(
+        reinterpret_cast<const uint8_t *>(servername.data()),
+        servername.size()) ||
+      util::contains(servername, '@')) {
+    return std::unexpected{Error::INTERNAL};
+  }
+
   return servername;
 }
 } // namespace
