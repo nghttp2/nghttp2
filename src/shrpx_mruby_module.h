@@ -36,6 +36,7 @@ using namespace nghttp2;
 namespace shrpx {
 
 class Downstream;
+class FieldStore;
 
 namespace mruby {
 
@@ -55,6 +56,10 @@ void check_header_name(mrb_state *mrb, const std::string_view &name);
 // to HTTP/1 connection as is, and CR or LF in |value| would inject
 // header fields.
 void check_header_value(mrb_state *mrb, mrb_value value);
+
+// clear_headers clears headers in fs but keep content-length and
+// transfer-encoding if exist.
+void clear_headers(FieldStore &fs);
 
 } // namespace mruby
 

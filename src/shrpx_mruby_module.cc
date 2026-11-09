@@ -35,6 +35,7 @@
 #include "shrpx_mruby_module_env.h"
 #include "shrpx_mruby_module_request.h"
 #include "shrpx_mruby_module_response.h"
+#include "shrpx_downstream.h"
 
 namespace shrpx {
 
@@ -117,6 +118,28 @@ void check_header_value(mrb_state *mrb, mrb_value value) {
         reinterpret_cast<const uint8_t *>(RSTRING_PTR(value)),
         static_cast<size_t>(RSTRING_LEN(value)))) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "value contains invalid character");
+  }
+}
+
+void clear_headers(FieldStore &fs) {
+  std::optional<HeaderRef> cl, te;
+
+  if (auto h = fs.header(http2::HD_CONTENT_LENGTH); h) {
+    cl = *h;
+  }
+
+  if (auto h = fs.header(http2::HD_TRANSFER_ENCODING); h) {
+    te = *h;
+  }
+
+  fs.clear_headers();
+
+  if (cl) {
+    fs.add_header_token(cl->name, cl->value, cl->no_index, cl->token);
+  }
+
+  if (te) {
+    fs.add_header_token(te->name, te->value, te->no_index, te->token);
   }
 }
 
