@@ -437,6 +437,17 @@ void test_http2_path_join(void) {
     auto relq = "charlie"sv;
     assert_eq("/alpha/bravo?charlie", http2::path_join(base, baseq, rel, relq));
   }
+  {
+    // repeated '/'s after '.' and '..' segments.
+    auto base = ""sv;
+    auto baseq = ""sv;
+    auto relq = ""sv;
+    assert_eq("/alpha", http2::path_join(base, baseq, "/.//alpha"sv, relq));
+    assert_eq("/alpha/bravo",
+              http2::path_join(base, baseq, "/alpha/.///bravo"sv, relq));
+    assert_eq("/bravo",
+              http2::path_join(base, baseq, "/alpha/..//bravo"sv, relq));
+  }
   // Test cases from RFC 3986, section 5.4.
   constexpr auto base = "/b/c/d;p"sv;
   constexpr auto baseq = "q"sv;
@@ -642,6 +653,9 @@ void test_http2_rewrite_clean_path(void) {
 
   assert_eq("/alpha?bravo"sv,
             http2::rewrite_clean_path(balloc, "//alpha?bravo"sv));
+
+  assert_eq("/alpha/bravo"sv,
+            http2::rewrite_clean_path(balloc, "/%2e//alpha/bravo"sv));
 }
 
 void test_http2_contains_trailers(void) {
