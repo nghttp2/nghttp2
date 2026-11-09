@@ -136,7 +136,10 @@ void MemcachedConnection::disconnect() {
 
   conn_.disconnect();
 
-  assert(recvbuf_.rleft() == 0);
+  // recvbuf_ may still contain unprocessed data if we are
+  // disconnecting because of a malformed response, or because the
+  // connection was lost or timed out in the middle of a response
+  // header.  Just discard it.
   recvbuf_.reset();
 
   do_read_ = do_write_ = &MemcachedConnection::noop;
