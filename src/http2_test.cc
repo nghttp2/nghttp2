@@ -630,6 +630,19 @@ void test_http2_normalize_path(void) {
   assert_eq("/", http2::normalize_path(""sv, ""sv));
 
   assert_eq("/alpha?bravo", http2::normalize_path("/alpha"sv, "bravo"sv));
+
+  // '%' which is not followed by 2 hex digits must not be completed
+  // into %XX by the following percent-decoded characters.
+  assert_eq("/%%361dmin", http2::normalize_path("/%%361dmin"sv, ""sv));
+
+  assert_eq("/%6%31dmin", http2::normalize_path("/%6%31dmin"sv, ""sv));
+
+  assert_eq("/%%32E%%32E/alpha",
+            http2::normalize_path("/%%32E%%32E/alpha"sv, ""sv));
+
+  // %XX which is kept is written as a whole, so decoding can resume
+  // after it.
+  assert_eq("/%%2fa"sv, http2::normalize_path("/%%2f%61"sv, ""sv));
 }
 
 void test_http2_rewrite_clean_path(void) {
