@@ -62,6 +62,8 @@ struct BlockedLink;
 struct DownstreamAddrGroup;
 struct DownstreamAddr;
 
+inline constexpr auto SHRPX_NON_FINAL_RESPONSE_OVERHEAD = 32UZ;
+
 class FieldStore {
 public:
   FieldStore(BlockAllocator &balloc, size_t headers_initial_capacity)

@@ -913,6 +913,24 @@ void HttpDownstreamConnection::force_resume_read() {
 }
 
 namespace {
+std::expected<void, Error>
+ensure_header_field_buffer(const Downstream *downstream,
+                           const HttpConfig &httpconf, size_t len) {
+  auto &resp = downstream->response();
+
+  if (resp.fs.buffer_size() + len > httpconf.response_header_field_buffer) {
+    if (log_enabled(INFO)) {
+      Log{INFO, downstream} << "Too large header header field size="
+                            << resp.fs.buffer_size() + len;
+    }
+    return std::unexpected{Error::HTTP_FIELD_TOO_LARGE};
+  }
+
+  return {};
+}
+} // namespace
+
+namespace {
 int htp_msg_begincb(llhttp_t *htp) {
   auto downstream = static_cast<Downstream *>(htp->data);
 
@@ -1001,6 +1019,16 @@ int htp_hdrs_completecb(llhttp_t *htp) {
   }
 
   if (downstream->get_non_final_response()) {
+    // Charge extra buffer size for the non-final response to deal
+    // with those that do not have fields.
+    if (auto rv = ensure_header_field_buffer(downstream, config->http,
+                                             SHRPX_NON_FINAL_RESPONSE_OVERHEAD);
+        !rv) {
+      return -1;
+    }
+
+    resp.fs.add_extra_buffer_size(SHRPX_NON_FINAL_RESPONSE_OVERHEAD);
+
     // Reset content-length because we reuse same Downstream for the
     // next response.
     resp.fs.content_length = -1;
@@ -1082,24 +1110,6 @@ int htp_hdrs_completecb(llhttp_t *htp) {
   // TODO It seems that the cases other than HEAD are handled by
   // llhttp.  Need test.
   return !http2::expect_response_body(req.method, resp.http_status);
-}
-} // namespace
-
-namespace {
-std::expected<void, Error>
-ensure_header_field_buffer(const Downstream *downstream,
-                           const HttpConfig &httpconf, size_t len) {
-  auto &resp = downstream->response();
-
-  if (resp.fs.buffer_size() + len > httpconf.response_header_field_buffer) {
-    if (log_enabled(INFO)) {
-      Log{INFO, downstream} << "Too large header header field size="
-                            << resp.fs.buffer_size() + len;
-    }
-    return std::unexpected{Error::HTTP_FIELD_TOO_LARGE};
-  }
-
-  return {};
 }
 } // namespace
 
