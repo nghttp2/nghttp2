@@ -95,6 +95,13 @@ template <typename T> using EVCb = void (*)(struct ev_loop *, T *, int);
 using IOCb = EVCb<ev_io>;
 using TimerCb = EVCb<ev_timer>;
 
+// The maximum number of reads performed for a single read event on a
+// backend connection.  Some input (e.g., HTTP/1 chunk extension,
+// unknown HTTP/2 frame) is consumed without being buffered, so a
+// backend which keeps sending it would otherwise keep us reading
+// until EAGAIN, starving the other connections of the worker.
+constexpr auto MAX_READ_PER_EVENT = 8UZ;
+
 struct Connection {
   Connection(struct ev_loop *loop, int fd, SSL *ssl, MemchunkPool *mcpool,
              ev_tstamp write_timeout, ev_tstamp read_timeout,
