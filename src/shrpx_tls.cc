@@ -187,6 +187,17 @@ std::expected<std::string_view, Error> get_servername(SSL *ssl) {
     return std::unexpected{Error::INTERNAL};
   }
 
+  // The server name must be a host name (RFC 6066, section 3).  It is
+  // later exposed as-is to mruby scripts and log, so reject the name
+  // containing characters which cannot appear in a host name, such as
+  // CR or LF.
+  if (!nghttp2_check_authority(
+        reinterpret_cast<const uint8_t *>(servername.data()),
+        servername.size()) ||
+      util::contains(servername, '@')) {
+    return std::unexpected{Error::INTERNAL};
+  }
+
   return servername;
 }
 } // namespace
@@ -1774,7 +1785,6 @@ std::expected<void, Error> verify_numeric_hostname(X509 *cert,
   if (altnames) {
     auto altnames_deleter = defer([altnames] { GENERAL_NAMES_free(altnames); });
     auto n = static_cast<size_t>(sk_GENERAL_NAME_num(altnames));
-    auto ip_found = false;
     for (size_t i = 0; i < n; ++i) {
       auto altname = sk_GENERAL_NAME_value(
         altnames, static_cast<nghttp2_ssl_stack_index_type>(i));
@@ -1789,15 +1799,13 @@ std::expected<void, Error> verify_numeric_hostname(X509 *cert,
       auto ip_addrlen =
         static_cast<size_t>(ASN1_STRING_length(altname->d.iPAddress));
 
-      ip_found = true;
       if (saddrlen == ip_addrlen && memcmp(saddr, ip_addr, ip_addrlen) == 0) {
         return {};
       }
     }
 
-    if (ip_found) {
-      return std::unexpected{Error::TLS_VERIFY_PEER};
-    }
+    // No CN fallback if SAN is found.
+    return std::unexpected{Error::TLS_VERIFY_PEER};
   }
 
   auto maybe_cn = get_common_name(cert);
@@ -1821,7 +1829,6 @@ std::expected<void, Error> verify_dns_hostname(X509 *cert,
   auto altnames = static_cast<GENERAL_NAMES *>(
     X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if (altnames) {
-    auto dns_found = false;
     auto altnames_deleter = defer([altnames] { GENERAL_NAMES_free(altnames); });
     auto n = static_cast<size_t>(sk_GENERAL_NAME_num(altnames));
     for (size_t i = 0; i < n; ++i) {
@@ -1852,19 +1859,14 @@ std::expected<void, Error> verify_dns_hostname(X509 *cert,
         }
       }
 
-      dns_found = true;
-
       if (tls_hostname_match(as_string_view(name, static_cast<size_t>(len)),
                              hostname)) {
         return {};
       }
     }
 
-    // RFC 6125, section 6.4.4. says that client MUST not seek a match
-    // for CN if a dns dNSName is found.
-    if (dns_found) {
-      return std::unexpected{Error::TLS_VERIFY_PEER};
-    }
+    // No CN fallback if SAN is found.
+    return std::unexpected{Error::TLS_VERIFY_PEER};
   }
 
   auto maybe_cn = get_common_name(cert);

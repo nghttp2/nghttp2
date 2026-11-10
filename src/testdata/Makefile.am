@@ -21,7 +21,9 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 EXTRA_DIST = \
+	dnssan_ip.crt \
 	ipaddr.crt \
+	ipsan_dns.crt \
 	nosan.crt \
 	nosan_ip.crt \
 	verify_hostname.crt

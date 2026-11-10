@@ -921,6 +921,32 @@ func TestH2H1BadScheme(t *testing.T) {
 	}
 }
 
+// TestH2H1UnknownSchemeNonOriginFormPath tests that server rejects
+// request with unknown :scheme and :path which is not origin-form.
+func TestH2H1UnknownSchemeNonOriginFormPath(t *testing.T) {
+	opts := options{
+		handler: func(http.ResponseWriter, *http.Request) {
+			t.Errorf("server should not forward this request")
+		},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:   "TestH2H1UnknownSchemeNonOriginFormPath",
+		scheme: "foo",
+		path:   "http://example.org/",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, http.StatusBadRequest; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
 // TestH2H1AssembleCookies tests that crumbled cookies in HTTP/2
 // request is assembled into 1 when forwarding to HTTP/1 backend link.
 func TestH2H1AssembleCookies(t *testing.T) {

@@ -95,6 +95,15 @@ mrb_value request_set_method(mrb_state *mrb, mrb_value self) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "method not supported");
   }
 
+  // CONNECT request has no scheme and path, and its request body is
+  // held back until backend accepts the tunnel.  They have been set
+  // up according to the original method before mruby hook runs, so do
+  // not allow to change method from or to CONNECT.
+  if ((req.method == HTTP_CONNECT) != (token == HTTP_CONNECT)) {
+    mrb_raise(mrb, E_RUNTIME_ERROR,
+              "method cannot be changed from or to CONNECT");
+  }
+
   req.method = token;
 
   return self;
@@ -122,15 +131,23 @@ mrb_value request_set_authority(mrb_state *mrb, mrb_value self) {
 
   check_phase(mrb, data->phase, PHASE_REQUEST);
 
-  const char *authority;
+  const char *s;
   mrb_int n;
-  mrb_get_args(mrb, "s", &authority, &n);
+  mrb_get_args(mrb, "s", &s, &n);
   if (n == 0) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "authority must not be empty string");
   }
 
-  req.authority = make_string_ref(
-    balloc, std::string_view{authority, static_cast<size_t>(n)});
+  auto authority = as_string_view(s, static_cast<size_t>(n));
+
+  if (!nghttp2_check_authority(
+        reinterpret_cast<const uint8_t *>(authority.data()),
+        authority.size()) ||
+      util::contains(authority, '@')) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "authority contains invalid character");
+  }
+
+  req.authority = make_string_ref(balloc, authority);
 
   return self;
 }
@@ -144,6 +161,18 @@ mrb_value request_get_scheme(mrb_state *mrb, mrb_value self) {
 
   return mrb_str_new(mrb, req.scheme.data(),
                      static_cast<mrb_int>(req.scheme.size()));
+}
+} // namespace
+
+namespace {
+// Returns true if |scheme| is a valid URI scheme (RFC 3986, section
+// 3.1).
+bool check_scheme(const std::string_view &scheme) {
+  return !scheme.empty() && util::is_alpha(scheme[0]) &&
+         std::ranges::all_of(scheme.substr(1), [](auto c) {
+           return util::is_alpha(c) || util::is_digit(c) || c == '+' ||
+                  c == '-' || c == '.';
+         });
 }
 } // namespace
 
@@ -162,6 +191,9 @@ mrb_value request_set_scheme(mrb_state *mrb, mrb_value self) {
   mrb_get_args(mrb, "s", &scheme, &n);
   if (n == 0) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "scheme must not be empty string");
+  }
+  if (!check_scheme(std::string_view{scheme, static_cast<size_t>(n)})) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "scheme contains invalid character");
   }
 
   req.scheme =
@@ -195,6 +227,10 @@ mrb_value request_set_path(mrb_state *mrb, mrb_value self) {
   const char *path;
   mrb_int pathlen;
   mrb_get_args(mrb, "s", &path, &pathlen);
+  if (!nghttp2_check_path(reinterpret_cast<const uint8_t *>(path),
+                          static_cast<size_t>(pathlen))) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "path contains invalid character");
+  }
 
   req.path = make_string_ref(
     balloc, std::string_view{path, static_cast<size_t>(pathlen)});
@@ -232,13 +268,21 @@ mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
 
   key = mrb_funcall(mrb, key, "downcase", 0);
 
-  auto keyref = make_string_ref(
-    balloc,
-    std::string_view{RSTRING_PTR(key), static_cast<size_t>(RSTRING_LEN(key))});
+  auto keyref =
+    std::string_view{RSTRING_PTR(key), static_cast<size_t>(RSTRING_LEN(key))};
+
+  auto token = http2::lookup_token(keyref);
+  if (token == http2::HD_CONTENT_LENGTH ||
+      token == http2::HD_TRANSFER_ENCODING) {
+    mrb_raise(mrb, E_RUNTIME_ERROR,
+              "setting content-length or transfer-encoding is not allowed");
+  }
+
+  keyref = make_string_ref(balloc, keyref);
 
   mrb_gc_arena_restore(mrb, ai);
 
-  auto token = http2::lookup_token(keyref);
+  check_header_name(mrb, keyref);
 
   if (repl) {
     size_t p = 0;
@@ -264,6 +308,8 @@ mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
         mrb_raise(mrb, E_RUNTIME_ERROR, "value must be string");
       }
 
+      check_header_value(mrb, value);
+
       req.fs.add_header_token(
         keyref,
         make_string_ref(
@@ -272,6 +318,8 @@ mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
         false, token);
     }
   } else if (mrb_string_p(values)) {
+    check_header_value(mrb, values);
+
     req.fs.add_header_token(
       keyref,
       make_string_ref(
@@ -306,7 +354,7 @@ mrb_value request_clear_headers(mrb_state *mrb, mrb_value self) {
 
   check_phase(mrb, data->phase, PHASE_REQUEST);
 
-  req.fs.clear_headers();
+  clear_headers(req.fs);
 
   return mrb_nil_value();
 }

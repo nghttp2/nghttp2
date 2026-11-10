@@ -403,6 +403,10 @@ std::string normalize_path(std::string_view path, std::string_view query);
 std::string_view rewrite_clean_path(BlockAllocator &balloc,
                                     std::string_view src);
 
+// Returns true if comma separated list |s| contains |token|.  The
+// comparison is case-insensitive.
+bool contains_token(std::string_view s, std::string_view token);
+
 // Returns true if te header field value |s| contains "trailers".
 bool contains_trailers(std::string_view s);
 

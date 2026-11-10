@@ -395,7 +395,8 @@ respectively.
         HTTP method.  On assignment, copy of given value is assigned.
         We don't accept arbitrary method name.  We will document them
         later, but well known methods, like GET, PUT and POST, are all
-        supported.
+        supported.  Changing method from or to CONNECT is not allowed,
+        and raises an error.
 
     .. rb:attr_accessor:: authority
 

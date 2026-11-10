@@ -121,13 +121,21 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
 
   key = mrb_funcall(mrb, key, "downcase", 0);
 
-  auto keyref = make_string_ref(
-    balloc,
-    std::string_view{RSTRING_PTR(key), static_cast<size_t>(RSTRING_LEN(key))});
+  auto keyref =
+    std::string_view{RSTRING_PTR(key), static_cast<size_t>(RSTRING_LEN(key))};
+
+  auto token = http2::lookup_token(keyref);
+  if (token == http2::HD_CONTENT_LENGTH ||
+      token == http2::HD_TRANSFER_ENCODING) {
+    mrb_raise(mrb, E_RUNTIME_ERROR,
+              "setting content-length or transfer-encoding is not allowed");
+  }
+
+  keyref = make_string_ref(balloc, keyref);
 
   mrb_gc_arena_restore(mrb, ai);
 
-  auto token = http2::lookup_token(keyref);
+  check_header_name(mrb, keyref);
 
   if (repl) {
     size_t p = 0;
@@ -153,6 +161,8 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
         mrb_raise(mrb, E_RUNTIME_ERROR, "value must be string");
       }
 
+      check_header_value(mrb, value);
+
       resp.fs.add_header_token(
         keyref,
         make_string_ref(
@@ -161,6 +171,8 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
         false, token);
     }
   } else if (mrb_string_p(values)) {
+    check_header_value(mrb, values);
+
     resp.fs.add_header_token(
       keyref,
       make_string_ref(
@@ -193,7 +205,7 @@ mrb_value response_clear_headers(mrb_state *mrb, mrb_value self) {
   auto downstream = data->downstream;
   auto &resp = downstream->response();
 
-  resp.fs.clear_headers();
+  clear_headers(resp.fs);
 
   return mrb_nil_value();
 }
@@ -225,6 +237,11 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
 
   if (downstream->expect_response_body() && vallen > 0) {
     body = as_uint8_span(std::span{val, as_unsigned(vallen)});
+  }
+
+  // Delete transfer-encoding because we will set content-length.
+  if (auto h = resp.fs.header(http2::HD_TRANSFER_ENCODING); h) {
+    http2::erase_header(h);
   }
 
   auto cl = resp.fs.header(http2::HD_CONTENT_LENGTH);
@@ -315,6 +332,8 @@ mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
 
     mrb_gc_arena_restore(mrb, ai);
 
+    check_header_name(mrb, keyref);
+
     auto token = http2::lookup_token(keyref);
 
     if (mrb_array_p(values)) {
@@ -325,6 +344,8 @@ mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
           mrb_raise(mrb, E_RUNTIME_ERROR, "value must be string");
         }
 
+        check_header_value(mrb, value);
+
         resp.fs.add_header_token(
           keyref,
           make_string_ref(
@@ -333,6 +354,8 @@ mrb_value response_send_info(mrb_state *mrb, mrb_value self) {
           false, token);
       }
     } else if (mrb_string_p(values)) {
+      check_header_value(mrb, values);
+
       resp.fs.add_header_token(
         keyref,
         make_string_ref(

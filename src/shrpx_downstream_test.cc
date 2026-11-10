@@ -39,6 +39,7 @@ const MunitTest tests[]{
   munit_void_test(test_downstream_rewrite_location_response_header),
   munit_void_test(test_downstream_supports_non_final_response),
   munit_void_test(test_downstream_find_affinity_cookie),
+  munit_void_test(test_downstream_get_http2_upgrade_request),
   munit_test_end(),
 };
 } // namespace
@@ -211,6 +212,119 @@ void test_downstream_find_affinity_cookie(void) {
   assert_eq(0, d.find_affinity_cookie("short"sv));
   assert_eq(0x01020304, d.find_affinity_cookie("noeq"sv));
   assert_eq(0, d.find_affinity_cookie("x"sv));
+}
+
+void test_downstream_get_http2_upgrade_request(void) {
+  {
+    Downstream d(nullptr, nullptr, 0);
+
+    auto &req = d.request();
+    req.http2_upgrade_seen = true;
+    req.fs.add_header_token("connection"sv, "Upgrade, HTTP2-Settings"sv, false,
+                            http2::HD_CONNECTION);
+    req.fs.add_header_token("http2-settings"sv, "AAMAAABkAAQAAP__"sv, false,
+                            http2::HD_HTTP2_SETTINGS);
+
+    assert_true(d.get_http2_upgrade_request());
+  }
+
+  {
+    // Connection options may be spread across multiple Connection
+    // header fields.
+    Downstream d(nullptr, nullptr, 0);
+
+    auto &req = d.request();
+    req.http2_upgrade_seen = true;
+    req.fs.add_header_token("connection"sv, "upgrade"sv, false,
+                            http2::HD_CONNECTION);
+    req.fs.add_header_token("http2-settings"sv, "AAMAAABkAAQAAP__"sv, false,
+                            http2::HD_HTTP2_SETTINGS);
+    req.fs.add_header_token("connection"sv, "http2-settings"sv, false,
+                            http2::HD_CONNECTION);
+
+    assert_true(d.get_http2_upgrade_request());
+  }
+
+  {
+    // h2c is not seen in Upgrade header field.
+    Downstream d(nullptr, nullptr, 0);
+
+    auto &req = d.request();
+    req.fs.add_header_token("connection"sv, "Upgrade, HTTP2-Settings"sv, false,
+                            http2::HD_CONNECTION);
+    req.fs.add_header_token("http2-settings"sv, "AAMAAABkAAQAAP__"sv, false,
+                            http2::HD_HTTP2_SETTINGS);
+
+    assert_false(d.get_http2_upgrade_request());
+  }
+
+  {
+    // No Connection header field.
+    Downstream d(nullptr, nullptr, 0);
+
+    auto &req = d.request();
+    req.http2_upgrade_seen = true;
+    req.fs.add_header_token("http2-settings"sv, "AAMAAABkAAQAAP__"sv, false,
+                            http2::HD_HTTP2_SETTINGS);
+
+    assert_false(d.get_http2_upgrade_request());
+  }
+
+  {
+    // http2-settings is missing in Connection header field.
+    Downstream d(nullptr, nullptr, 0);
+
+    auto &req = d.request();
+    req.http2_upgrade_seen = true;
+    req.fs.add_header_token("connection"sv, "upgrade"sv, false,
+                            http2::HD_CONNECTION);
+    req.fs.add_header_token("http2-settings"sv, "AAMAAABkAAQAAP__"sv, false,
+                            http2::HD_HTTP2_SETTINGS);
+
+    assert_false(d.get_http2_upgrade_request());
+  }
+
+  {
+    // upgrade is missing in Connection header field.
+    Downstream d(nullptr, nullptr, 0);
+
+    auto &req = d.request();
+    req.http2_upgrade_seen = true;
+    req.fs.add_header_token("connection"sv, "http2-settings"sv, false,
+                            http2::HD_CONNECTION);
+    req.fs.add_header_token("http2-settings"sv, "AAMAAABkAAQAAP__"sv, false,
+                            http2::HD_HTTP2_SETTINGS);
+
+    assert_false(d.get_http2_upgrade_request());
+  }
+
+  {
+    // No HTTP2-Settings header field.
+    Downstream d(nullptr, nullptr, 0);
+
+    auto &req = d.request();
+    req.http2_upgrade_seen = true;
+    req.fs.add_header_token("connection"sv, "Upgrade, HTTP2-Settings"sv, false,
+                            http2::HD_CONNECTION);
+
+    assert_false(d.get_http2_upgrade_request());
+  }
+
+  {
+    // More than one HTTP2-Settings header fields.
+    Downstream d(nullptr, nullptr, 0);
+
+    auto &req = d.request();
+    req.http2_upgrade_seen = true;
+    req.fs.add_header_token("connection"sv, "Upgrade, HTTP2-Settings"sv, false,
+                            http2::HD_CONNECTION);
+    req.fs.add_header_token("http2-settings"sv, "AAMAAABkAAQAAP__"sv, false,
+                            http2::HD_HTTP2_SETTINGS);
+    req.fs.add_header_token("http2-settings"sv, "AAMAAABkAAQAAP__"sv, false,
+                            http2::HD_HTTP2_SETTINGS);
+
+    assert_false(d.get_http2_upgrade_request());
+  }
 }
 
 } // namespace shrpx

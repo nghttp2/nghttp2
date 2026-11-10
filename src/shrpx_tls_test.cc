@@ -298,6 +298,18 @@ void test_shrpx_tls_verify_numeric_hostname(void) {
 
     X509_free(cert);
   }
+
+  {
+    // Presence of SAN prevents CN fallback
+    static constexpr auto ipaddr = "127.0.0.1"sv;
+    auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/dnssan_ip.crt");
+    auto addr = parse_addr(ipaddr.data());
+
+    assert_err(Error::TLS_VERIFY_PEER,
+               tls::verify_numeric_hostname(cert, ipaddr, &addr));
+
+    X509_free(cert);
+  }
 }
 
 void test_shrpx_tls_verify_dns_hostname(void) {
@@ -334,6 +346,16 @@ void test_shrpx_tls_verify_dns_hostname(void) {
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/nosan.crt");
 
     assert_ok(tls::verify_dns_hostname(cert, "localhost"sv));
+
+    X509_free(cert);
+  }
+
+  {
+    // Presence of SAN prevents CN fallback
+    auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/ipsan_dns.crt");
+
+    assert_err(Error::TLS_VERIFY_PEER,
+               tls::verify_dns_hostname(cert, "nghttp2.example.com"sv));
 
     X509_free(cert);
   }

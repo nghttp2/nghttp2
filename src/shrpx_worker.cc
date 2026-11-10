@@ -1629,8 +1629,9 @@ size_t match_downstream_addr_group(
   size_t catch_all, BlockAllocator &balloc) {
   if (util::contains(hostport, '/')) {
     // We use '/' specially, and if '/' is included in host, it breaks
-    // our code.  Select catch-all case.
-    return catch_all;
+    // our code.  Treat it as if host is empty so that the patterns
+    // which only have path are still consulted.
+    hostport = ""sv;
   }
 
   auto fragment = std::ranges::find(raw_path, '#');
@@ -1646,22 +1647,19 @@ size_t match_downstream_addr_group(
                                             catch_all, balloc);
   }
 
+  // If host is malformed, leave host empty.  It never matches the
+  // patterns with host, but the patterns which only have path are
+  // still consulted, just like the request without host.
   std::string_view host;
   if (hostport[0] == '[') {
     // assume this is IPv6 numeric address
     auto p = std::ranges::find(hostport, ']');
-    if (p == std::ranges::end(hostport)) {
-      return catch_all;
+    if (p != std::ranges::end(hostport) &&
+        (p + 1 == std::ranges::end(hostport) || *(p + 1) == ':')) {
+      host = std::string_view{std::ranges::begin(hostport), p + 1};
     }
-    if (p + 1 < std::ranges::end(hostport) && *(p + 1) != ':') {
-      return catch_all;
-    }
-    host = std::string_view{std::ranges::begin(hostport), p + 1};
   } else {
     auto p = std::ranges::find(hostport, ':');
-    if (p == std::ranges::begin(hostport)) {
-      return catch_all;
-    }
     host = std::string_view{std::ranges::begin(hostport), p};
   }
 

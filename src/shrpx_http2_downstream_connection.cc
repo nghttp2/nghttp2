@@ -99,6 +99,10 @@ Http2DownstreamConnection::attach_downstream(Downstream *downstream) {
   http2session_->signal_write();
 
   downstream_ = downstream;
+  // If the request is being retried, downstream may still have the
+  // stream ID assigned by the previous Http2Session.  It is
+  // meaningless in http2session_.
+  downstream_->set_downstream_stream_id(-1);
   downstream_->reset_downstream_rtimer();
 
   auto &req = downstream_->request();

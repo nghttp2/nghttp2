@@ -35,6 +35,7 @@
 #include "shrpx_mruby_module_env.h"
 #include "shrpx_mruby_module_request.h"
 #include "shrpx_mruby_module_response.h"
+#include "shrpx_downstream.h"
 
 namespace shrpx {
 
@@ -59,14 +60,8 @@ mrb_value create_env(mrb_state *mrb) {
 }
 } // namespace
 
-void delete_downstream_from_module(mrb_state *mrb, Downstream *downstream) {
-  auto module = mrb_module_get(mrb, "Nghttpx");
-  auto env = mrb_obj_iv_get(mrb, reinterpret_cast<RObject *>(module),
-                            mrb_intern_lit(mrb, "env"));
-  if (mrb_nil_p(env)) {
-    return;
-  }
-
+void delete_downstream_from_module(mrb_state *mrb, mrb_value env,
+                                   Downstream *downstream) {
   mrb_iv_remove(mrb, env, intern_ptr(mrb, downstream));
 }
 
@@ -109,6 +104,43 @@ mrb_value create_headers_hash(mrb_state *mrb, const HeaderRefs &headers) {
   }
 
   return hash;
+}
+
+void check_header_name(mrb_state *mrb, const std::string_view &name) {
+  if (!nghttp2_check_header_name(reinterpret_cast<const uint8_t *>(name.data()),
+                                 name.size())) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "key contains invalid character");
+  }
+}
+
+void check_header_value(mrb_state *mrb, mrb_value value) {
+  if (!nghttp2_check_header_value_rfc9113(
+        reinterpret_cast<const uint8_t *>(RSTRING_PTR(value)),
+        static_cast<size_t>(RSTRING_LEN(value)))) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "value contains invalid character");
+  }
+}
+
+void clear_headers(FieldStore &fs) {
+  std::optional<HeaderRef> cl, te;
+
+  if (auto h = fs.header(http2::HD_CONTENT_LENGTH); h) {
+    cl = *h;
+  }
+
+  if (auto h = fs.header(http2::HD_TRANSFER_ENCODING); h) {
+    te = *h;
+  }
+
+  fs.clear_headers();
+
+  if (cl) {
+    fs.add_header_token(cl->name, cl->value, cl->no_index, cl->token);
+  }
+
+  if (te) {
+    fs.add_header_token(te->name, te->value, te->no_index, te->token);
+  }
 }
 
 } // namespace mruby

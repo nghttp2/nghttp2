@@ -933,8 +933,38 @@ bool Downstream::supports_non_final_response() const {
 bool Downstream::get_upgraded() const { return upgraded_; }
 
 bool Downstream::get_http2_upgrade_request() const {
-  return req_.http2_upgrade_seen && req_.fs.header(http2::HD_HTTP2_SETTINGS) &&
-         response_state_ == DownstreamState::INITIAL;
+  if (!req_.http2_upgrade_seen || response_state_ != DownstreamState::INITIAL) {
+    return false;
+  }
+
+  // RFC 7540 section 3.2: there must be exactly one HTTP2-Settings
+  // header field, and both "upgrade" and "http2-settings" must be
+  // listed in Connection header field.  Without these connection
+  // options, Upgrade and HTTP2-Settings header fields might have been
+  // forwarded by an intermediary which does not understand them, and
+  // upgrading the connection behind its back would let a client
+  // tunnel HTTP/2 requests through it.
+  auto upgrade = false;
+  auto http2_settings = false;
+  size_t num_http2_settings = 0;
+
+  for (auto &kv : req_.fs.headers()) {
+    switch (kv.token) {
+    case http2::HD_CONNECTION:
+      if (http2::contains_token(kv.value, "upgrade"sv)) {
+        upgrade = true;
+      }
+      if (http2::contains_token(kv.value, "http2-settings"sv)) {
+        http2_settings = true;
+      }
+      break;
+    case http2::HD_HTTP2_SETTINGS:
+      ++num_http2_settings;
+      break;
+    }
+  }
+
+  return upgrade && http2_settings && num_http2_settings == 1;
 }
 
 std::string_view Downstream::get_http2_settings() const {
