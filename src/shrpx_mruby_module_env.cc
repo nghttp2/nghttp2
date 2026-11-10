@@ -443,9 +443,13 @@ mrb_value env_get_tls_handshake_finished(mrb_state *mrb, mrb_value self) {
   auto downstream = data->downstream;
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
-  auto conn = handler->get_connection();
-  return SSL_is_init_finished(conn->tls.ssl) ? mrb_true_value()
-                                             : mrb_false_value();
+  auto ssl = handler->get_ssl();
+
+  if (!ssl) {
+    return mrb_false_value();
+  }
+
+  return SSL_is_init_finished(ssl) ? mrb_true_value() : mrb_false_value();
 }
 } // namespace
 

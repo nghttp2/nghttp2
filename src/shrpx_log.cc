@@ -536,6 +536,10 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       p = copy(nghttp2::tls::get_tls_protocol(lgsp.ssl), p);
       break;
     case LogFragmentType::TLS_SESSION_ID: {
+      if (!lgsp.ssl) {
+        p = copy('-', p);
+        break;
+      }
       auto session = SSL_get_session(lgsp.ssl);
       if (!session) {
         p = copy('-', p);
