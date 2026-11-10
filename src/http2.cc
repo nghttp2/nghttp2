@@ -1483,19 +1483,17 @@ std::string_view rewrite_clean_path(BlockAllocator &balloc,
                         std::string_view{query, fragment});
 }
 
-bool contains_trailers(std::string_view s) {
-  constexpr auto trailers = "trailers"sv;
-
+bool contains_token(std::string_view s, std::string_view token) {
   for (auto p = std::ranges::begin(s), end = std::ranges::end(s);; ++p) {
     p = std::ranges::find_if(p, end,
                              [](char c) { return c != ' ' && c != '\t'; });
-    if (p == end || static_cast<size_t>(end - p) < trailers.size()) {
+    if (p == end || static_cast<size_t>(end - p) < token.size()) {
       return false;
     }
-    if (util::strieq(trailers, std::string_view{p, p + trailers.size()})) {
+    if (util::strieq(token, std::string_view{p, p + token.size()})) {
       // Make sure that there is no character other than white spaces
       // before next "," or end of string.
-      p = std::ranges::find_if(p + trailers.size(), end,
+      p = std::ranges::find_if(p + token.size(), end,
                                [](char c) { return c != ' ' && c != '\t'; });
       if (p == end || *p == ',') {
         return true;
@@ -1507,6 +1505,10 @@ bool contains_trailers(std::string_view s) {
       return false;
     }
   }
+}
+
+bool contains_trailers(std::string_view s) {
+  return contains_token(s, "trailers"sv);
 }
 
 std::expected<std::string_view, Error>

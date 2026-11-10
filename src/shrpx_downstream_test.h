@@ -44,6 +44,7 @@ munit_void_test_decl(test_downstream_assemble_request_cookie)
 munit_void_test_decl(test_downstream_rewrite_location_response_header)
 munit_void_test_decl(test_downstream_supports_non_final_response)
 munit_void_test_decl(test_downstream_find_affinity_cookie)
+munit_void_test_decl(test_downstream_get_http2_upgrade_request)
 
 } // namespace shrpx
 

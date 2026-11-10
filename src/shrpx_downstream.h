@@ -308,7 +308,10 @@ public:
   // Inspects HTTP/1 request.  This checks whether the request is
   // upgrade request and tranfer-encoding etc.
   void inspect_http1_request();
-  // Returns true if the request is HTTP Upgrade for HTTP/2
+  // Returns true if the request is HTTP Upgrade for HTTP/2.  The
+  // request must have exactly one HTTP2-Settings header field, and
+  // Connection header field must list both upgrade and
+  // http2-settings.
   bool get_http2_upgrade_request() const;
   // Returns the value of HTTP2-Settings request header field.
   std::string_view get_http2_settings() const;
