@@ -138,6 +138,16 @@ void test_shrpx_worker_match_downstream_addr_group(void) {
   assert_eq(255, match_downstream_addr_group(routerconf, "[::1]8000"sv, "/"sv,
                                              groups, 255, balloc));
 
+  // Malformed host still matches the pattern which only has path.
+  assert_eq(9, match_downstream_addr_group(routerconf, "[::1"sv, "/golf/"sv,
+                                           groups, 255, balloc));
+  assert_eq(9, match_downstream_addr_group(routerconf, "[::1]8000"sv,
+                                           "/golf/"sv, groups, 255, balloc));
+  assert_eq(9, match_downstream_addr_group(routerconf, ":8000"sv, "/golf/"sv,
+                                           groups, 255, balloc));
+  assert_eq(9, match_downstream_addr_group(routerconf, "foo/bar"sv, "/golf/"sv,
+                                           groups, 255, balloc));
+
   // Check the case where adding route extends tree
   assert_eq(6, match_downstream_addr_group(routerconf, "nghttp2.org"sv,
                                            "/alpha/bravo/delta"sv, groups, 255,
