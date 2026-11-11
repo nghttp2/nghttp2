@@ -279,7 +279,7 @@ std::expected<void, Error> MemcachedConnection::tls_handshake() {
   auto &tlsconf = get_config()->tls;
 
   if (!tlsconf.insecure) {
-    if (auto rv = tls::check_cert(conn_.tls.ssl, addr_, sni_name_); !rv) {
+    if (auto rv = tls::check_cert(conn_.tls.ssl, sni_name_); !rv) {
       connect_blocker_.on_failure();
       return rv;
     }

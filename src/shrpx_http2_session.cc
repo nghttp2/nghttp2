@@ -1995,7 +1995,7 @@ std::expected<void, Error> Http2Session::tls_handshake() {
   }
 
   if (!get_config()->tls.insecure) {
-    if (auto rv = tls::check_cert(conn_.tls.ssl, addr_, raddr_); !rv) {
+    if (auto rv = tls::check_cert(conn_.tls.ssl, addr_); !rv) {
       downstream_failure(addr_, raddr_);
 
       return rv;

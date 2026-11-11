@@ -106,20 +106,15 @@ std::expected<std::unique_ptr<ClientHandler>, Error>
 accept_connection(Worker *worker, int fd, const sockaddr *addr,
                   socklen_t addrlen, const UpstreamAddr *faddr);
 
-// Check peer's certificate against given |address| and |host|.
-std::expected<void, Error> check_cert(SSL *ssl, const Address *addr,
-                                      std::string_view host);
+// Check peer's certificate against given |host|.
+std::expected<void, Error> check_cert(SSL *ssl, std::string_view host);
 // Check peer's certificate against given host name described in
-// |addr| and numeric address in |raddr|.  Note that |raddr| might not
-// point to &addr->addr.
-std::expected<void, Error> check_cert(SSL *ssl, const DownstreamAddr *addr,
-                                      const Address *raddr);
+// |addr|.
+std::expected<void, Error> check_cert(SSL *ssl, const DownstreamAddr *addr);
 
-// Verify |cert| using numeric IP address.  |hostname| and |addr|
-// should contain the same numeric IP address.
+// Verify |cert| using numeric IP address |hostname|.
 std::expected<void, Error> verify_numeric_hostname(X509 *cert,
-                                                   std::string_view hostname,
-                                                   const Address *addr);
+                                                   std::string_view hostname);
 
 // Verify |cert| using DNS name hostname.
 std::expected<void, Error> verify_dns_hostname(X509 *cert,

@@ -217,38 +217,13 @@ static X509 *load_cert(const char *path) {
   return cert;
 }
 
-static Address parse_addr(const char *ipaddr) {
-  addrinfo hints{};
-
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_flags = AI_NUMERICHOST;
-#ifdef AI_NUMERICSERV
-  hints.ai_flags |= AI_NUMERICSERV;
-#endif // defined(AI_NUMERICSERV)
-
-  addrinfo *res = nullptr;
-
-  auto rv = getaddrinfo(ipaddr, "443", &hints, &res);
-
-  assert_eq(0, rv);
-  assert_not_null(res);
-
-  Address addr;
-  addr.set(res->ai_addr);
-
-  freeaddrinfo(res);
-
-  return addr;
-}
-
 void test_shrpx_tls_verify_numeric_hostname(void) {
   {
     // Successful IPv4 address match in SAN
     static constexpr auto ipaddr = "127.0.0.1"sv;
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/verify_hostname.crt");
-    auto addr = parse_addr(ipaddr.data());
 
-    assert_ok(tls::verify_numeric_hostname(cert, ipaddr, &addr));
+    assert_ok(tls::verify_numeric_hostname(cert, ipaddr));
 
     X509_free(cert);
   }
@@ -257,9 +232,8 @@ void test_shrpx_tls_verify_numeric_hostname(void) {
     // Successful IPv6 address match in SAN
     static constexpr auto ipaddr = "::1"sv;
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/verify_hostname.crt");
-    auto addr = parse_addr(ipaddr.data());
 
-    assert_ok(tls::verify_numeric_hostname(cert, ipaddr, &addr));
+    assert_ok(tls::verify_numeric_hostname(cert, ipaddr));
 
     X509_free(cert);
   }
@@ -268,10 +242,9 @@ void test_shrpx_tls_verify_numeric_hostname(void) {
     // Unsuccessful IPv4 address match in SAN
     static constexpr auto ipaddr = "192.168.0.127"sv;
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/verify_hostname.crt");
-    auto addr = parse_addr(ipaddr.data());
 
     assert_err(Error::TLS_VERIFY_PEER,
-               tls::verify_numeric_hostname(cert, ipaddr, &addr));
+               tls::verify_numeric_hostname(cert, ipaddr));
 
     X509_free(cert);
   }
@@ -280,10 +253,9 @@ void test_shrpx_tls_verify_numeric_hostname(void) {
     // CommonName is not used if SAN is available
     static constexpr auto ipaddr = "192.168.0.1"sv;
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/ipaddr.crt");
-    auto addr = parse_addr(ipaddr.data());
 
     assert_err(Error::TLS_VERIFY_PEER,
-               tls::verify_numeric_hostname(cert, ipaddr, &addr));
+               tls::verify_numeric_hostname(cert, ipaddr));
 
     X509_free(cert);
   }
@@ -292,9 +264,8 @@ void test_shrpx_tls_verify_numeric_hostname(void) {
     // Successful IPv4 address match in CommonName
     static constexpr auto ipaddr = "127.0.0.1"sv;
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/nosan_ip.crt");
-    auto addr = parse_addr(ipaddr.data());
 
-    assert_ok(tls::verify_numeric_hostname(cert, ipaddr, &addr));
+    assert_ok(tls::verify_numeric_hostname(cert, ipaddr));
 
     X509_free(cert);
   }
@@ -303,10 +274,9 @@ void test_shrpx_tls_verify_numeric_hostname(void) {
     // Presence of SAN prevents CN fallback
     static constexpr auto ipaddr = "127.0.0.1"sv;
     auto cert = load_cert(NGHTTP2_SRC_DIR "/testdata/dnssan_ip.crt");
-    auto addr = parse_addr(ipaddr.data());
 
     assert_err(Error::TLS_VERIFY_PEER,
-               tls::verify_numeric_hostname(cert, ipaddr, &addr));
+               tls::verify_numeric_hostname(cert, ipaddr));
 
     X509_free(cert);
   }
