@@ -1109,6 +1109,56 @@ func TestH1H1CONNECTMethodDiscardBuffer(t *testing.T) {
 	}
 }
 
+// TestH1H1UpgradeReject rejects unsupported protocols and non-GET WebSocket
+// upgrades without forwarding the request.
+func TestH1H1UpgradeReject(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		method  string
+		upgrade string
+	}{
+		{
+			name:    "UnknownProtocolGET",
+			method:  "GET",
+			upgrade: "foo",
+		},
+		{
+			name:    "UnknownProtocolPOST",
+			method:  "POST",
+			upgrade: "foo",
+		},
+		{
+			name:    "WebSocketPOST",
+			method:  "POST",
+			upgrade: "websocket",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := newServerTester(t, options{
+				handler: func(w http.ResponseWriter, r *http.Request) {
+					t.Errorf("request should not be forwarded")
+					w.WriteHeader(http.StatusInternalServerError)
+				},
+			})
+			defer st.Close()
+
+			if _, err := fmt.Fprintf(st.conn, "%s / HTTP/1.1\r\nTest-Case: TestH1H1UpgradeReject\r\nHost: 127.0.0.1:443\r\nUpgrade: %s\r\nConnection: upgrade\r\n\r\n", tc.method, tc.upgrade); err != nil {
+				t.Fatalf("Error fmt.Fprintf() = %v", err)
+			}
+
+			resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+			if err != nil {
+				t.Fatalf("Error http.ReadResponse() = %v", err)
+			}
+			defer resp.Body.Close()
+
+			if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+				t.Errorf("status: %v; want %v", got, want)
+			}
+		})
+	}
+}
+
 // TestH1H1UpgradeWithTransferEncoding rejects Upgrade request with
 // transfer-encoding fails.
 func TestH1H1UpgradeWithTransferEncoding(t *testing.T) {
