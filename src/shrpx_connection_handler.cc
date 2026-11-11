@@ -337,6 +337,11 @@ void ConnectionHandler::join_worker() {
 
 void ConnectionHandler::graceful_shutdown_worker() {
   if (single_worker_) {
+    // Worker threads do this when they receive GRACEFUL_SHUTDOWN
+    // event.  Single worker does not get the event, so stop accepting
+    // new connections here.
+    single_worker_->drain_and_delete_listener();
+
     return;
   }
 
