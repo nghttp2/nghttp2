@@ -680,19 +680,21 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
     }
   }
 
+  // p is empty if the line has been truncated.  The last 2 bytes of
+  // buf are reserved for the terminator, so write it through buf.
+  auto nwrite = as_unsigned(std::ranges::distance(
+    std::ranges::begin(std::span<char>{buf}), std::ranges::begin(p)));
+
   if (accessconf.syslog) {
-    p[0] = '\0';
+    buf[nwrite] = '\0';
 
     syslog(LOG_INFO, "%s", buf.data());
 
     return;
   }
 
-  p[0] = '\n';
-  p = p.subspan(1);
+  buf[nwrite++] = '\n';
 
-  auto nwrite = as_unsigned(std::ranges::distance(
-    std::ranges::begin(std::span<char>{buf}), std::ranges::begin(p)));
   while (write(lgconf->accesslog_fd, buf.data(), nwrite) == -1 &&
          errno == EINTR)
     ;
