@@ -1758,25 +1758,17 @@ std::expected<std::string_view, Error> get_common_name(X509 *cert) {
 } // namespace
 
 std::expected<void, Error> verify_numeric_hostname(X509 *cert,
-                                                   std::string_view hostname,
-                                                   const Address *addr) {
-  auto [saddr, saddrlen] = std::visit(
-    [](auto &&arg) -> std::tuple<const void *, size_t> {
-      using T = std::decay_t<decltype(arg)>;
+                                                   std::string_view hostname) {
+  // |hostname| is the address to verify.  It is not necessarily the
+  // address the socket is connected to (e.g., behind HTTP proxy).
+  std::array<uint8_t, sizeof(in6_addr)> saddr;
+  size_t saddrlen;
 
-      if constexpr (std::is_same_v<T, sockaddr_in>) {
-        return {&arg.sin_addr, sizeof(arg.sin_addr)};
-      }
-
-      if constexpr (std::is_same_v<T, sockaddr_in6>) {
-        return {&arg.sin6_addr, sizeof(arg.sin6_addr)};
-      }
-
-      return {};
-    },
-    addr->skaddr);
-
-  if (saddrlen == 0) {
+  if (inet_pton(AF_INET, hostname.data(), saddr.data()) == 1) {
+    saddrlen = sizeof(in_addr);
+  } else if (inet_pton(AF_INET6, hostname.data(), saddr.data()) == 1) {
+    saddrlen = sizeof(in6_addr);
+  } else {
     return std::unexpected{Error::TLS_VERIFY_PEER};
   }
 
@@ -1799,7 +1791,8 @@ std::expected<void, Error> verify_numeric_hostname(X509 *cert,
       auto ip_addrlen =
         static_cast<size_t>(ASN1_STRING_length(altname->d.iPAddress));
 
-      if (saddrlen == ip_addrlen && memcmp(saddr, ip_addr, ip_addrlen) == 0) {
+      if (saddrlen == ip_addrlen &&
+          memcmp(saddr.data(), ip_addr, ip_addrlen) == 0) {
         return {};
       }
     }
@@ -1894,18 +1887,17 @@ std::expected<void, Error> verify_dns_hostname(X509 *cert,
 }
 
 namespace {
-std::expected<void, Error>
-verify_hostname(X509 *cert, std::string_view hostname, const Address *addr) {
+std::expected<void, Error> verify_hostname(X509 *cert,
+                                           std::string_view hostname) {
   if (util::numeric_host(hostname.data())) {
-    return verify_numeric_hostname(cert, hostname, addr);
+    return verify_numeric_hostname(cert, hostname);
   }
 
   return verify_dns_hostname(cert, hostname);
 }
 } // namespace
 
-std::expected<void, Error> check_cert(SSL *ssl, const Address *addr,
-                                      std::string_view host) {
+std::expected<void, Error> check_cert(SSL *ssl, std::string_view host) {
 #if OPENSSL_3_0_0_API
   auto cert = SSL_get0_peer_certificate(ssl);
 #else  // !OPENSSL_3_0_0_API
@@ -1921,17 +1913,16 @@ std::expected<void, Error> check_cert(SSL *ssl, const Address *addr,
   auto cert_deleter = defer([cert] { X509_free(cert); });
 #endif // !OPENSSL_3_0_0_API
 
-  if (auto rv = verify_hostname(cert, host, addr); !rv) {
+  if (auto rv = verify_hostname(cert, host); !rv) {
     Log{ERROR} << "Certificate verification failed: hostname does not match";
     return rv;
   }
   return {};
 }
 
-std::expected<void, Error> check_cert(SSL *ssl, const DownstreamAddr *addr,
-                                      const Address *raddr) {
+std::expected<void, Error> check_cert(SSL *ssl, const DownstreamAddr *addr) {
   auto hostname = addr->sni.empty() ? addr->host : addr->sni;
-  return check_cert(ssl, raddr, hostname);
+  return check_cert(ssl, hostname);
 }
 
 std::expected<size_t, Error> CertLookupTree::add_cert(std::string_view hostname,

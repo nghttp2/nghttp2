@@ -376,7 +376,7 @@ std::expected<void, Error> LiveCheck::tls_handshake() {
   }
 
   if (!get_config()->tls.insecure) {
-    if (auto rv = tls::check_cert(conn_.tls.ssl, addr_, raddr_); !rv) {
+    if (auto rv = tls::check_cert(conn_.tls.ssl, addr_); !rv) {
       return rv;
     }
   }

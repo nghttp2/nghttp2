@@ -877,7 +877,7 @@ void Downstream::inspect_http2_request() {
   }
 }
 
-void Downstream::inspect_http1_request() {
+std::expected<void, Error> Downstream::inspect_http1_request() {
   if (req_.method == HTTP_CONNECT) {
     req_.upgrade_request = true;
   } else if (req_.http_minor > 0) {
@@ -887,14 +887,22 @@ void Downstream::inspect_http1_request() {
       // TODO Perform more strict checking for upgrade headers
       if (NGHTTP2_CLEARTEXT_PROTO_VERSION_ID ""sv == val) {
         req_.http2_upgrade_seen = true;
-      } else {
-        req_.upgrade_request = true;
-
+      } else if (req_.method == HTTP_GET) {
         // TODO Should we check Sec-WebSocket-Key, and
         // Sec-WebSocket-Version as well?
+        //
+        // WebSocket opening handshake must be GET request (RFC 6455,
+        // Section 4.1).  Setting ConnectProto::WEBSOCKET makes
+        // backend connection send GET (or extended CONNECT)
+        // regardless of req_.method, so only accept it for GET.
         if (util::strieq("websocket"sv, val)) {
+          req_.upgrade_request = true;
           req_.connect_proto = ConnectProto::WEBSOCKET;
+        } else {
+          return std::unexpected{Error::INTERNAL};
         }
+      } else {
+        return std::unexpected{Error::INTERNAL};
       }
     }
   }
@@ -906,6 +914,8 @@ void Downstream::inspect_http1_request() {
   auto expect = req_.fs.header(http2::HD_EXPECT);
   expect_100_continue_ =
     expect && util::strieq(expect->value, "100-continue"sv);
+
+  return {};
 }
 
 void Downstream::inspect_http1_response() {

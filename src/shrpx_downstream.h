@@ -62,6 +62,8 @@ struct BlockedLink;
 struct DownstreamAddrGroup;
 struct DownstreamAddr;
 
+inline constexpr auto SHRPX_NON_FINAL_RESPONSE_OVERHEAD = 32UZ;
+
 class FieldStore {
 public:
   FieldStore(BlockAllocator &balloc, size_t headers_initial_capacity)
@@ -307,7 +309,7 @@ public:
   void inspect_http2_request();
   // Inspects HTTP/1 request.  This checks whether the request is
   // upgrade request and tranfer-encoding etc.
-  void inspect_http1_request();
+  std::expected<void, Error> inspect_http1_request();
   // Returns true if the request is HTTP Upgrade for HTTP/2.  The
   // request must have exactly one HTTP2-Settings header field, and
   // Connection header field must list both upgrade and

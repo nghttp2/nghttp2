@@ -680,19 +680,21 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
     }
   }
 
+  // p is empty if the line has been truncated.  The last 2 bytes of
+  // buf are reserved for the terminator, so write it through buf.
+  auto nwrite = as_unsigned(std::ranges::distance(
+    std::ranges::begin(std::span<char>{buf}), std::ranges::begin(p)));
+
   if (accessconf.syslog) {
-    p[0] = '\0';
+    buf[nwrite] = '\0';
 
     syslog(LOG_INFO, "%s", buf.data());
 
     return;
   }
 
-  p[0] = '\n';
-  p = p.subspan(1);
+  buf[nwrite++] = '\n';
 
-  auto nwrite = as_unsigned(std::ranges::distance(
-    std::ranges::begin(std::span<char>{buf}), std::ranges::begin(p)));
   while (write(lgconf->accesslog_fd, buf.data(), nwrite) == -1 &&
          errno == EINTR)
     ;
@@ -700,21 +702,25 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
 
 std::expected<void, Error> reopen_log_files(const LoggingConfig &loggingconf) {
   std::expected<void, Error> res;
-  int new_accesslog_fd = -1;
-  int new_errorlog_fd = -1;
 
   auto lgconf = log_config();
   auto &accessconf = loggingconf.access;
   auto &errorconf = loggingconf.error;
 
+  // Replace the current file descriptor only after the new file has
+  // been opened successfully.  If open fails (e.g., EMFILE), keep
+  // writing to the current file rather than disabling logging.
   if (!accessconf.syslog && !accessconf.file.empty()) {
     auto maybe_new_accesslog_fd = open_log_file(accessconf.file.data());
     if (!maybe_new_accesslog_fd) {
       Log{ERROR} << "Failed to open accesslog file " << accessconf.file;
       res = std::unexpected{maybe_new_accesslog_fd.error()};
     } else {
-      new_accesslog_fd = *maybe_new_accesslog_fd;
+      close_log_file(lgconf->accesslog_fd);
+      lgconf->accesslog_fd = *maybe_new_accesslog_fd;
     }
+  } else {
+    close_log_file(lgconf->accesslog_fd);
   }
 
   if (!errorconf.syslog && !errorconf.file.empty()) {
@@ -728,17 +734,15 @@ std::expected<void, Error> reopen_log_files(const LoggingConfig &loggingconf) {
 
       res = std::unexpected{maybe_new_errorlog_fd.error()};
     } else {
-      new_errorlog_fd = *maybe_new_errorlog_fd;
+      close_log_file(lgconf->errorlog_fd);
+      lgconf->errorlog_fd = *maybe_new_errorlog_fd;
     }
+  } else {
+    close_log_file(lgconf->errorlog_fd);
   }
 
-  close_log_file(lgconf->accesslog_fd);
-  close_log_file(lgconf->errorlog_fd);
-
-  lgconf->accesslog_fd = new_accesslog_fd;
-  lgconf->errorlog_fd = new_errorlog_fd;
   lgconf->errorlog_tty =
-    (new_errorlog_fd == -1) ? false : isatty(new_errorlog_fd);
+    (lgconf->errorlog_fd == -1) ? false : isatty(lgconf->errorlog_fd);
 
   return res;
 }
