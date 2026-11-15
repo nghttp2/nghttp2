@@ -419,6 +419,14 @@ std::expected<void, Error> ClientHandler::upstream_http1_connhd_read() {
     return on_read();
   }
 
+  if (nread < left_connhd_len_) {
+    // We have not seen the whole client connection preface yet.  The
+    // data received so far may turn out to be the beginning of HTTP/1
+    // request (e.g., "P" of "POST"), so keep them in the buffer until
+    // we can tell.
+    return {};
+  }
+
   left_connhd_len_ -= nread;
   rb_.drain(nread);
   conn_.rlimit.startw();
