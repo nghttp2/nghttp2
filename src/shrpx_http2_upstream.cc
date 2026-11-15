@@ -763,12 +763,13 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
 
   wb->append(PADDING.data(), padlen);
 
+  handler->extend_write_rate_timer(length);
+
   if (body->rleft() == 0) {
     downstream->disable_upstream_wtimer();
     downstream->unregister_upstream_write_rate_timer();
   } else {
     downstream->reset_upstream_wtimer();
-    handler->extend_write_rate_timer(length);
   }
 
   if (length > 0 && !downstream->resume_read(SHRPX_NO_BUFFER, length)) {
