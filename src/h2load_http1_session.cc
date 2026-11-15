@@ -43,7 +43,8 @@ namespace {
 int htp_msg_begincb(llhttp_t *htp) {
   auto session = static_cast<Http1Session *>(htp->data);
 
-  if (session->stream_resp_counter_ > session->stream_req_counter_) {
+  if (session->stream_req_started_ <=
+      static_cast<size_t>(session->stream_resp_counter_ / 2)) {
     return -1;
   }
 
@@ -174,6 +175,7 @@ std::expected<void, Error> Http1Session::submit_request() {
   }
 
   client_->on_request(stream_req_counter_);
+  ++stream_req_started_;
 
   auto req_stat = client_->get_req_stat(stream_req_counter_);
 

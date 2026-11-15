@@ -706,6 +706,7 @@ void test_http2_check_transfer_encoding(void) {
   assert_false(http2::check_transfer_encoding("foo,,chunked"sv));
   assert_false(http2::check_transfer_encoding("chunked;foo"sv));
   assert_false(http2::check_transfer_encoding("chunked;"sv));
+  assert_false(http2::check_transfer_encoding("chunked;foo="sv));
   assert_false(http2::check_transfer_encoding("chunked;foo=bar;"sv));
   assert_false(http2::check_transfer_encoding("chunked;?=bar"sv));
   assert_false(http2::check_transfer_encoding("chunked;=bar"sv));
