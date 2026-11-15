@@ -1369,8 +1369,7 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
     verbose_on_header_callback(session, frame, namebuf.base, namebuf.len,
                                valuebuf.base, valuebuf.len, flags, user_data);
   }
-  if (frame->hd.type != NGHTTP2_HEADERS ||
-      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+  if (frame->hd.type != NGHTTP2_HEADERS) {
     return 0;
   }
   auto stream = hd->get_stream(frame->hd.stream_id);
@@ -1378,15 +1377,23 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
+  // Trailer fields are not stored, but they are counted as well,
+  // because the library validates every field before calling this
+  // callback.
   if (stream->header_buffer_size + namebuf.len + valuebuf.len > 64_k) {
-    if (!hd->submit_rst_stream(stream, NGHTTP2_INTERNAL_ERROR)) {
-      return NGHTTP2_ERR_CALLBACK_FAILURE;
-    }
+    remove_stream_read_timeout(stream);
+    remove_stream_write_timeout(stream);
 
-    return 0;
+    // The library resets the stream with INTERNAL_ERROR and skips the
+    // rest of the header block.
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
   stream->header_buffer_size += namebuf.len + valuebuf.len;
+
+  if (frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+    return 0;
+  }
 
   auto token = http2::lookup_token(as_string_view(namebuf.base, namebuf.len));
 

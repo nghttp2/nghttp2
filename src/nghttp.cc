@@ -1749,19 +1749,22 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
       break;
     }
 
+    // Trailer fields are not stored, but they are counted as well,
+    // because the library validates every field before calling this
+    // callback.
+    if (req->header_buffer_size + namelen + valuelen > 64_k) {
+      // The library resets the stream with INTERNAL_ERROR and skips
+      // the rest of the header block.
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
+
+    req->header_buffer_size += namelen + valuelen;
+
     /* ignore trailer header */
     if (frame->headers.cat == NGHTTP2_HCAT_HEADERS &&
         !req->expect_final_response) {
       break;
     }
-
-    if (req->header_buffer_size + namelen + valuelen > 64_k) {
-      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
-                                NGHTTP2_INTERNAL_ERROR);
-      return 0;
-    }
-
-    req->header_buffer_size += namelen + valuelen;
 
     auto nameref = as_string_view(name, namelen);
     auto valueref = as_string_view(value, valuelen);
@@ -1781,10 +1784,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
 
     if (req->header_buffer_size + namelen + valuelen > 64_k) {
-      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
-                                frame->push_promise.promised_stream_id,
-                                NGHTTP2_INTERNAL_ERROR);
-      return 0;
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
     req->header_buffer_size += namelen + valuelen;
