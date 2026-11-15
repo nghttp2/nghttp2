@@ -558,7 +558,9 @@ std::expected<void, Error> Client::read_quic() {
   sockaddr_storage ss;
   int rv;
   size_t pktcnt = 0;
-  ngtcp2_pkt_info pi;
+  static const ngtcp2_pkt_info pi = {
+    .ecn = NGTCP2_ECN_NOT_ECT,
+  };
 
   iovec msg_iov{
     .iov_base = buf.data(),
