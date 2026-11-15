@@ -1940,7 +1940,8 @@ Options:
               host    pattern    "*.nghttp2.org"    matches    against
               "www.nghttp2.org"  and  "git.ngttp2.org", but  does  not
               match  against  "nghttp2.org".   The exact  hosts  match
-              takes precedence over the wildcard hosts match.
+              takes   precedence  over   the  wildcard   hosts  match.
+              Specifying just "*" is not allowed.
 
               If path  part ends with  "*", it is treated  as wildcard
               path.  The  wildcard path  behaves differently  from the
