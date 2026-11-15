@@ -638,7 +638,7 @@ std::expected<QUICLingeringWorkerProcess *, Error>
 ConnectionHandler::match_quic_lingering_worker_process_worker_id(
   const WorkerID &wid) {
   for (auto &lwps : quic_lingering_worker_processes_) {
-    if (find_worker_index(lwps.worker_ids, wid) != -1) {
+    if (find_worker_index(lwps.worker_ids, wid)) {
       return &lwps;
     }
   }
