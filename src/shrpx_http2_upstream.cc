@@ -1428,6 +1428,7 @@ nghttp2_ssize downstream_data_read_callback(nghttp2_session *session,
   if (nread == 0 && ((*data_flags) & NGHTTP2_DATA_FLAG_EOF) == 0) {
     if (body->rleft() == 0) {
       downstream->disable_upstream_wtimer();
+      downstream->unregister_upstream_write_rate_timer();
     }
 
     return NGHTTP2_ERR_DEFERRED;
