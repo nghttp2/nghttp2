@@ -109,6 +109,35 @@ func TestH1H1MultipleRequestCL(t *testing.T) {
 	}
 }
 
+// TestH1H1MultipleHost tests that server rejects request which
+// contains multiple Host header fields.
+func TestH1H1MultipleHost(t *testing.T) {
+	opts := options{
+		handler: func(http.ResponseWriter, *http.Request) {
+			t.Errorf("server should not forward bad request")
+		},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, fmt.Sprintf("GET / HTTP/1.1\r\nHost: %v\r\nHost: %v\r\nTest-Case: TestH1H1MultipleHost\r\n\r\n",
+		st.authority, st.authority)); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
 // // TestH1H1ConnectFailure tests that server handles the situation that
 // // connection attempt to HTTP/1 backend failed.
 // func TestH1H1ConnectFailure(t *testing.T) {
@@ -436,6 +465,34 @@ func TestH1H1HTTP10NoHostRewrite(t *testing.T) {
 
 	if got, want := resp.Header.Get("request-host"), st.backendHost; got != want {
 		t.Errorf("request-host: %v; want %v", got, want)
+	}
+}
+
+// TestH1H1HTTP10MultipleHost tests that server rejects HTTP/1.0
+// request with multiple Host header fields
+func TestH1H1HTTP10MultipleHost(t *testing.T) {
+	opts := options{
+		handler: func(w http.ResponseWriter, r *http.Request) {
+			t.Errorf("server should not forward bad request")
+		},
+	}
+
+	st := newServerTester(t, opts)
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, fmt.Sprintf("GET / HTTP/1.0\r\nHost: %v\r\nHost: %v\r\nTest-Case: TestH1H1HTTP10MultipleHost\r\n\r\n", st.authority, st.authority)); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if got, want := resp.StatusCode, http.StatusBadRequest; got != want {
+		t.Errorf("status: %v; want %v", got, want)
 	}
 }
 

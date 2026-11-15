@@ -389,16 +389,28 @@ int htp_hdrs_completecb(llhttp_t *htp) {
     req.fs.content_length = static_cast<int64_t>(htp->content_length);
   }
 
-  auto host = req.fs.header(http2::HD_HOST);
-
   if (req.http_major > 1 || req.http_minor > 1) {
     req.http_major = 1;
     req.http_minor = 1;
     return -1;
   }
 
-  if (req.http_major == 1 && req.http_minor == 1 && !host) {
-    return -1;
+  const HeaderRefs::value_type *host;
+
+  if (req.http_major == 1 && req.http_minor == 1) {
+    auto maybe_host = req.fs.verify_single_host();
+    if (!maybe_host) {
+      return -1;
+    }
+
+    host = *maybe_host;
+  } else {
+    auto maybe_host = req.fs.verify_single_host_or_none();
+    if (!maybe_host) {
+      return -1;
+    }
+
+    host = *maybe_host;
   }
 
   if (host) {

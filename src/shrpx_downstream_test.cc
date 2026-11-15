@@ -34,6 +34,7 @@ namespace {
 const MunitTest tests[]{
   munit_void_test(test_downstream_field_store_append_last_header),
   munit_void_test(test_downstream_field_store_header),
+  munit_void_test(test_downstream_field_store_verify_single_host),
   munit_void_test(test_downstream_crumble_request_cookie),
   munit_void_test(test_downstream_assemble_request_cookie),
   munit_void_test(test_downstream_rewrite_location_response_header),
@@ -97,6 +98,25 @@ void test_downstream_field_store_header(void) {
   // By name
   assert_eq(HeaderRef("alpha"sv, "0"sv), *fs.header("alpha"sv));
   assert_null(fs.header("bravo"sv));
+}
+
+void test_downstream_field_store_verify_single_host(void) {
+  BlockAllocator balloc(16, 16);
+  FieldStore fs(balloc, 0);
+
+  assert_ok_eq(nullptr, fs.verify_single_host_or_none());
+  assert_err(Error::HTTP, fs.verify_single_host());
+
+  fs.add_header_token("host"sv, "example.com", false, http2::HD_HOST);
+  auto host = fs.header(http2::HD_HOST);
+
+  assert_ok_eq(host, fs.verify_single_host_or_none());
+  assert_ok_eq(host, fs.verify_single_host());
+
+  fs.add_header_token("host"sv, "example.com", false, http2::HD_HOST);
+
+  assert_err(Error::HTTP, fs.verify_single_host_or_none());
+  assert_err(Error::HTTP, fs.verify_single_host());
 }
 
 void test_downstream_crumble_request_cookie(void) {

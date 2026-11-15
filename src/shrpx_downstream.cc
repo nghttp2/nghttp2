@@ -513,6 +513,41 @@ void append_last_header_value(BlockAllocator &balloc, bool &key_prev,
 }
 } // namespace
 
+std::expected<const HeaderRefs::value_type *, Error>
+FieldStore::verify_single_host() const {
+  auto maybe_host = verify_single_host_or_none();
+  if (!maybe_host) {
+    return maybe_host;
+  }
+
+  if (!*maybe_host) {
+    return std::unexpected{Error::HTTP};
+  }
+
+  return maybe_host;
+}
+
+std::expected<const HeaderRefs::value_type *, Error>
+FieldStore::verify_single_host_or_none() const {
+  const HeaderRefs::value_type *host{};
+  auto found = false;
+
+  for (auto &kv : headers_) {
+    if (kv.token != http2::HD_HOST) {
+      continue;
+    }
+
+    if (found) {
+      return std::unexpected{Error::HTTP};
+    }
+
+    found = true;
+    host = &kv;
+  }
+
+  return host;
+}
+
 std::expected<void, Error> FieldStore::parse_content_length() {
   content_length = -1;
 
