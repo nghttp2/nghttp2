@@ -63,6 +63,13 @@ HealthMonitorDownstreamConnection::push_request_headers() {
   auto dest = downstream_->get_request_buf();
   src->remove(*dest);
 
+  // If the request body was completely received while this request
+  // was waiting in DownstreamQueue, end_upload_data() has not been
+  // called.
+  if (downstream_->get_blocked_request_data_eof()) {
+    return end_upload_data();
+  }
+
   return {};
 }
 

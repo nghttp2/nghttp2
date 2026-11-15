@@ -239,9 +239,24 @@ std::expected<void, Error> APIDownstreamConnection::push_request_headers() {
   }
 
   downstream_->set_request_header_sent(true);
+
+  // Request body received while this request was waiting in
+  // DownstreamQueue is stored in blocked request buffer.  It has
+  // already been counted in req.recv_body_length, so write it to fd_
+  // as if it were received now.
   auto src = downstream_->get_blocked_request_buf();
-  auto dest = downstream_->get_request_buf();
-  src->remove(*dest);
+  while (src->rleft()) {
+    auto data = src->peek();
+    if (auto rv = push_upload_data_chunk(data); !rv) {
+      return rv;
+    }
+
+    src->drain(data.size());
+  }
+
+  if (downstream_->get_blocked_request_data_eof()) {
+    return end_upload_data();
+  }
 
   return {};
 }
