@@ -236,7 +236,6 @@ Notes for building on Windows (MSVC)
 
 The easiest way to build native Windows nghttp2 dll is use `cmake
 <https://cmake.org/>`_.  The free version of `Visual C++ Build Tools
-<http://landinghub.visualstudio.com/visual-cpp-build-tools>`_ works
 fine.
 
 1. Install cmake for windows
