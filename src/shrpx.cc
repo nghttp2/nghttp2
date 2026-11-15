@@ -1940,7 +1940,8 @@ Options:
               host    pattern    "*.nghttp2.org"    matches    against
               "www.nghttp2.org"  and  "git.ngttp2.org", but  does  not
               match  against  "nghttp2.org".   The exact  hosts  match
-              takes precedence over the wildcard hosts match.
+              takes   precedence  over   the  wildcard   hosts  match.
+              Specifying just "*" is not allowed.
 
               If path  part ends with  "*", it is treated  as wildcard
               path.  The  wildcard path  behaves differently  from the
@@ -3012,10 +3013,11 @@ Options:
                 request.  "-" if backend host is not available.
               * $method: HTTP method
               * $path:  Request  path  including query.   For  CONNECT
-                request, authority is recorded.
+                request (other than extended  CONNECT described in RFC
+                8441), authority is recorded.
               * $path_without_query:  $path   up  to  the   first  '?'
-                character.    For   CONNECT  request,   authority   is
-                recorded.
+                character.  For  CONNECT request (other  than extended
+                CONNECT described in RFC 8441), authority is recorded.
               * $protocol_version:   HTTP  version   (e.g.,  HTTP/1.1,
                 HTTP/2)
 

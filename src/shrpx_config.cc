@@ -1261,6 +1261,15 @@ std::expected<void, Error> parse_mapping(
   for (const auto &raw_pattern : mapping) {
     std::string_view pattern;
     auto slash = std::ranges::find(raw_pattern, '/');
+    // Wildcard host must match at least one character; "*" alone
+    // would produce an empty host suffix which Router cannot hold.
+    if (raw_pattern.starts_with('*') &&
+        std::ranges::begin(raw_pattern) + 1 == slash) {
+      Log{ERROR} << "backend: wildcard host must have at least one character "
+                    "after '*': "
+                 << raw_pattern;
+      return std::unexpected{Error::INVALID_CONFIG};
+    }
     if (slash == std::ranges::end(raw_pattern)) {
       // This effectively makes empty pattern to "/".  2 for '/' and
       // terminal NULL character.

@@ -1452,10 +1452,20 @@ Http3Upstream::on_downstream_body(Downstream *downstream,
   body->append(data);
 
   if (flush) {
-    nghttp3_conn_resume_stream(httpconn_, downstream->get_stream_id());
+    auto stream_id = downstream->get_stream_id();
 
-    downstream->ensure_upstream_wtimer();
-    downstream->register_upstream_write_rate_timer();
+    // Timers are stopped in on_stream_write, which is only called
+    // when data of this stream is written to QUIC stack.  Do not
+    // start them if there is nothing to write (e.g., an empty DATA
+    // frame from backend); otherwise they just expire.  This has to
+    // be checked before resuming stream.
+    if (body->rleft_mark() ||
+        !nghttp3_conn_is_stream_flushed(httpconn_, stream_id)) {
+      downstream->ensure_upstream_wtimer();
+      downstream->register_upstream_write_rate_timer();
+    }
+
+    nghttp3_conn_resume_stream(httpconn_, stream_id);
   }
 
   return {};

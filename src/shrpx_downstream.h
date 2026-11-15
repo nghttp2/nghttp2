@@ -91,6 +91,16 @@ public:
   // such header is found, returns nullptr.
   const HeaderRefs::value_type *header(std::string_view name) const;
 
+  // Returns Host header field only if it appears just once.
+  // Otherwise return an error.
+  std::expected<const HeaderRefs::value_type *, Error>
+  verify_single_host() const;
+
+  // Returns Host header field only if it appears just once, or
+  // nullptr if it does not exist.  Otherwise return an error.
+  std::expected<const HeaderRefs::value_type *, Error>
+  verify_single_host_or_none() const;
+
   void add_header_token(std::string_view name, std::string_view value,
                         bool no_index, int32_t token);
 

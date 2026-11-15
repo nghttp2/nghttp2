@@ -415,12 +415,15 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
   auto downstream_addr = downstream->get_addr();
   auto method =
     req.method == -1 ? "<unknown>"sv : http2::to_method_string(req.method);
-  auto path = req.method == HTTP_CONNECT ? req.authority
+  // Extended CONNECT (RFC 8441) carries :path, and it is what is
+  // forwarded to backend; only regular CONNECT is logged by
+  // authority.
+  auto path = req.regular_connect_method() ? req.authority
               : config->http2_proxy
                 ? construct_absolute_request_uri(balloc, req)
               : req.path.empty() ? req.method == HTTP_OPTIONS ? "*"sv : "-"sv
                                  : req.path;
-  auto path_without_query = req.method == HTTP_CONNECT
+  auto path_without_query = req.regular_connect_method()
                               ? path
                               : std::string_view{std::ranges::begin(path),
                                                  std::ranges::find(path, '?')};

@@ -419,6 +419,14 @@ std::expected<void, Error> ClientHandler::upstream_http1_connhd_read() {
     return on_read();
   }
 
+  if (nread < left_connhd_len_) {
+    // We have not seen the whole client connection preface yet.  The
+    // data received so far may turn out to be the beginning of HTTP/1
+    // request (e.g., "P" of "POST"), so keep them in the buffer until
+    // we can tell.
+    return {};
+  }
+
   left_connhd_len_ -= nread;
   rb_.drain(nread);
   conn_.rlimit.startw();
@@ -1200,7 +1208,17 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
 
 ClientHandler::ReadBuf *ClientHandler::get_rb() { return &rb_; }
 
-void ClientHandler::signal_write() { conn_.wlimit.startw(); }
+void ClientHandler::signal_write() {
+  conn_.wlimit.startw();
+
+  // The socket may never become writable if client stops reading,
+  // even though write(2) has not returned EAGAIN yet.  Start write
+  // timer here so that such connection does not stay forever.  The
+  // timer is stopped when all pending data have been written.
+  if (!faddr_->quic && !ev_is_active(&conn_.wt)) {
+    ev_timer_again(conn_.loop, &conn_.wt);
+  }
+}
 
 RateLimit *ClientHandler::get_rlimit() { return &conn_.rlimit; }
 RateLimit *ClientHandler::get_wlimit() { return &conn_.wlimit; }
