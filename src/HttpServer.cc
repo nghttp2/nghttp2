@@ -338,7 +338,6 @@ public:
   FileEntry *cache_fd(const std::string &path, const FileEntry &ent) {
     auto rv = fd_cache_.emplace(path, std::make_unique<FileEntry>(ent));
     auto &res = (*rv).second;
-    res->it = rv;
     fd_cache_lru_.append(res.get());
 
     while (fd_cache_.size() > FILE_ENTRY_EVICT_THRES) {
@@ -348,7 +347,7 @@ public:
       }
       fd_cache_lru_.remove(ent);
       close(ent->fd);
-      fd_cache_.erase(ent->it);
+      erase_fd_cache_entry(ent);
     }
 
     return res.get();
@@ -359,7 +358,7 @@ public:
     if (target->usecount == 0 && target->stale) {
       fd_cache_lru_.remove(target);
       close(target->fd);
-      fd_cache_.erase(target->it);
+      erase_fd_cache_entry(target);
       return;
     }
 
@@ -384,6 +383,16 @@ public:
   bool handlers_empty() const { return handlers_.empty(); }
 
 private:
+  void erase_fd_cache_entry(FileEntry *ent) {
+    auto range = fd_cache_.equal_range(ent->path);
+    for (auto it = range.first; it != range.second; ++it) {
+      if ((*it).second.get() == ent) {
+        fd_cache_.erase(it);
+        return;
+      }
+    }
+  }
+
   std::unordered_set<Http2Handler *> handlers_;
   // cache for file descriptors to read file.
   std::unordered_multimap<std::string, std::unique_ptr<FileEntry>> fd_cache_;
@@ -1369,8 +1378,7 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
     verbose_on_header_callback(session, frame, namebuf.base, namebuf.len,
                                valuebuf.base, valuebuf.len, flags, user_data);
   }
-  if (frame->hd.type != NGHTTP2_HEADERS ||
-      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+  if (frame->hd.type != NGHTTP2_HEADERS) {
     return 0;
   }
   auto stream = hd->get_stream(frame->hd.stream_id);
@@ -1378,15 +1386,23 @@ int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
+  // Trailer fields are not stored, but they are counted as well,
+  // because the library validates every field before calling this
+  // callback.
   if (stream->header_buffer_size + namebuf.len + valuebuf.len > 64_k) {
-    if (!hd->submit_rst_stream(stream, NGHTTP2_INTERNAL_ERROR)) {
-      return NGHTTP2_ERR_CALLBACK_FAILURE;
-    }
+    remove_stream_read_timeout(stream);
+    remove_stream_write_timeout(stream);
 
-    return 0;
+    // The library resets the stream with INTERNAL_ERROR and skips the
+    // rest of the header block.
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
   stream->header_buffer_size += namebuf.len + valuebuf.len;
+
+  if (frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+    return 0;
+  }
 
   auto token = http2::lookup_token(as_string_view(namebuf.base, namebuf.len));
 

@@ -259,6 +259,8 @@ private:
   bool affinity_hash_computed_{};
   // the number of Downstreams participating to the write rate group.
   size_t write_rate_member_count_{};
+  // The time when write_rate_member_count_ became 0.
+  std::chrono::steady_clock::time_point write_rate_idle_start_{};
 };
 
 } // namespace shrpx

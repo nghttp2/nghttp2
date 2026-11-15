@@ -1689,14 +1689,25 @@ void ClientHandler::register_write_rate_timer(Downstream *downstream) {
   auto config = get_config();
   const auto &timeoutconf = config->http.upstream.timeout;
 
-  if (write_rate_member_count_ > 1 ||
-      (ev_is_active(&write_rate_timer_) &&
-       std::max(ev_timer_remaining(conn_.loop, &write_rate_timer_), 0.) >=
-         static_cast<double>(timeoutconf.initial_write_rate))) {
+  if (write_rate_member_count_ > 1) {
     return;
   }
 
-  write_rate_timer_.repeat = timeoutconf.initial_write_rate;
+  if (ev_is_active(&write_rate_timer_)) {
+    // The timer has been running since the last member left.  Give
+    // back the time spent without member, but do not grant the
+    // initial timeout again.  Otherwise, a client which drains the
+    // response buffer once in a while never has to read at
+    // min_write_rate.
+    write_rate_timer_.repeat = std::min(
+      timeoutconf.max_write_rate,
+      std::max(ev_timer_remaining(conn_.loop, &write_rate_timer_), 0.) +
+        util::ev_tstamp_from(std::chrono::steady_clock::now() -
+                             write_rate_idle_start_));
+  } else {
+    write_rate_timer_.repeat = timeoutconf.initial_write_rate;
+  }
+
   ev_timer_again(conn_.loop, &write_rate_timer_);
 }
 
@@ -1716,13 +1727,17 @@ void ClientHandler::unregister_write_rate_timer(Downstream *downstream) {
   // Keep timer running.  When it fires and there is no member, stop
   // timer.  Frequently starting and stopping timer could bring
   // performance penalty.
+  write_rate_idle_start_ = std::chrono::steady_clock::now();
 }
 
 void ClientHandler::extend_write_rate_timer(size_t datalen) {
   auto config = get_config();
   const auto &httpconf = config->http;
 
-  if (httpconf.upstream.min_write_rate == 0) {
+  // Do not restart the timer which has fired without member.  The
+  // next member gets the initial timeout.
+  if (httpconf.upstream.min_write_rate == 0 ||
+      (write_rate_member_count_ == 0 && !ev_is_active(&write_rate_timer_))) {
     return;
   }
 

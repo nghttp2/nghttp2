@@ -115,7 +115,6 @@ struct FileEntry {
       fd(fd),
       stale(stale) {}
   std::string path;
-  std::unordered_multimap<std::string, std::unique_ptr<FileEntry>>::iterator it;
   int64_t length;
   int64_t mtime;
   std::chrono::steady_clock::time_point last_valid;
