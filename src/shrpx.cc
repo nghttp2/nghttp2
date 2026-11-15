@@ -3013,10 +3013,11 @@ Options:
                 request.  "-" if backend host is not available.
               * $method: HTTP method
               * $path:  Request  path  including query.   For  CONNECT
-                request, authority is recorded.
+                request (other than extended  CONNECT described in RFC
+                8441), authority is recorded.
               * $path_without_query:  $path   up  to  the   first  '?'
-                character.    For   CONNECT  request,   authority   is
-                recorded.
+                character.  For  CONNECT request (other  than extended
+                CONNECT described in RFC 8441), authority is recorded.
               * $protocol_version:   HTTP  version   (e.g.,  HTTP/1.1,
                 HTTP/2)
 
