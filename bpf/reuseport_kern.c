@@ -402,8 +402,10 @@ static inline int parse_quic(quic_hd *qhd, __u8 *data, __u8 *data_end) {
 static __u32 hash(const __u8 *data, __u32 datalen, __u32 initval) {
   __u32 a, b;
 
-  a = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
-  b = (data[4] << 24) | (data[5] << 16) | (data[6] << 8) | data[7];
+  a = ((__u32)data[0] << 24) | ((__u32)data[1] << 16) | ((__u32)data[2] << 8) |
+      data[3];
+  b = ((__u32)data[4] << 24) | ((__u32)data[5] << 16) | ((__u32)data[6] << 8) |
+      data[7];
 
   return jhash_2words(a, b, initval);
 }
