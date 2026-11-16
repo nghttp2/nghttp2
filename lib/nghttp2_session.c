@@ -4958,9 +4958,10 @@ static int session_on_stream_window_update_received(nghttp2_session *session,
   }
   if (NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
       stream->remote_window_size) {
-    return session_handle_invalid_connection(
-      session, frame, NGHTTP2_ERR_FLOW_CONTROL,
-      "WINDOW_UPDATE: window size overflow");
+    /* A stream window overflow is a stream error, not a connection
+       error (RFC 9113 section 6.9.1). */
+    return session_handle_invalid_stream(session, frame,
+                                         NGHTTP2_ERR_FLOW_CONTROL);
   }
   stream->remote_window_size += frame->window_update.window_size_increment;
 
@@ -6513,10 +6514,48 @@ static nghttp2_ssize session_mem_recv(nghttp2_session *session,
         iframe->state = NGHTTP2_IB_READ_HEADER_BLOCK;
 
         break;
-      case NGHTTP2_PRIORITY:
+      case NGHTTP2_PRIORITY: {
+        /* The priority signals themselves stay ignored, but the frame
+           is still checked.  Stream 0 is a connection error (RFC 9113
+           section 6.3). */
+        nghttp2_priority_spec pri_spec;
+
+        if (iframe->frame.hd.stream_id == 0) {
+          rv = nghttp2_session_terminate_session_with_reason(
+            session, NGHTTP2_PROTOCOL_ERROR, "PRIORITY: stream_id == 0");
+          if (nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+          session_inbound_frame_reset(session);
+          break;
+        }
+        nghttp2_frame_unpack_priority_spec(&pri_spec, iframe->sbuf.pos);
+        if (pri_spec.stream_id == iframe->frame.hd.stream_id) {
+          /* A stream cannot depend on itself: a stream error (RFC 7540
+             section 5.3.1), except that RST_STREAM must not be sent on
+             an idle stream (RFC 9113 section 6.4), which leaves a
+             connection error. */
+          if (session_detect_idle_stream(session, iframe->frame.hd.stream_id)) {
+            rv = nghttp2_session_terminate_session_with_reason(
+              session, NGHTTP2_PROTOCOL_ERROR,
+              "PRIORITY: stream depends on itself");
+          } else {
+            rv = nghttp2_session_add_rst_stream(
+              session, iframe->frame.hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
+            if (!nghttp2_is_fatal(rv)) {
+              /* The peer can provoke this RST_STREAM at will, even on
+                 a closed stream, so charge it to the glitch budget. */
+              rv = session_update_glitch_ratelim(session);
+            }
+          }
+          if (nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+        }
         session_inbound_frame_reset(session);
 
         break;
+      }
       case NGHTTP2_RST_STREAM:
         rv = session_process_rst_stream_frame(session);
         if (nghttp2_is_fatal(rv)) {

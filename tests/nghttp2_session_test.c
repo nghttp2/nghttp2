@@ -158,6 +158,8 @@ static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_session_cancel_from_before_frame_send),
   munit_void_test(test_nghttp2_session_too_many_settings),
   munit_void_test(test_nghttp2_session_removed_closed_stream),
+  munit_void_test(test_nghttp2_session_rfc9113_frames),
+  munit_void_test(test_nghttp2_session_priority_closed_stream),
   munit_void_test(test_nghttp2_session_pause_data),
   munit_void_test(test_nghttp2_session_no_closed_streams),
   munit_void_test(test_nghttp2_session_set_stream_user_data),
@@ -14373,4 +14375,165 @@ void test_nghttp2_http_no_rfc9113_leading_and_trailing_ws_validation(void) {
   nghttp2_option_del(option);
 
   nghttp2_bufs_free(&bufs);
+}
+
+/* PRIORITY checks (RFC 9113 sections 6.3 and 6.4, RFC 7540 section 5.3.1)
+   and stream window overflow (RFC 9113 section 6.9.1). */
+void test_nghttp2_session_rfc9113_frames(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_outbound_item *item;
+  nghttp2_frame_hd hd;
+  uint8_t buf[NGHTTP2_FRAME_HDLEN + 5];
+  nghttp2_ssize nread;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+
+  /* PRIORITY on stream 0: connection error PROTOCOL_ERROR (6.3). */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+  nghttp2_frame_hd_init(&hd, 5, NGHTTP2_PRIORITY, NGHTTP2_FLAG_NONE, 0);
+  nghttp2_frame_pack_frame_hd(buf, &hd);
+  memset(buf + NGHTTP2_FRAME_HDLEN, 0, 5);
+  buf[NGHTTP2_FRAME_HDLEN + 3] = 1;
+  nread = nghttp2_session_mem_recv2(session, buf, sizeof(buf));
+  assert_ptrdiff((nghttp2_ssize)sizeof(buf), ==, nread);
+  item = nghttp2_session_get_next_ob_item(session);
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_PROTOCOL_ERROR, ==, item->frame.goaway.error_code);
+  nghttp2_session_del(session);
+
+  /* PRIORITY on an idle stream that depends on itself: RST_STREAM
+     must not be sent on an idle stream (6.4), so a connection error. */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+  nghttp2_frame_hd_init(&hd, 5, NGHTTP2_PRIORITY, NGHTTP2_FLAG_NONE, 3);
+  nghttp2_frame_pack_frame_hd(buf, &hd);
+  memset(buf + NGHTTP2_FRAME_HDLEN, 0, 5);
+  buf[NGHTTP2_FRAME_HDLEN + 3] = 3;
+  nread = nghttp2_session_mem_recv2(session, buf, sizeof(buf));
+  assert_ptrdiff((nghttp2_ssize)sizeof(buf), ==, nread);
+  item = nghttp2_session_get_next_ob_item(session);
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_GOAWAY, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_PROTOCOL_ERROR, ==, item->frame.goaway.error_code);
+  nghttp2_session_del(session);
+
+  /* The same on an open stream: stream error PROTOCOL_ERROR. */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+  open_recv_stream(session, 3);
+  nghttp2_frame_hd_init(&hd, 5, NGHTTP2_PRIORITY, NGHTTP2_FLAG_NONE, 3);
+  nghttp2_frame_pack_frame_hd(buf, &hd);
+  memset(buf + NGHTTP2_FRAME_HDLEN, 0, 5);
+  buf[NGHTTP2_FRAME_HDLEN + 3] = 3;
+  nread = nghttp2_session_mem_recv2(session, buf, sizeof(buf));
+  assert_ptrdiff((nghttp2_ssize)sizeof(buf), ==, nread);
+  item = nghttp2_session_get_next_ob_item(session);
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_int32(3, ==, item->frame.hd.stream_id);
+  assert_uint32(NGHTTP2_PROTOCOL_ERROR, ==, item->frame.rst_stream.error_code);
+  nghttp2_session_del(session);
+
+  /* WINDOW_UPDATE taking a stream window past 2^31-1: stream error
+     FLOW_CONTROL_ERROR (6.9.1), not a connection error. */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+  open_recv_stream(session, 1);
+  nghttp2_frame_hd_init(&hd, 4, NGHTTP2_WINDOW_UPDATE, NGHTTP2_FLAG_NONE, 1);
+  nghttp2_frame_pack_frame_hd(buf, &hd);
+  nghttp2_put_uint32be(buf + NGHTTP2_FRAME_HDLEN, NGHTTP2_MAX_WINDOW_SIZE);
+  nread = nghttp2_session_mem_recv2(session, buf, NGHTTP2_FRAME_HDLEN + 4);
+  assert_ptrdiff(NGHTTP2_FRAME_HDLEN + 4, ==, nread);
+  item = nghttp2_session_get_next_ob_item(session);
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_uint32(NGHTTP2_FLOW_CONTROL_ERROR, ==,
+                item->frame.rst_stream.error_code);
+  nghttp2_session_del(session);
+}
+
+/* Feeds one frame with a payload of up to 8 bytes to |session|, which
+   must consume all of it. */
+static void recv_raw_frame(nghttp2_session *session, uint8_t type,
+                           uint8_t flags, int32_t stream_id,
+                           const uint8_t *payload, size_t payloadlen) {
+  uint8_t buf[NGHTTP2_FRAME_HDLEN + 8];
+  nghttp2_frame_hd hd;
+  nghttp2_ssize nread;
+
+  nghttp2_frame_hd_init(&hd, payloadlen, type, flags, stream_id);
+  nghttp2_frame_pack_frame_hd(buf, &hd);
+  if (payloadlen) {
+    memcpy(buf + NGHTTP2_FRAME_HDLEN, payload, payloadlen);
+  }
+  nread =
+    nghttp2_session_mem_recv2(session, buf, NGHTTP2_FRAME_HDLEN + payloadlen);
+  assert_ptrdiff((nghttp2_ssize)(NGHTTP2_FRAME_HDLEN + payloadlen), ==, nread);
+}
+
+static void recv_request_headers(nghttp2_session *session, int32_t stream_id,
+                                 uint8_t flags) {
+  nghttp2_hd_deflater deflater;
+  nghttp2_bufs bufs;
+  nghttp2_mem *mem = nghttp2_mem_default();
+  nghttp2_ssize nread;
+  int rv;
+
+  nghttp2_hd_deflate_init(&deflater, mem);
+  frame_pack_bufs_init(&bufs);
+  rv =
+    pack_headers(&bufs, &deflater, stream_id, NGHTTP2_FLAG_END_HEADERS | flags,
+                 reqnv, ARRLEN(reqnv), mem);
+  assert_int(0, ==, rv);
+  nread = nghttp2_session_mem_recv2(session, bufs.head->buf.pos,
+                                    nghttp2_bufs_len(&bufs));
+  assert_ptrdiff((nghttp2_ssize)nghttp2_bufs_len(&bufs), ==, nread);
+  nghttp2_bufs_free(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
+}
+
+static void recv_rst_stream(nghttp2_session *session, int32_t stream_id) {
+  uint8_t payload[4];
+
+  nghttp2_put_uint32be(payload, NGHTTP2_CANCEL);
+  recv_raw_frame(session, NGHTTP2_RST_STREAM, NGHTTP2_FLAG_NONE, stream_id,
+                 payload, sizeof(payload));
+}
+
+/* A PRIORITY that depends on itself, on a stream that is closed, is
+   answered with RST_STREAM, and that answer is charged to the glitch
+   budget. */
+void test_nghttp2_session_priority_closed_stream(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_outbound_item *item;
+  uint8_t payload[5];
+  nghttp2_option *option;
+  size_t i;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+  nghttp2_option_new(&option);
+  nghttp2_option_set_glitch_rate_limit(option, 20, 1);
+  nghttp2_session_server_new2(&session, &callbacks, NULL, option);
+  recv_request_headers(session, 1, NGHTTP2_FLAG_NONE);
+  recv_rst_stream(session, 1);
+
+  memset(payload, 0, sizeof(payload));
+  payload[3] = 1;
+  recv_raw_frame(session, NGHTTP2_PRIORITY, NGHTTP2_FLAG_NONE, 1, payload,
+                 sizeof(payload));
+  item = nghttp2_session_get_next_ob_item(session);
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_int32(1, ==, item->frame.hd.stream_id);
+  assert_uint32(NGHTTP2_PROTOCOL_ERROR, ==, item->frame.rst_stream.error_code);
+
+  /* The peer never reads: the flood ends in GOAWAY ENHANCE_YOUR_CALM
+     (burst 20, no refill within the test). */
+  for (i = 0; i < 30; ++i) {
+    recv_raw_frame(session, NGHTTP2_PRIORITY, NGHTTP2_FLAG_NONE, 1, payload,
+                   sizeof(payload));
+  }
+  assert_true(session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND);
+  nghttp2_session_del(session);
+  nghttp2_option_del(option);
 }
