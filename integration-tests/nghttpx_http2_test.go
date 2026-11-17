@@ -1361,7 +1361,7 @@ func TestH2H1ProxyProtocolV1ForwardedForObfuscated(t *testing.T) {
 	st := newServerTester(t, opts)
 	defer st.Close()
 
-	if _, err := st.conn.Write([]byte("PROXY TCP4 192.168.0.2 192.168.0.100 12345 8080\r\n")); err != nil {
+	if _, err := st.conn.Write([]byte("PROXY TCP4 1.168.0.2 192.168.0.100 12345 8080\r\n")); err != nil {
 		t.Fatalf("Error st.conn.Write() = %v", err)
 	}
 
