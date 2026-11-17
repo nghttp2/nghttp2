@@ -473,7 +473,11 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       }
       break;
     case LogFragmentType::STATUS:
-      p = copy(resp.http_status, p);
+      if (resp.http_status == 0) {
+        p = copy(499U, p);
+      } else {
+        p = copy(resp.http_status, p);
+      }
       break;
     case LogFragmentType::BODY_BYTES_SENT:
       p = copy(as_unsigned(downstream->response_sent_body_length), p);
