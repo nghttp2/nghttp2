@@ -2390,8 +2390,8 @@ Options:
                util::duration_str(config->http.timeout.header));
 
   std::println(out, R"(  --frontend-stream-read-timeout=<DURATION>
-              Specify read  timeout for  HTTP/2 and HTTP/3  streams in
-              the frontend connection.  0 means no timeout.
+              Specify  read  timeout  for HTTP/1,  HTTP/2  and  HTTP/3
+              streams in the frontend connection.  0 means no timeout.
               Default: {})",
                util::duration_str(config->http.upstream.timeout.stream_read));
 
