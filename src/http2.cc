@@ -1365,7 +1365,7 @@ std::string_view path_join(BlockAllocator &balloc, std::string_view base_path,
 
 std::string_view normalize_path(BlockAllocator &balloc, std::string_view path,
                                 std::string_view query) {
-  // First, decode %XX for unreserved characters, then do
+  // First, decode %XX for unreserved characters, ':' and '@', then do
   // http2::path_join
 
   // We won't find %XX if length is less than 3.
@@ -1384,56 +1384,7 @@ std::string_view normalize_path(BlockAllocator &balloc, std::string_view path,
       if (util::is_hex_digit(*(it + 1)) && util::is_hex_digit(*(it + 2))) {
         auto c = static_cast<char>((util::hex_to_uint(*(it + 1)) << 4) +
                                    util::hex_to_uint(*(it + 2)));
-        if (util::in_rfc3986_unreserved_chars(c)) {
-          *p++ = as_unsigned(c);
-
-          it += 3;
-
-          continue;
-        }
-      }
-
-      *p++ = '%';
-      *p++ = as_unsigned(util::upcase(*(it + 1)));
-      *p++ = as_unsigned(util::upcase(*(it + 2)));
-
-      it += 3;
-
-      continue;
-    }
-    *p++ = as_unsigned(*it++);
-  }
-
-  p = std::ranges::copy(it, std::ranges::end(path), p).out;
-  *p = '\0';
-
-  return path_join(balloc, ""sv, ""sv,
-                   as_string_view(std::ranges::begin(result), p), query);
-}
-
-std::string_view normalize_path_colon(BlockAllocator &balloc,
-                                      std::string_view path,
-                                      std::string_view query) {
-  // First, decode %XX for unreserved characters and ':', then do
-  // http2::path_join
-
-  // We won't find %XX if length is less than 3.
-  if (path.size() < 3 ||
-      std::ranges::find(path, '%') == std::ranges::end(path)) {
-    return path_join(balloc, ""sv, ""sv, path, query);
-  }
-
-  // includes last terminal NULL.
-  auto result = make_byte_ref(balloc, path.size() + 1);
-  auto p = std::ranges::begin(result);
-
-  auto it = std::ranges::begin(path);
-  for (; it + 2 < std::ranges::end(path);) {
-    if (*it == '%') {
-      if (util::is_hex_digit(*(it + 1)) && util::is_hex_digit(*(it + 2))) {
-        auto c = static_cast<char>((util::hex_to_uint(*(it + 1)) << 4) +
-                                   util::hex_to_uint(*(it + 2)));
-        if (util::in_rfc3986_unreserved_chars(c) || c == ':') {
+        if (util::in_rfc3986_unreserved_chars(c) || c == ':' || c == '@') {
           *p++ = as_unsigned(c);
 
           it += 3;

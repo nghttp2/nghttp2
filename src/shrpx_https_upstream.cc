@@ -90,6 +90,7 @@ void HttpsUpstream::on_start_request() {
   auto downstream =
     std::make_unique<Downstream>(this, handler_->get_mcpool(), 0);
 
+  downstream->reset_upstream_rtimer();
   attach_downstream(std::move(downstream));
 
   auto &httpconf = get_config()->http;
@@ -340,6 +341,7 @@ int htp_hdrs_completecb(llhttp_t *htp) {
 
   req.connection_close = !llhttp_should_keep_alive(htp);
 
+  downstream->reset_upstream_rtimer();
   handler->stop_read_timer();
 
   auto method = req.method;
@@ -611,6 +613,8 @@ int htp_bodycb(llhttp_t *htp, const char *data, size_t len) {
     return HPE_USER;
   }
 
+  downstream->reset_upstream_rtimer();
+
   if (!downstream->push_upload_data_chunk(
         as_uint8_span(std::span{data, len}))) {
     // Ignore error if response has been completed.  We will end up in
@@ -640,6 +644,8 @@ int htp_msg_completecb(llhttp_t *htp) {
   for (auto &kv : req.fs.trailers()) {
     kv.value = util::rstrip(balloc, kv.value);
   }
+
+  downstream->disable_upstream_rtimer();
 
   downstream->set_request_state(DownstreamState::MSG_COMPLETE);
   req.http1_msg_complete = true;
@@ -684,6 +690,8 @@ std::expected<void, Error> HttpsUpstream::on_read() {
   // callback chain called by llhttp_execute()
   if (downstream && downstream->request().http1_msg_complete &&
       downstream->get_upgraded()) {
+    downstream->reset_upstream_rtimer();
+
     if (auto rv = downstream->push_upload_data_chunk(rb->peek()); !rv) {
       return rv;
     }
@@ -1417,6 +1425,10 @@ HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   downstream->register_upstream_write_rate_timer();
 
+  if (downstream->get_upgraded()) {
+    downstream->reset_upstream_rtimer();
+  }
+
   return {};
 }
 
@@ -1662,6 +1674,15 @@ bool HttpsUpstream::response_empty() const {
   auto buf = downstream_->get_response_buf();
 
   return buf->rleft() == 0;
+}
+
+std::expected<void, Error> HttpsUpstream::on_timeout(Downstream *downstream) {
+  if (log_enabled(INFO)) {
+    Log{INFO, this} << "Stream timeout stream_id="
+                    << downstream->get_stream_id();
+  }
+
+  return std::unexpected{Error::NETWORK};
 }
 
 } // namespace shrpx

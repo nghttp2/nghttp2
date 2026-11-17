@@ -1194,7 +1194,9 @@ void Downstream::unregister_upstream_write_rate_timer() {
 }
 
 bool Downstream::accesslog_ready() const {
-  return !accesslog_written_ && resp_.http_status > 0;
+  // A request which has been forwarded to backend must be logged even
+  // if client went away before we got response status code.
+  return !accesslog_written_ && (resp_.http_status > 0 || request_header_sent_);
 }
 
 void Downstream::add_retry() { ++num_retry_; }

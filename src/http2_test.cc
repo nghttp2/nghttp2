@@ -619,7 +619,7 @@ void test_http2_normalize_path(void) {
 
   assert_eq("/alpha", http2::normalize_path("/a%6c%70%68%61"sv, ""sv));
 
-  assert_eq("/alpha%2F%3A", http2::normalize_path("/alpha%2f%3a"sv, ""sv));
+  assert_eq("/alpha%2F:", http2::normalize_path("/alpha%2f%3a"sv, ""sv));
 
   assert_eq("/%2F", http2::normalize_path("%2f"sv, ""sv));
 
@@ -643,6 +643,9 @@ void test_http2_normalize_path(void) {
   // %XX which is kept is written as a whole, so decoding can resume
   // after it.
   assert_eq("/%%2fa"sv, http2::normalize_path("/%%2f%61"sv, ""sv));
+
+  // %3A and %40 are decoded.
+  assert_eq("/:@"sv, http2::normalize_path("/%3a%40"sv, ""sv));
 }
 
 void test_http2_rewrite_clean_path(void) {
@@ -653,12 +656,14 @@ void test_http2_rewrite_clean_path(void) {
             http2::rewrite_clean_path(balloc, "/alpha/%62ravo/"sv));
 
   // percent-encoding is converted to upper case.
-  assert_eq("/delta%3A"sv, http2::rewrite_clean_path(balloc, "/delta%3a"sv));
+  assert_eq("/delta%3B"sv, http2::rewrite_clean_path(balloc, "/delta%3b"sv));
 
   // path component is normalized before matching
   assert_eq("/alpha/bravo/"sv,
             http2::rewrite_clean_path(
               balloc, "/alpha/charlie/%2e././bravo/delta/.."sv));
+
+  assert_eq("/delta:@"sv, http2::rewrite_clean_path(balloc, "/delta%3a%40"sv));
 
   assert_eq("alpha%3a"sv, http2::rewrite_clean_path(balloc, "alpha%3a"sv));
 

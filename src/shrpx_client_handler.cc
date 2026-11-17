@@ -1296,6 +1296,7 @@ std::expected<void, Error> ClientHandler::proxy_protocol_read() {
   auto first = rb_.pos();
 
   if (rb_.rleft() >= PROXY_PROTO_V2_HDLEN &&
+      memcmp(first, PROXY_PROTO_V2_SIG, str_size(PROXY_PROTO_V2_SIG)) == 0 &&
       (*(first + str_size(PROXY_PROTO_V2_SIG)) & 0xF0) == 0x20) {
     if (log_enabled(INFO)) {
       Log{INFO, this} << "PROXY-protocol: Detected v2 header signature";

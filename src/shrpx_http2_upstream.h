@@ -144,6 +144,7 @@ private:
   // The number of requests seen so far.
   size_t num_requests_{};
   bool flow_control_{true};
+  bool graceful_shutdown_started_{};
 };
 
 nghttp2_session_callbacks *create_http2_upstream_callbacks();

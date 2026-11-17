@@ -47,6 +47,7 @@ public:
   ~HttpsUpstream() override;
   std::expected<void, Error> on_read() override;
   std::expected<void, Error> on_write() override;
+  std::expected<void, Error> on_timeout(Downstream *downstream) override;
   std::expected<void, Error>
   on_downstream_abort_request(Downstream *downstream,
                               unsigned int status_code) override;

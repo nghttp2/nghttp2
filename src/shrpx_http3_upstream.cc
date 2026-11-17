@@ -240,7 +240,8 @@ int remove_connection_id(ngtcp2_conn *conn, const ngtcp2_cid *cid,
 }
 } // namespace
 
-void Http3Upstream::http_begin_request_headers(int64_t stream_id) {
+std::expected<void, Error>
+Http3Upstream::http_begin_request_headers(int64_t stream_id) {
   auto downstream =
     std::make_unique<Downstream>(this, handler_->get_mcpool(), stream_id);
   nghttp3_conn_set_stream_user_data(httpconn_, stream_id, downstream.get());
@@ -255,6 +256,17 @@ void Http3Upstream::http_begin_request_headers(int64_t stream_id) {
   req.http_minor = 0;
 
   add_pending_downstream(std::move(downstream));
+
+  ++num_requests_;
+
+  auto config = get_config();
+  auto &httpconf = config->http;
+
+  if (httpconf.max_requests <= num_requests_) {
+    return start_graceful_shutdown();
+  }
+
+  return {};
 }
 
 void Http3Upstream::add_pending_downstream(
@@ -2077,7 +2089,9 @@ int http_begin_request_headers(nghttp3_conn *conn, int64_t stream_id,
   }
 
   auto upstream = static_cast<Http3Upstream *>(user_data);
-  upstream->http_begin_request_headers(stream_id);
+  if (!upstream->http_begin_request_headers(stream_id)) {
+    return NGHTTP3_ERR_CALLBACK_FAILURE;
+  }
 
   return 0;
 }
@@ -2858,9 +2872,11 @@ std::expected<void, Error> Http3Upstream::check_shutdown() {
 std::expected<void, Error> Http3Upstream::start_graceful_shutdown() {
   int rv;
 
-  if (ev_is_active(&shutdown_timer_)) {
+  if (graceful_shutdown_started_) {
     return {};
   }
+
+  graceful_shutdown_started_ = true;
 
   if (!httpconn_) {
     return std::unexpected{Error::INTERNAL};

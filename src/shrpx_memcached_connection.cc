@@ -715,6 +715,12 @@ void MemcachedConnection::make_request(MemcachedSendbuf *sendbuf,
 std::expected<void, Error>
 MemcachedConnection::add_request(std::unique_ptr<MemcachedRequest> req) {
   if (connect_blocker_.blocked()) {
+    // Report the failure to the request just like disconnect() does
+    // for queued requests, so that the caller can schedule a retry.
+    if (req->cb) {
+      req->cb(req.get(),
+              MemcachedResult(MemcachedStatusCode::EXT_NETWORK_ERROR));
+    }
     return std::unexpected{Error::INTERNAL};
   }
 

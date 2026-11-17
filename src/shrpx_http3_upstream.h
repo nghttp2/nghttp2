@@ -131,7 +131,7 @@ public:
   std::expected<void, Error> handshake_completed();
   std::expected<void, Error> error_reply(Downstream *downstream,
                                          unsigned int status_code);
-  void http_begin_request_headers(int64_t stream_id);
+  std::expected<void, Error> http_begin_request_headers(int64_t stream_id);
   std::expected<void, Error>
   http_recv_request_header(Downstream *downstream, int32_t token,
                            nghttp3_rcbuf *name, nghttp3_rcbuf *value,
@@ -206,6 +206,9 @@ private:
   DownstreamQueue downstream_queue_;
   std::unique_ptr<uint8_t[]> conn_close_;
   size_t conn_closelen_{};
+  // The number of requests seen so far.
+  size_t num_requests_{};
+  bool graceful_shutdown_started_{};
 
   struct {
     bool send_blocked;
