@@ -1962,9 +1962,9 @@ Options:
               When doing  a match, nghttpx made  some normalization to
               pattern, request host and path.  For host part, they are
               converted to lower case.  For path part, percent-encoded
-              unreserved characters  defined in RFC 3986  are decoded,
-              and any  dot-segments (".."  and ".")   are resolved and
-              removed.
+              unreserved characters  defined in RFC 3986,  ':' and '@'
+              are decoded,  and any dot-segments (".."   and ".")  are
+              resolved and removed.
 
               For   example,   -b'127.0.0.1,8080;nghttp2.org/httpbin/'
               matches the  request host "nghttp2.org" and  the request

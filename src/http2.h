@@ -391,13 +391,6 @@ std::string_view to_method_string(int method_token);
 std::string_view normalize_path(BlockAllocator &balloc, std::string_view path,
                                 std::string_view query);
 
-// normalize_path_colon is like normalize_path, but it additionally
-// does percent-decoding %3A in order to workaround the issue that ':'
-// cannot be included in backend pattern.
-std::string_view normalize_path_colon(BlockAllocator &balloc,
-                                      std::string_view path,
-                                      std::string_view query);
-
 std::string normalize_path(std::string_view path, std::string_view query);
 
 std::string_view rewrite_clean_path(BlockAllocator &balloc,

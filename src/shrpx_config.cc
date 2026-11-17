@@ -1279,7 +1279,7 @@ std::expected<void, Error> parse_mapping(
       *p = '\0';
       pattern = as_string_view(std::ranges::begin(iov), p);
     } else {
-      auto path = http2::normalize_path_colon(
+      auto path = http2::normalize_path(
         downstreamconf.balloc,
         std::string_view{slash, std::ranges::end(raw_pattern)}, ""sv);
       auto iov = make_byte_ref(downstreamconf.balloc,
