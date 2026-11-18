@@ -166,6 +166,7 @@ static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_session_verify_iframe_state),
   munit_void_test(test_nghttp2_session_consume_stream),
   munit_void_test(test_nghttp2_session_consume_connection),
+  munit_void_test(test_nghttp2_session_max_header_list_size),
   munit_void_test(test_nghttp2_http_mandatory_headers),
   munit_void_test(test_nghttp2_http_content_length),
   munit_void_test(test_nghttp2_http_content_length_mismatch),
@@ -12459,6 +12460,195 @@ void test_nghttp2_session_verify_iframe_state(void) {
   nghttp2_buf_free(&ud.scratchbuf, mem);
   nghttp2_bufs_free(&bufs);
   nghttp2_option_del(option);
+}
+
+void test_nghttp2_session_max_header_list_size(void) {
+  static const nghttp2_session_callbacks callbacks = {0};
+  nghttp2_mem *mem = nghttp2_mem_default();
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  nghttp2_session *session;
+  nghttp2_settings_entry iv[1];
+  nghttp2_nv *nva;
+  nghttp2_frame frame;
+  nghttp2_hd_deflater deflater;
+  nghttp2_ssize nread, nwrite;
+  nghttp2_outbound_item *item;
+  size_t nvlen;
+  uint8_t rawbuf[4096];
+  nghttp2_buf frbuf;
+  const uint8_t *data;
+  int rv;
+  size_t header_size = 0;
+  size_t i;
+  nghttp2_frame_hd hd;
+
+  for (i = 0; i < ARRLEN(reqnv); ++i) {
+    header_size += reqnv[i].namelen + reqnv[i].valuelen + 32;
+  }
+
+  frame_pack_bufs_init(&bufs);
+  nghttp2_buf_wrap_init(&frbuf, rawbuf, sizeof(rawbuf));
+
+  /* Exact max_header_list_size in HEADERS */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  iv[0] = (nghttp2_settings_entry){
+    .settings_id = NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE,
+    .value = (uint32_t)header_size,
+  };
+
+  rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 1);
+
+  assert_int(0, ==, rv);
+
+  nwrite = nghttp2_session_mem_send2(session, &data);
+
+  assert_ptrdiff(0, <, nwrite);
+
+  nvlen = ARRLEN(reqnv);
+  nghttp2_nv_array_copy(&nva, reqnv, nvlen, mem);
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 1,
+                             NGHTTP2_HCAT_HEADERS, NULL, nva, nvlen);
+
+  nghttp2_bufs_reset(&bufs);
+  rv = nghttp2_frame_pack_headers(&bufs, &frame.headers, &deflater);
+
+  assert_ptrdiff(0, ==, rv);
+  assert_size(0, <, nghttp2_bufs_len(&bufs));
+
+  nghttp2_frame_headers_free(&frame.headers, mem);
+
+  buf = &bufs.head->buf;
+
+  assert_size(nghttp2_bufs_len(&bufs), ==, nghttp2_buf_len(buf));
+
+  nread = nghttp2_session_mem_recv2(session, buf->pos, nghttp2_buf_len(buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(buf), ==, nread);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_null(item);
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  /* Exceed max_header_list_size in HEADERS */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  iv[0] = (nghttp2_settings_entry){
+    .settings_id = NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE,
+    .value = (uint32_t)header_size - 1,
+  };
+
+  rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 1);
+
+  assert_int(0, ==, rv);
+
+  nwrite = nghttp2_session_mem_send2(session, &data);
+
+  assert_ptrdiff(0, <, nwrite);
+
+  nvlen = ARRLEN(reqnv);
+  nghttp2_nv_array_copy(&nva, reqnv, nvlen, mem);
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 1,
+                             NGHTTP2_HCAT_HEADERS, NULL, nva, nvlen);
+
+  nghttp2_bufs_reset(&bufs);
+  rv = nghttp2_frame_pack_headers(&bufs, &frame.headers, &deflater);
+
+  assert_ptrdiff(0, ==, rv);
+  assert_size(0, <, nghttp2_bufs_len(&bufs));
+
+  nghttp2_frame_headers_free(&frame.headers, mem);
+
+  buf = &bufs.head->buf;
+
+  assert_size(nghttp2_bufs_len(&bufs), ==, nghttp2_buf_len(buf));
+
+  nread = nghttp2_session_mem_recv2(session, buf->pos, nghttp2_buf_len(buf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(buf), ==, nread);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_int32(1, ==, item->frame.hd.stream_id);
+  assert_uint32(NGHTTP2_PROTOCOL_ERROR, ==, item->frame.rst_stream.error_code);
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  /* Exceed max_header_list_size in CONTINUATION */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  iv[0] = (nghttp2_settings_entry){
+    .settings_id = NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE,
+    .value = (uint32_t)header_size - 1,
+  };
+
+  rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 1);
+
+  assert_int(0, ==, rv);
+
+  nwrite = nghttp2_session_mem_send2(session, &data);
+
+  assert_ptrdiff(0, <, nwrite);
+
+  nvlen = ARRLEN(reqnv);
+  nghttp2_nv_array_copy(&nva, reqnv, nvlen, mem);
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_NONE, 1,
+                             NGHTTP2_HCAT_HEADERS, NULL, nva, nvlen);
+
+  nghttp2_bufs_reset(&bufs);
+  rv = nghttp2_frame_pack_headers(&bufs, &frame.headers, &deflater);
+
+  assert_ptrdiff(0, ==, rv);
+  assert_size(0, <, nghttp2_bufs_len(&bufs));
+
+  nghttp2_frame_headers_free(&frame.headers, mem);
+
+  buf = &bufs.head->buf;
+
+  assert_size(nghttp2_bufs_len(&bufs), ==, nghttp2_buf_len(buf));
+
+  /* HEADERS: 1 byte */
+  nghttp2_buf_reset(&frbuf);
+  frbuf.last = nghttp2_cpymem(frbuf.last, buf->pos, NGHTTP2_FRAME_HDLEN + 1);
+  buf->pos += NGHTTP2_FRAME_HDLEN + 1;
+  frbuf.pos[0] = 0;
+  frbuf.pos[1] = 0;
+  frbuf.pos[2] = 1;
+
+  /* CONTINUATION: rest of the bytes */
+  nghttp2_frame_hd_init(&hd, nghttp2_buf_len(buf), NGHTTP2_CONTINUATION,
+                        NGHTTP2_FLAG_NONE, 1);
+  nghttp2_frame_pack_frame_hd(frbuf.last, &hd);
+  frbuf.last += NGHTTP2_FRAME_HDLEN;
+  frbuf.last = nghttp2_cpymem(frbuf.last, buf->pos, nghttp2_buf_len(buf));
+
+  nread =
+    nghttp2_session_mem_recv2(session, frbuf.pos, nghttp2_buf_len(&frbuf));
+
+  assert_ptrdiff((nghttp2_ssize)nghttp2_buf_len(&frbuf), ==, nread);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  assert_not_null(item);
+  assert_uint8(NGHTTP2_RST_STREAM, ==, item->frame.hd.type);
+  assert_int32(1, ==, item->frame.hd.stream_id);
+  assert_uint32(NGHTTP2_PROTOCOL_ERROR, ==, item->frame.rst_stream.error_code);
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  /* Cleanup */
+  nghttp2_bufs_free(&bufs);
 }
 
 typedef struct check_http_opts {

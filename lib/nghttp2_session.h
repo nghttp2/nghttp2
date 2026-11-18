@@ -161,6 +161,8 @@ typedef struct {
   size_t payloadleft;
   /* padding length for the current frame */
   size_t padlen;
+  /* the sum of field name and value length + overhead */
+  size_t field_blocklen;
   nghttp2_inbound_state state;
   /* Small fixed sized buffer. */
   uint8_t raw_sbuf[32];
@@ -336,6 +338,9 @@ struct nghttp2_session {
   /* Unacked local SETTINGS_MAX_CONCURRENT_STREAMS value. We use this
      to refuse the incoming stream if it exceeds this value. */
   uint32_t pending_local_max_concurrent_stream;
+  /* The pending SETTINGS_MAX_HEADER_LIST_SIZE value.  We use this to
+     refuse the too large field block. */
+  uint32_t pending_max_header_list_size;
   /* The bitwise OR of zero or more of NGHTTP2_TYPEMASK_* values to
      indicate that the default handling of extension frame is
      enabled. */
