@@ -391,6 +391,7 @@ static void session_inbound_frame_reset(nghttp2_session *session) {
 
   iframe->payloadleft = 0;
   iframe->padlen = 0;
+  iframe->field_blocklen = 0;
 }
 
 static void init_settings(nghttp2_settings_storage *settings) {
@@ -474,6 +475,7 @@ static int session_new(nghttp2_session **session_ptr,
     NGHTTP2_DEFAULT_MAX_CONCURRENT_STREAMS;
   (*session_ptr)->pending_enable_push = 1;
   (*session_ptr)->pending_no_rfc7540_priorities = UINT8_MAX;
+  (*session_ptr)->pending_max_header_list_size = UINT32_MAX;
 
   nghttp2_ratelim_init(&(*session_ptr)->stream_reset_ratelim,
                        NGHTTP2_DEFAULT_STREAM_RESET_BURST,
@@ -3611,6 +3613,7 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
   nghttp2_hd_nv nv;
   nghttp2_stream *stream;
   nghttp2_stream *subject_stream;
+  size_t fieldlen;
   int trailer = 0;
 
   *readlen_ptr = 0;
@@ -3668,6 +3671,34 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
     *readlen_ptr += (size_t)proclen;
 
     DEBUGF("recv: proclen=%td\n", proclen);
+
+    if (call_header_cb && subject_stream &&
+        (inflate_flags & NGHTTP2_HD_INFLATE_EMIT)) {
+      fieldlen = nv.name->len + nv.value->len + 32;
+
+      if (fieldlen > session->pending_max_header_list_size ||
+          iframe->field_blocklen >
+            session->pending_max_header_list_size - fieldlen) {
+        rv = session_handle_invalid_stream2(session, subject_stream->stream_id,
+                                            frame, NGHTTP2_ERR_PROTO);
+        if (nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+
+        rv = session_update_glitch_ratelim(session);
+        if (rv != 0) {
+          return rv;
+        }
+
+        if (iframe->state == NGHTTP2_IB_IGN_ALL) {
+          return 0;
+        }
+
+        return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+      }
+
+      iframe->field_blocklen += fieldlen;
+    }
 
     if (call_header_cb && (inflate_flags & NGHTTP2_HD_INFLATE_EMIT)) {
       rv = 0;
@@ -7708,6 +7739,13 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
   for (i = niv; i > 0; --i) {
     if (iv[i - 1].settings_id == NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL) {
       session->pending_enable_connect_protocol = (uint8_t)iv[i - 1].value;
+      break;
+    }
+  }
+
+  for (i = niv; i > 0; --i) {
+    if (iv[i - 1].settings_id == NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE) {
+      session->pending_max_header_list_size = iv[i - 1].value;
       break;
     }
   }
