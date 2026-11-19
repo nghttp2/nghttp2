@@ -36,6 +36,7 @@
 extern const MunitSuite helper_suite;
 
 munit_void_test_decl(test_nghttp2_adjust_local_window_size)
+munit_void_test_decl(test_nghttp2_increase_local_window_size)
 munit_void_test_decl(test_nghttp2_check_header_name)
 munit_void_test_decl(test_nghttp2_check_header_value)
 munit_void_test_decl(test_nghttp2_check_header_value_rfc9113)
