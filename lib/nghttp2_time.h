@@ -35,4 +35,8 @@
    timepoint.  If it is unable to get seconds, it returns 0. */
 uint64_t nghttp2_time_now_sec(void);
 
+/* nghttp2_time_now returns nanoseconds from implementation-specific
+   timepoint.  If it is unable to get the time, it returns 0. */
+uint64_t nghttp2_time_now(void);
+
 #endif /* !defined(NGHTTP2_TIME_H) */
