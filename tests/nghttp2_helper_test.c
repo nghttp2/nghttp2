@@ -32,6 +32,7 @@
 
 static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_adjust_local_window_size),
+  munit_void_test(test_nghttp2_increase_local_window_size),
   munit_void_test(test_nghttp2_check_header_name),
   munit_void_test(test_nghttp2_check_header_value),
   munit_void_test(test_nghttp2_check_header_value_rfc9113),
@@ -153,6 +154,41 @@ void test_nghttp2_adjust_local_window_size(void) {
   assert_int32(50, ==, recv_window_size);
   assert_int32(0, ==, recv_reduction);
   assert_int32(INT32_MIN, ==, delta);
+}
+
+void test_nghttp2_increase_local_window_size(void) {
+  int32_t local_window_size = NGHTTP2_MAX_WINDOW_SIZE - 1;
+  int32_t recv_window_size = NGHTTP2_MAX_WINDOW_SIZE - 1;
+  int32_t recv_reduction = 1;
+  int32_t delta = 1;
+
+  assert_int(0, ==,
+             nghttp2_increase_local_window_size(
+               &local_window_size, &recv_window_size, &recv_reduction, &delta));
+  assert_int32(NGHTTP2_MAX_WINDOW_SIZE, ==, local_window_size);
+  assert_int32(NGHTTP2_MAX_WINDOW_SIZE, ==, recv_window_size);
+  assert_int32(0, ==, recv_reduction);
+  assert_int32(0, ==, delta);
+
+  delta = 1;
+  assert_int(NGHTTP2_ERR_FLOW_CONTROL, ==,
+             nghttp2_increase_local_window_size(
+               &local_window_size, &recv_window_size, &recv_reduction, &delta));
+  assert_int32(NGHTTP2_MAX_WINDOW_SIZE, ==, local_window_size);
+  assert_int32(NGHTTP2_MAX_WINDOW_SIZE, ==, recv_window_size);
+  assert_int32(0, ==, recv_reduction);
+  assert_int32(1, ==, delta);
+
+  /* The local window can grow, but the receive counter is already full. */
+  local_window_size = NGHTTP2_MAX_WINDOW_SIZE - 1;
+  recv_reduction = 1;
+  assert_int(NGHTTP2_ERR_FLOW_CONTROL, ==,
+             nghttp2_increase_local_window_size(
+               &local_window_size, &recv_window_size, &recv_reduction, &delta));
+  assert_int32(NGHTTP2_MAX_WINDOW_SIZE - 1, ==, local_window_size);
+  assert_int32(NGHTTP2_MAX_WINDOW_SIZE, ==, recv_window_size);
+  assert_int32(1, ==, recv_reduction);
+  assert_int32(1, ==, delta);
 }
 
 #define check_header_name(S)                                                   \

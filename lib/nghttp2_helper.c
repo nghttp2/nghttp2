@@ -233,12 +233,16 @@ int nghttp2_increase_local_window_size(int32_t *local_window_size_ptr,
     return NGHTTP2_ERR_FLOW_CONTROL;
   }
 
-  *local_window_size_ptr += delta;
   /* If there is recv_reduction due to earlier window_size
      reduction, we have to adjust it too. */
   recv_reduction_delta = nghttp2_min_int32(*recv_reduction_ptr, delta);
-  *recv_reduction_ptr -= recv_reduction_delta;
 
+  if (*recv_window_size_ptr > INT32_MAX - recv_reduction_delta) {
+    return NGHTTP2_ERR_FLOW_CONTROL;
+  }
+
+  *local_window_size_ptr += delta;
+  *recv_reduction_ptr -= recv_reduction_delta;
   *recv_window_size_ptr += recv_reduction_delta;
 
   /* recv_reduction_delta must be paid from *delta_ptr, since it was
