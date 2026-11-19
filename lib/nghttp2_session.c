@@ -619,7 +619,7 @@ static int session_new(nghttp2_session **session_ptr,
   if (callbacks->rand_callback) {
     callbacks->rand_callback((uint8_t *)&map_seed, sizeof(map_seed));
   } else {
-    map_seed = 0;
+    map_seed = nghttp2_time_now();
   }
 
   nghttp2_map_init(&(*session_ptr)->streams, map_seed, mem);
