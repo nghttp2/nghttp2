@@ -154,7 +154,7 @@ struct BlockAllocator {
     auto res = head->last + sizeof(ChunkHead);
     head->last += au;
 
-    auto space = as_unsigned(head->end - head->last);
+    size_t space = static_cast<size_t>(head->end - head->last);
     void *ptr = head->last;
     if (std::align(ALIGNMENT, sizeof(ChunkHead), ptr, space)) {
       head->last = static_cast<uint8_t *>(ptr);
