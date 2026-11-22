@@ -62,6 +62,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/conf.h>
+#include <openssl/rand.h>
 
 enum { IO_NONE, WANT_READ, WANT_WRITE };
 
@@ -324,6 +325,10 @@ static int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
   return 0;
 }
 
+static void rand_callback(uint8_t *dest, size_t destlen) {
+  (void)RAND_bytes(dest, (int)destlen);
+}
+
 /*
  * Setup callback functions. nghttp2 API offers many callback
  * functions, but most of them are optional. The send_callback is
@@ -343,6 +348,8 @@ static void setup_nghttp2_callbacks(nghttp2_session_callbacks *callbacks) {
 
   nghttp2_session_callbacks_set_on_stream_close_callback(
     callbacks, on_stream_close_callback);
+
+  nghttp2_session_callbacks_set_rand_callback(callbacks, rand_callback);
 
   nghttp2_session_callbacks_set_on_data_chunk_recv_callback(
     callbacks, on_data_chunk_recv_callback);

@@ -57,6 +57,7 @@ char *strndup(const char *s, size_t size);
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/conf.h>
+#include <openssl/rand.h>
 
 #include <event.h>
 #include <event2/event.h>
@@ -312,6 +313,10 @@ static int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
   return 0;
 }
 
+static void rand_callback(uint8_t *dest, size_t destlen) {
+  (void)RAND_bytes(dest, (int)destlen);
+}
+
 /* Create SSL_CTX. */
 static SSL_CTX *create_ssl_ctx(void) {
   SSL_CTX *ssl_ctx;
@@ -361,6 +366,8 @@ static void initialize_nghttp2_session(http2_session_data *session_data) {
 
   nghttp2_session_callbacks_set_on_begin_headers_callback(
     callbacks, on_begin_headers_callback);
+
+  nghttp2_session_callbacks_set_rand_callback(callbacks, rand_callback);
 
   nghttp2_session_client_new(&session_data->session, callbacks, session_data);
 
