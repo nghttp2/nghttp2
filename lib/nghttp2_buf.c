@@ -29,7 +29,17 @@
 #include "nghttp2_helper.h"
 #include "nghttp2_debug.h"
 
-void nghttp2_buf_init(nghttp2_buf *buf) { *buf = (nghttp2_buf){0}; }
+static const uint8_t inibuf;
+
+void nghttp2_buf_init(nghttp2_buf *buf) {
+  *buf = (nghttp2_buf){
+    .begin = (uint8_t *)&inibuf,
+    .end = (uint8_t *)&inibuf,
+    .pos = (uint8_t *)&inibuf,
+    .last = (uint8_t *)&inibuf,
+    .mark = (uint8_t *)&inibuf,
+  };
+}
 
 int nghttp2_buf_init2(nghttp2_buf *buf, size_t initial, nghttp2_mem *mem) {
   nghttp2_buf_init(buf);
@@ -37,7 +47,7 @@ int nghttp2_buf_init2(nghttp2_buf *buf, size_t initial, nghttp2_mem *mem) {
 }
 
 void nghttp2_buf_free(nghttp2_buf *buf, nghttp2_mem *mem) {
-  if (buf == NULL) {
+  if (buf == NULL || buf->begin == &inibuf) {
     return;
   }
 
@@ -45,28 +55,30 @@ void nghttp2_buf_free(nghttp2_buf *buf, nghttp2_mem *mem) {
   buf->begin = NULL;
 }
 
-int nghttp2_buf_reserve(nghttp2_buf *buf, size_t new_cap, nghttp2_mem *mem) {
-  uint8_t *ptr;
-  size_t cap;
+int nghttp2_buf_reserve(nghttp2_buf *buf, size_t size, nghttp2_mem *mem) {
+  uint8_t *p;
+  nghttp2_ssize pos_offset, last_offset, mark_offset;
 
-  cap = nghttp2_buf_cap(buf);
-
-  if (cap >= new_cap) {
+  if ((size_t)(buf->end - buf->begin) >= size) {
     return 0;
   }
 
-  new_cap = nghttp2_max_size(new_cap, cap * 2);
+  pos_offset = buf->pos - buf->begin;
+  last_offset = buf->last - buf->begin;
+  mark_offset = buf->mark - buf->begin;
 
-  ptr = nghttp2_mem_realloc(mem, buf->begin, new_cap);
-  if (ptr == NULL) {
+  p = nghttp2_mem_realloc(mem, buf->begin == &inibuf ? NULL : buf->begin, size);
+  if (!p) {
     return NGHTTP2_ERR_NOMEM;
   }
 
-  buf->pos = ptr + (buf->pos - buf->begin);
-  buf->last = ptr + (buf->last - buf->begin);
-  buf->mark = ptr + (buf->mark - buf->begin);
-  buf->begin = ptr;
-  buf->end = ptr + new_cap;
+  *buf = (nghttp2_buf){
+    .begin = p,
+    .end = p + size,
+    .pos = p + pos_offset,
+    .last = p + last_offset,
+    .mark = p + mark_offset,
+  };
 
   return 0;
 }
@@ -204,7 +216,11 @@ int nghttp2_bufs_wrap_init(nghttp2_bufs *bufs, uint8_t *begin, size_t len,
 
   chain->next = NULL;
 
-  nghttp2_buf_wrap_init(&chain->buf, begin, len);
+  if (len == 0) {
+    nghttp2_buf_init(&chain->buf);
+  } else {
+    nghttp2_buf_wrap_init(&chain->buf, begin, len);
+  }
 
   *bufs = (nghttp2_bufs){
     .head = chain,
@@ -238,7 +254,11 @@ int nghttp2_bufs_wrap_init2(nghttp2_bufs *bufs, const nghttp2_vec *vec,
   for (i = 0; i < veclen; ++i) {
     cur_chain = &head_chain[i];
     cur_chain->next = NULL;
-    nghttp2_buf_wrap_init(&cur_chain->buf, vec[i].base, vec[i].len);
+    if (vec[i].len == 0) {
+      nghttp2_buf_init(&cur_chain->buf);
+    } else {
+      nghttp2_buf_wrap_init(&cur_chain->buf, vec[i].base, vec[i].len);
+    }
 
     *dst_chain = cur_chain;
     dst_chain = &cur_chain->next;
