@@ -385,7 +385,7 @@ static void session_inbound_frame_reset(nghttp2_session *session) {
   iframe->sbuf.mark += NGHTTP2_FRAME_HDLEN;
 
   nghttp2_buf_free(&iframe->lbuf, mem);
-  nghttp2_buf_wrap_init(&iframe->lbuf, NULL, 0);
+  nghttp2_buf_init(&iframe->lbuf);
 
   iframe->raw_lbuf = NULL;
 
@@ -4936,10 +4936,10 @@ static int session_process_goaway_frame(nghttp2_session *session) {
   nghttp2_frame *frame = &iframe->frame;
 
   nghttp2_frame_unpack_goaway_payload(&frame->goaway, iframe->sbuf.pos,
-                                      iframe->lbuf.pos,
+                                      iframe->raw_lbuf,
                                       nghttp2_buf_len(&iframe->lbuf));
 
-  nghttp2_buf_wrap_init(&iframe->lbuf, NULL, 0);
+  nghttp2_buf_init(&iframe->lbuf);
 
   return nghttp2_session_on_goaway_received(session, frame);
 }
@@ -5178,7 +5178,7 @@ static int session_process_altsvc_frame(nghttp2_session *session) {
 
   /* nghttp2_frame_unpack_altsvc_payload steals buffer from
      iframe->lbuf */
-  nghttp2_buf_wrap_init(&iframe->lbuf, NULL, 0);
+  nghttp2_buf_init(&iframe->lbuf);
 
   return nghttp2_session_on_altsvc_received(session, frame);
 }
