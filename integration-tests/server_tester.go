@@ -64,6 +64,9 @@ type serverTester struct {
 }
 
 type options struct {
+	// env contains additional environment variables for the tested process.
+	env []string
+
 	// args is the additional arguments to nghttpx.
 	args []string
 	// handler is the handler to handle the request.  It defaults
@@ -238,6 +241,7 @@ func newServerTester(t *testing.T, opts options) *serverTester {
 		errCh:        make(chan error),
 	}
 
+	st.cmd.Env = append(os.Environ(), opts.env...)
 	st.cmd.Stdout = os.Stdout
 	st.cmd.Stderr = os.Stderr
 

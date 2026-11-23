@@ -1,12 +1,15 @@
 set(GO_FILES
   nghttpx_http1_test.go
   nghttpx_http2_test.go
+  quic_fault_linux_test.go
+  quic_retry_linux_test.go
   server_tester.go
   server_tester_http3.go
 )
 
 # XXX unused
 set(EXTRA_DIST
+  testdata/quic_retry.c
   ${GO_FILES}
   server.key
   server.crt
