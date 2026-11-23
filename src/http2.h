@@ -57,12 +57,12 @@ struct Header {
       token{token},
       no_index{no_index} {}
 
-  constexpr Header() noexcept = default;
-  constexpr Header(const Header &) = default;
-  constexpr Header(Header &&) noexcept = default;
+  Header() noexcept = default;
+  Header(const Header &) = default;
+  Header(Header &&) noexcept = default;
 
-  constexpr Header &operator=(const Header &) = default;
-  constexpr Header &operator=(Header &&) noexcept = default;
+  Header &operator=(const Header &) = default;
+  Header &operator=(Header &&) noexcept = default;
 
   constexpr bool operator==(const Header &other) const noexcept {
     return name == other.name && value == other.value;
