@@ -155,6 +155,7 @@ static const MunitTest tests[] = {
   munit_void_test(test_nghttp2_session_flooding),
   munit_void_test(test_nghttp2_session_change_extpri_stream_priority),
   munit_void_test(test_nghttp2_session_set_local_window_size),
+  munit_void_test(test_nghttp2_session_reopen_manual_window),
   munit_void_test(test_nghttp2_session_cancel_from_before_frame_send),
   munit_void_test(test_nghttp2_session_too_many_settings),
   munit_void_test(test_nghttp2_session_removed_closed_stream),
@@ -10963,6 +10964,67 @@ void test_nghttp2_session_change_extpri_stream_priority(void) {
   nghttp2_session_del(session);
   nghttp2_option_del(option);
   nghttp2_bufs_free(&bufs);
+}
+
+static void check_reopen_manual_window(int32_t reduced_window_size,
+                                       int (*reopen)(nghttp2_session *, uint8_t,
+                                                     int32_t, int32_t)) {
+  static const nghttp2_session_callbacks callbacks = {
+    .send_callback2 = null_send_callback,
+    .on_frame_send_callback = on_frame_send_callback,
+  };
+  my_user_data ud = {0};
+  nghttp2_option *option;
+  nghttp2_session *session;
+  nghttp2_stream *stream;
+  nghttp2_outbound_item *item;
+  int32_t stream_id;
+  const int32_t consumed = NGHTTP2_INITIAL_WINDOW_SIZE / 2 + 1;
+
+  nghttp2_option_new(&option);
+  nghttp2_option_set_no_auto_window_update(option, 1);
+  nghttp2_session_client_new2(&session, &callbacks, &ud, option);
+  stream = open_sent_stream(session, 1);
+
+  for (stream_id = 0; stream_id <= 1; ++stream_id) {
+    assert_int(0, ==,
+               nghttp2_session_set_local_window_size(
+                 session, NGHTTP2_FLAG_NONE, stream_id, reduced_window_size));
+  }
+
+  /* The peer uses its previously advertised credit.  The application
+     consumes only part of the data before reopening the windows. */
+  assert_int(0, ==,
+             nghttp2_session_update_recv_connection_window_size(
+               session, NGHTTP2_INITIAL_WINDOW_SIZE));
+  assert_int(0, ==,
+             nghttp2_session_update_recv_stream_window_size(
+               session, stream, NGHTTP2_INITIAL_WINDOW_SIZE, 1));
+  assert_int(0, ==, nghttp2_session_consume(session, 1, (size_t)consumed));
+  assert_null(nghttp2_session_get_next_ob_item(session));
+
+  for (stream_id = 0; stream_id <= 1; ++stream_id) {
+    assert_int(0, ==,
+               reopen(session, NGHTTP2_FLAG_NONE, stream_id,
+                      NGHTTP2_INITIAL_WINDOW_SIZE));
+    item = nghttp2_session_get_next_ob_item(session);
+    assert_not_null(item);
+    assert_uint8(NGHTTP2_WINDOW_UPDATE, ==, item->frame.hd.type);
+    assert_int32(stream_id, ==, item->frame.hd.stream_id);
+    assert_int32(consumed, ==, item->frame.window_update.window_size_increment);
+    ud.frame_send_cb_called = 0;
+    assert_int(0, ==, nghttp2_session_send(session));
+    assert_int(1, ==, ud.frame_send_cb_called);
+  }
+
+  nghttp2_session_del(session);
+  nghttp2_option_del(option);
+}
+
+void test_nghttp2_session_reopen_manual_window(void) {
+  check_reopen_manual_window(0, nghttp2_session_set_local_window_size);
+  check_reopen_manual_window(16384, nghttp2_session_set_local_window_size);
+  check_reopen_manual_window(0, nghttp2_submit_window_update);
 }
 
 void test_nghttp2_session_set_local_window_size(void) {
