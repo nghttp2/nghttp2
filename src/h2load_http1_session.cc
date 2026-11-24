@@ -78,6 +78,7 @@ int htp_msg_completecb(llhttp_t *htp) {
     return 0;
   }
 
+  client->record_ttfb();
   client->final = llhttp_should_keep_alive(htp) == 0;
   auto req_stat = client->get_req_stat(session->stream_resp_counter_);
 
@@ -130,7 +131,9 @@ int htp_hdr_valcb(llhttp_t *htp, const char *data, size_t len) {
 
 namespace {
 int htp_hdrs_completecb(llhttp_t *htp) {
-  return !http2::expect_response_body(htp->status_code);
+  auto session = static_cast<Http1Session *>(htp->data);
+  auto config = session->get_client()->worker->config;
+  return !http2::expect_response_body(config->method, htp->status_code);
 }
 } // namespace
 

@@ -3673,13 +3673,14 @@ int main(int argc, char **argv) {
   auto method_it = std::ranges::find_if(
     shared_nva, [](const Header &nv) { return nv.name == ":method"; });
   assert(method_it != std::ranges::end(shared_nva));
+  config.method = method_it->value;
 
   config.h1reqs.reserve(reqlines.size());
   config.nva.reserve(reqlines.size());
 
   for (auto &req : reqlines) {
     // For HTTP/1.1
-    auto h1req = (*method_it).value;
+    auto h1req = config.method;
     h1req += ' ';
     h1req += req;
     h1req += " HTTP/1.1\r\n";

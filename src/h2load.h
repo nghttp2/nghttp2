@@ -88,6 +88,7 @@ struct Config {
   std::vector<std::string> h1reqs;
   std::vector<std::chrono::steady_clock::duration> timings;
   nghttp2::Headers custom_headers;
+  std::string method;
   std::string scheme;
   std::string host;
   std::string connect_to_host;
