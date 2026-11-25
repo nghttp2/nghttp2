@@ -2502,6 +2502,22 @@ static int session_update_stream_consumed_size(nghttp2_session *session,
 static int session_update_connection_consumed_size(nghttp2_session *session,
                                                    size_t delta_size);
 
+int nghttp2_session_recheck_window_update(nghttp2_session *session,
+                                          nghttp2_stream *stream) {
+  if (session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) {
+    if (stream) {
+      return session_update_stream_consumed_size(session, stream, 0);
+    }
+    return session_update_connection_consumed_size(session, 0);
+  }
+
+  if (stream) {
+    return nghttp2_session_update_recv_stream_window_size(session, stream, 0,
+                                                          1);
+  }
+  return nghttp2_session_update_recv_connection_window_size(session, 0);
+}
+
 /*
  * Called after a frame is sent.  This function runs
  * on_frame_send_callback and handles stream closure upon END_STREAM
@@ -2708,17 +2724,7 @@ static int session_after_frame_sent1(nghttp2_session *session) {
   case NGHTTP2_WINDOW_UPDATE:
     if (frame->hd.stream_id == 0) {
       session->window_update_queued = 0;
-      if (session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) {
-        rv = session_update_connection_consumed_size(session, 0);
-      } else {
-        rv = nghttp2_session_update_recv_connection_window_size(session, 0);
-      }
-
-      if (nghttp2_is_fatal(rv)) {
-        return rv;
-      }
-
-      return 0;
+      return nghttp2_session_recheck_window_update(session, NULL);
     }
 
     stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
@@ -2734,18 +2740,7 @@ static int session_after_frame_sent1(nghttp2_session *session) {
       return 0;
     }
 
-    if (session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) {
-      rv = session_update_stream_consumed_size(session, stream, 0);
-    } else {
-      rv =
-        nghttp2_session_update_recv_stream_window_size(session, stream, 0, 1);
-    }
-
-    if (nghttp2_is_fatal(rv)) {
-      return rv;
-    }
-
-    return 0;
+    return nghttp2_session_recheck_window_update(session, stream);
   default:
     return 0;
   }
@@ -4403,26 +4398,7 @@ static int update_local_initial_window_size_func(void *entry, void *ptr) {
     return NGHTTP2_ERR_FLOW_CONTROL;
   }
 
-  if (stream->window_update_queued) {
-    return 0;
-  }
-
-  if (arg->session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) {
-    return session_update_stream_consumed_size(arg->session, stream, 0);
-  }
-
-  if (nghttp2_should_send_window_update(stream->local_window_size,
-                                        stream->recv_window_size)) {
-    rv = nghttp2_session_add_window_update(arg->session, NGHTTP2_FLAG_NONE,
-                                           stream->stream_id,
-                                           stream->recv_window_size);
-    if (rv != 0) {
-      return rv;
-    }
-
-    stream->recv_window_size = 0;
-  }
-  return 0;
+  return nghttp2_session_recheck_window_update(arg->session, stream);
 }
 
 /*

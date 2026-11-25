@@ -341,11 +341,7 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
      reduction and is now accounted in recv_window_size.  Submit
      WINDOW_UPDATE if necessary, otherwise if the remote endpoint has
      exhausted its window, it cannot send any more data and stalls. */
-  if (stream_id == 0) {
-    return nghttp2_session_update_recv_connection_window_size(session, 0);
-  }
-
-  return nghttp2_session_update_recv_stream_window_size(session, stream, 0, 1);
+  return nghttp2_session_recheck_window_update(session, stream);
 }
 
 int nghttp2_session_set_local_window_size(nghttp2_session *session,
@@ -386,7 +382,7 @@ int nghttp2_session_set_local_window_size(nghttp2_session *session,
                                                window_size_increment);
     }
 
-    return nghttp2_session_update_recv_connection_window_size(session, 0);
+    return nghttp2_session_recheck_window_update(session, NULL);
   } else {
     stream = nghttp2_session_get_stream(session, stream_id);
 
@@ -427,8 +423,7 @@ int nghttp2_session_set_local_window_size(nghttp2_session *session,
                                                window_size_increment);
     }
 
-    return nghttp2_session_update_recv_stream_window_size(session, stream, 0,
-                                                          1);
+    return nghttp2_session_recheck_window_update(session, stream);
   }
 }
 
