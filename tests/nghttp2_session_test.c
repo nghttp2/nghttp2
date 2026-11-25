@@ -10967,6 +10967,8 @@ void test_nghttp2_session_change_extpri_stream_priority(void) {
 }
 
 static void check_reopen_manual_window(int32_t reduced_window_size,
+                                       int32_t consumed, int32_t reopen_value,
+                                       int32_t expected_increment,
                                        int (*reopen)(nghttp2_session *, uint8_t,
                                                      int32_t, int32_t)) {
   static const nghttp2_session_callbacks callbacks = {
@@ -10979,7 +10981,6 @@ static void check_reopen_manual_window(int32_t reduced_window_size,
   nghttp2_stream *stream;
   nghttp2_outbound_item *item;
   int32_t stream_id;
-  const int32_t consumed = NGHTTP2_INITIAL_WINDOW_SIZE / 2 + 1;
 
   nghttp2_option_new(&option);
   nghttp2_option_set_no_auto_window_update(option, 1);
@@ -11005,13 +11006,17 @@ static void check_reopen_manual_window(int32_t reduced_window_size,
 
   for (stream_id = 0; stream_id <= 1; ++stream_id) {
     assert_int(0, ==,
-               reopen(session, NGHTTP2_FLAG_NONE, stream_id,
-                      NGHTTP2_INITIAL_WINDOW_SIZE));
+               reopen(session, NGHTTP2_FLAG_NONE, stream_id, reopen_value));
     item = nghttp2_session_get_next_ob_item(session);
+    if (expected_increment == 0) {
+      assert_null(item);
+      continue;
+    }
     assert_not_null(item);
     assert_uint8(NGHTTP2_WINDOW_UPDATE, ==, item->frame.hd.type);
     assert_int32(stream_id, ==, item->frame.hd.stream_id);
-    assert_int32(consumed, ==, item->frame.window_update.window_size_increment);
+    assert_int32(expected_increment, ==,
+                 item->frame.window_update.window_size_increment);
     ud.frame_send_cb_called = 0;
     assert_int(0, ==, nghttp2_session_send(session));
     assert_int(1, ==, ud.frame_send_cb_called);
@@ -11022,9 +11027,34 @@ static void check_reopen_manual_window(int32_t reduced_window_size,
 }
 
 void test_nghttp2_session_reopen_manual_window(void) {
-  check_reopen_manual_window(0, nghttp2_session_set_local_window_size);
-  check_reopen_manual_window(16384, nghttp2_session_set_local_window_size);
-  check_reopen_manual_window(0, nghttp2_submit_window_update);
+  const int32_t full = NGHTTP2_INITIAL_WINDOW_SIZE;
+  const int32_t consumed = full / 2 + 1;
+
+  check_reopen_manual_window(0, consumed, full, consumed,
+                             nghttp2_session_set_local_window_size);
+  check_reopen_manual_window(16384, consumed, full, consumed,
+                             nghttp2_session_set_local_window_size);
+  check_reopen_manual_window(0, consumed, full, consumed,
+                             nghttp2_submit_window_update);
+
+  /* With 15535 bytes still held, a 40000-byte window has room for 24465. */
+  check_reopen_manual_window(0, 50000, 40000, 24465,
+                             nghttp2_session_set_local_window_size);
+  check_reopen_manual_window(0, 50000, 40000, 24465,
+                             nghttp2_submit_window_update);
+
+  /* One byte below the threshold, with and without a remaining reduction. */
+  check_reopen_manual_window(0, 45534, 40000, 0,
+                             nghttp2_session_set_local_window_size);
+  check_reopen_manual_window(0, 45534, 40000, 0, nghttp2_submit_window_update);
+  check_reopen_manual_window(0, consumed - 2, full, 0,
+                             nghttp2_session_set_local_window_size);
+  check_reopen_manual_window(0, consumed - 2, full, 0,
+                             nghttp2_submit_window_update);
+
+  /* The part of an explicit increment beyond the reduction is sent directly. */
+  check_reopen_manual_window(16384, consumed, full, 16384,
+                             nghttp2_submit_window_update);
 }
 
 void test_nghttp2_session_set_local_window_size(void) {
