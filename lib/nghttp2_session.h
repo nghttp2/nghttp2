@@ -903,6 +903,9 @@ int nghttp2_session_update_recv_stream_window_size(nghttp2_session *session,
  * Re-evaluates whether to send WINDOW_UPDATE using the received or
  * consumed byte count, depending on the flow control mode.  If
  * |stream| is NULL, checks the connection window.
+ *
+ * This function returns 0 on success, or NGHTTP2_ERR_NOMEM if memory
+ * allocation fails.
  */
 int nghttp2_session_recheck_window_update(nghttp2_session *session,
                                           nghttp2_stream *stream);
