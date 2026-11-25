@@ -2055,6 +2055,7 @@ std::expected<void, Error> start_listen(HttpServer *sv, struct ev_loop *loop,
       if (!acceptor) {
         acceptor = std::make_shared<AcceptHandler>(sv, sessions, config);
       }
+      // coverity[leaked_storage]
       new ListenEventHandler(sessions, fd, acceptor);
 
       if (config->verbose) {
